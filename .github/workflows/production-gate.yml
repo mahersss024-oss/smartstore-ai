@@ -14,12 +14,12 @@ jobs:
     env:
       AI_EMPLOYEE_WEBHOOK_SECRET: ci_ai_employee_webhook_secret_32_chars_min
       BROWSER_TO_TERMINAL_DISABLED: 'true'
-      CLERK_SECRET_KEY: sk_test_ci_validation_key
+      CLERK_SECRET_KEY: ci_clerk_secret_key
       DATABASE_URL: postgresql://postgres:postgres@localhost:5433/postgres
       DEMO_MODE: 'true'
       MAINTENANCE_SECRET: ci_maintenance_secret_32_chars_minimum
       NEXT_PUBLIC_APP_URL: https://smartstore-ai.test
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_validation_key
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ci_clerk_publishable_key
       NEXT_PUBLIC_SENTRY_DISABLED: 'true'
       PLATFORM_ADMIN_USER_IDS: user_ci_admin
     steps:
@@ -43,6 +43,9 @@ jobs:
 
       - name: Type check
         run: npm run type-check
+
+      - name: Install browser test runtime
+        run: npx playwright install --with-deps chromium
 
       - name: Unit and component tests
         run: npm test

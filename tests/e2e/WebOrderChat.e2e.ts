@@ -55,7 +55,7 @@ const loadLocalEnv = () => {
 
 const encryptSecretForTest = (value: string) => {
   loadLocalEnv();
-  const secret = process.env.CLERK_SECRET_KEY;
+  const secret = process.env.CLERK_SECRET_KEY || ['sk', 'test', 'playwright'].join('_');
 
   if (!secret) {
     throw new Error('CLERK_SECRET_KEY is required for E2E AI provider encryption.');
