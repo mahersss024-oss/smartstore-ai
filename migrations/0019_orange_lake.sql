@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "customer_reviews_organization_order_customer_unique" ON "customer_reviews" USING btree ("organization_id","order_id","customer_id");

@@ -1,0 +1,77 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/vitest-test-results
+/.vitest-attachments/
+
+# next.js
+/.next/
+/.next-dev/
+/out/
+
+# production
+/build
+
+# environment files must stay outside Git and be configured in Vercel
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.db-server-*.log
+.pglite-*.log
+.next-dev-*.log
+dev-server*.log
+localtunnel*.log
+stripe-listen*.log
+
+/.tools/
+
+# local folder
+local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Database
+*.db
+local-5433.db.backup-*/
+
+# Uploaded local assets
+/public/uploads/
+
+# storybook
+storybook-static
+*storybook.log
+build-archive.log
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+.vercel

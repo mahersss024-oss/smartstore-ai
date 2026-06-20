@@ -1,0 +1,271 @@
+@layer theme, base, clerk, components, utilities; /* Ensure Clerk is compatible with Tailwind CSS v4 */
+
+@import 'tailwindcss';
+@import '@clerk/ui/themes/shadcn.css';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.978 0.014 226);
+  --foreground: oklch(0.18 0.045 248);
+  --card: oklch(0.998 0.003 230 / 94%);
+  --card-foreground: oklch(0.18 0.045 248);
+  --popover: oklch(0.998 0.004 230 / 97%);
+  --popover-foreground: oklch(0.18 0.045 248);
+  --primary: oklch(0.53 0.19 242);
+  --primary-foreground: oklch(0.99 0.004 250);
+  --secondary: oklch(0.94 0.038 185);
+  --secondary-foreground: oklch(0.22 0.07 230);
+  --muted: oklch(0.942 0.019 236);
+  --muted-foreground: oklch(0.46 0.04 248);
+  --accent: oklch(0.925 0.055 168);
+  --accent-foreground: oklch(0.2 0.07 220);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.8 0.043 235 / 66%);
+  --input: oklch(0.82 0.045 235 / 76%);
+  --ring: oklch(0.64 0.17 205);
+  --chart-1: oklch(0.57 0.2 242);
+  --chart-2: oklch(0.7 0.17 165);
+  --chart-3: oklch(0.62 0.2 296);
+  --chart-4: oklch(0.76 0.17 82);
+  --chart-5: oklch(0.64 0.2 20);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}
+
+@layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+    min-width: 0;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at 18% 8%, oklch(0.82 0.13 205 / 20%), transparent 28rem),
+      radial-gradient(circle at 82% 18%, oklch(0.8 0.14 160 / 16%), transparent 26rem),
+      linear-gradient(135deg, oklch(0.95 0.035 230 / 54%), transparent 34%),
+      linear-gradient(315deg, oklch(0.94 0.04 155 / 34%), transparent 31%),
+      repeating-linear-gradient(90deg, oklch(0.36 0.06 245 / 5%) 0 1px, transparent 1px 76px),
+      repeating-linear-gradient(0deg, oklch(0.36 0.06 245 / 5%) 0 1px, transparent 1px 76px);
+    background-attachment: fixed;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply transition-all duration-200 placeholder:text-muted-foreground/70;
+    max-width: 100%;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply border-primary/60 bg-background/95 ring-3 ring-primary/18 outline-none;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    @apply accent-primary;
+  }
+
+  button,
+  a[href],
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled),
+  a[href],
+  [role='button']:not([aria-disabled='true']),
+  select:not(:disabled),
+  input[type='button']:not(:disabled),
+  input[type='submit']:not(:disabled),
+  input[type='reset']:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled='true'],
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer components {
+  .app-action-pressable {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .app-press-ripple {
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+    border-radius: 9999px;
+    background: color-mix(in oklch, currentColor 18%, transparent);
+    opacity: 0;
+    transform: scale(0);
+    animation: app-press-ripple 520ms ease-out;
+  }
+
+  .app-action-pressable > :not(.app-press-ripple) {
+    position: relative;
+    z-index: 1;
+  }
+
+  html::before {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 2147483647;
+    height: 3px;
+    background: linear-gradient(90deg, oklch(0.57 0.2 242), oklch(0.7 0.17 165), oklch(0.62 0.2 296));
+    box-shadow: 0 0 24px oklch(0.64 0.17 205 / 45%);
+    content: '';
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  html[data-route-transition='true']::before {
+    animation: app-route-progress 900ms ease-in-out forwards;
+  }
+}
+
+@keyframes app-press-ripple {
+  0% {
+    opacity: 0.24;
+    transform: scale(0);
+  }
+
+  70% {
+    opacity: 0.12;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.45);
+  }
+}
+
+@keyframes app-route-progress {
+  0% {
+    opacity: 1;
+    transform: scaleX(0);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scaleX(0.72);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-press-ripple,
+  html[data-route-transition='true']::before {
+    animation: none;
+  }
+}
+
+@utility dashboard-panel {
+  @apply border-border/70 bg-card/92 shadow-[0_18px_55px_oklch(0.29_0.07_245/10%)] backdrop-blur-xl transition-all duration-200 hover:border-primary/25 hover:shadow-[0_22px_70px_oklch(0.29_0.08_245/13%)];
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+@utility dashboard-surface {
+  @apply border-border/70 bg-background/72 shadow-[0_10px_34px_oklch(0.29_0.07_245/7%)] backdrop-blur-sm transition-all duration-200 hover:border-primary/25 hover:bg-background/86;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+@utility dashboard-pill {
+  @apply border-border/70 bg-background/78 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-background/90;
+  min-width: 0;
+}

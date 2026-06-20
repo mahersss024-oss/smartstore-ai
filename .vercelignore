@@ -1,0 +1,41 @@
+# Dependencies and package-manager caches
+node_modules
+.pnp
+.pnp.*
+
+# Next.js local build outputs
+.next
+.next-dev
+out
+
+# Local database files and backups
+*.db
+local-5433.db*
+tmp-e2e-*.db
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Test and coverage artifacts
+coverage
+test-results
+vitest-test-results
+.vitest-attachments
+playwright-report
+storybook-static
+
+# Local tooling and caches
+.tools
+.vercel
+.vscode
+*.tsbuildinfo
+
+# Logs
+*.log
+*.out.log
+*.err.log
+
+# Local uploaded assets
+public/uploads

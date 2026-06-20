@@ -1,0 +1,54 @@
+import { z } from 'zod';
+
+export const aiEmployeeSemanticHintsSchema = z.object({
+  customerCancelledOrder: z.boolean().optional(),
+  customerAddress: z.string().min(1).max(500).optional(),
+  customerConfirmedOrder: z.boolean().optional(),
+  deliveryPreference: z.enum(['delivery', 'pickup']).optional(),
+  dialogueState: z.enum([
+    'cart_cancellation',
+    'catalog_inquiry',
+    'complaint',
+    'general',
+    'order_confirmation',
+    'order_followup',
+    'order_pause',
+    'order_request',
+    'post_purchase_support',
+    'review',
+  ]).optional(),
+  fulfillmentType: z.enum(['delivery', 'dine_in', 'pickup']).optional(),
+  paymentPreference: z.enum([
+    'card_on_delivery',
+    'card_on_pickup',
+    'cash_on_delivery',
+    'cash_on_pickup',
+  ]).optional(),
+  replaceExistingQuantity: z.boolean().optional(),
+  requestedQuantity: z.number().int().positive().max(99).optional(),
+  referencedOrderId: z.number().int().positive().optional(),
+  removeCartItemProductId: z.number().int().positive().optional(),
+  addAllSuggestedProducts: z.boolean().optional(),
+  restoreCancelledCart: z.boolean().optional(),
+  selectedProductId: z.number().int().positive().optional(),
+  startNewOrder: z.boolean().optional(),
+  supportEscalationConfirmed: z.boolean().optional(),
+  systemEvent: z.object({
+    source: z.literal('web_order_ui'),
+    type: z.enum([
+      'cart_item_removed',
+      'cart_quantity_changed',
+      'cart_restored',
+      'fulfillment_selected',
+      'location_shared',
+      'new_order_started',
+      'order_cancelled',
+      'order_confirmed',
+      'payment_selected',
+      'all_products_confirmed',
+      'product_selected',
+    ]),
+  }).optional(),
+});
+
+export type AIEmployeeSemanticHints = z.infer<typeof aiEmployeeSemanticHintsSchema>;

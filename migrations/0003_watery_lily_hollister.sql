@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "delivery_methods_organization_type_unique" ON "delivery_methods" USING btree ("organization_id","type");--> statement-breakpoint
+CREATE UNIQUE INDEX "payment_methods_organization_provider_unique" ON "payment_methods" USING btree ("organization_id","provider");

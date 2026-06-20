@@ -1,0 +1,19 @@
+<svg width="1600" height="520" viewBox="0 0 1600 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="520" rx="96" fill="#F8FDFF"/>
+  <rect x="72" y="72" width="376" height="376" rx="94" fill="url(#bg)"/>
+  <path d="M177 239L260 166L343 239" stroke="white" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M202 236V337H318V236" stroke="white" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M230 287H290" stroke="#9FFFD2" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="349" cy="171" r="26" fill="#9FFFD2"/>
+  <path d="M323 171H291M349 197V229" stroke="#9FFFD2" stroke-width="16" stroke-linecap="round"/>
+  <text x="520" y="242" fill="#0F172A" font-family="Inter, Arial, sans-serif" font-size="112" font-weight="800" letter-spacing="0">SmartStore AI</text>
+  <text x="526" y="326" fill="#0E7490" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="700" letter-spacing="12">COMMERCE OS</text>
+  <text x="526" y="386" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500">AI-powered operating system for modern stores</text>
+  <defs>
+    <linearGradient id="bg" x1="124" y1="107" x2="406" y2="418" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="0.52" stop-color="#14532D"/>
+      <stop offset="1" stop-color="#0E7490"/>
+    </linearGradient>
+  </defs>
+</svg>

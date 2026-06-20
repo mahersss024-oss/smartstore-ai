@@ -1,0 +1,181 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779313620411,
+      "tag": "0000_init-db",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779476920152,
+      "tag": "0001_kind_scorpion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779492046739,
+      "tag": "0002_empty_vertigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779500360773,
+      "tag": "0003_watery_lily_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779503009246,
+      "tag": "0004_steep_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779658985876,
+      "tag": "0005_thin_cammi",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779956424563,
+      "tag": "0006_worthless_scrambler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779957713871,
+      "tag": "0007_smooth_northstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779974473398,
+      "tag": "0008_slim_crusher_hogan",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779974949795,
+      "tag": "0009_dazzling_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779983426129,
+      "tag": "0010_peaceful_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780010160000,
+      "tag": "0011_archive_orders_and_relationship_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780264860000,
+      "tag": "0012_remove_bank_transfer_payment_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780266420000,
+      "tag": "0013_scope_cash_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780267440000,
+      "tag": "0014_add_card_handoff_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1780725899369,
+      "tag": "0015_add_webhook_event_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780726370412,
+      "tag": "0016_black_iron_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780726992428,
+      "tag": "0017_lonely_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780785233936,
+      "tag": "0018_past_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780785530194,
+      "tag": "0019_orange_lake",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780787594908,
+      "tag": "0020_chief_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781221200000,
+      "tag": "0021_backfill_whatsapp_channel_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781224800000,
+      "tag": "0022_whatsapp_channel_phone_lookup_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781900207000,
+      "tag": "0023_scope_phone_verifications_by_organization",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781959500000,
+      "tag": "0024_twilio_only_whatsapp",
+      "breakpoints": true
+    }
+  ]
+}
