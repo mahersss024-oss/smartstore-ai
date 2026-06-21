@@ -1,67 +1,16 @@
 import { Buffer } from 'node:buffer';
 import { createCipheriv, createHash, randomBytes } from 'node:crypto';
-import fs from 'node:fs';
 import http from 'node:http';
 import { expect, test } from '@playwright/test';
 import { Client } from 'pg';
 
 const organizationId = 'org_e2e_orchestration';
+const E2E_PLATFORM_ENCRYPTION_KEY = 'playwright_platform_encryption_key_2026';
 let mockAIBaseUrl = '';
 let mockAIServer: http.Server | undefined;
 
-const loadLocalEnv = () => {
-  for (const fileName of ['.env', '.env.local']) {
-    if (!fs.existsSync(fileName)) {
-      continue;
-    }
-
-    const content = fs.readFileSync(fileName, 'utf8');
-
-    for (const line of content.split(/\r?\n/)) {
-      const trimmed = line.trim();
-
-      if (!trimmed || trimmed.startsWith('#')) {
-        continue;
-      }
-
-      const separatorIndex = trimmed.indexOf('=');
-
-      if (separatorIndex === -1) {
-        continue;
-      }
-
-      const key = trimmed.slice(0, separatorIndex).trim();
-      let value = trimmed.slice(separatorIndex + 1).trim();
-
-      if (key === 'DATABASE_URL') {
-        continue;
-      }
-
-      if (
-        (value.startsWith('"') && value.endsWith('"'))
-        || (value.startsWith('\'') && value.endsWith('\''))
-      ) {
-        value = value.slice(1, -1);
-      }
-
-      if (key === 'CLERK_SECRET_KEY') {
-        process.env[key] = value;
-      } else {
-        process.env[key] ??= value;
-      }
-    }
-  }
-};
-
 const encryptSecretForTest = (value: string) => {
-  loadLocalEnv();
-  const secret = process.env.CLERK_SECRET_KEY || ['sk', 'test', 'playwright'].join('_');
-
-  if (!secret) {
-    throw new Error('CLERK_SECRET_KEY is required for E2E AI provider encryption.');
-  }
-
-  const key = createHash('sha256').update(secret).digest();
+  const key = createHash('sha256').update(E2E_PLATFORM_ENCRYPTION_KEY).digest();
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([
@@ -170,7 +119,7 @@ const startMockAIProvider = async () => {
     throw new Error('Mock AI provider did not start on a TCP port.');
   }
 
-  mockAIBaseUrl = `http://localhost:${address.port}`;
+  mockAIBaseUrl = `http://127.0.0.1:${address.port}`;
 };
 
 const getDatabaseUrl = () => {

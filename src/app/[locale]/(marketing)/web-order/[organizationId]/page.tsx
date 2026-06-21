@@ -301,7 +301,8 @@ export default async function WebOrderPage(props: {
                       target="_blank"
                       rel="noreferrer"
                       className="
-                        font-semibold text-primary underline-offset-4
+                        inline-flex max-w-full font-semibold break-all
+                        text-primary underline-offset-4
                         hover:underline
                       "
                     >

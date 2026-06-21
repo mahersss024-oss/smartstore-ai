@@ -4,6 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = process.env.PORT ?? '3000';
 const DB_PORT = process.env.DB_PORT ?? '5433';
 const WEB_SERVER_TIMEOUT_MS = Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT_MS ?? 180_000);
+const E2E_PLATFORM_ENCRYPTION_KEY = 'playwright_platform_encryption_key_2026';
 const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_SERVER === 'true' && !process.env.CI;
 const nonEmptyEnv = (value: string | undefined, fallback: string) => {
   return value && value.trim().length > 0 ? value : fallback;
@@ -11,15 +12,21 @@ const nonEmptyEnv = (value: string | undefined, fallback: string) => {
 
 // Set webServer.url and use.baseURL with the location of the WebServer respecting the correct set port
 const baseURL = `http://localhost:${PORT}`;
-const webServerCommand = process.env.CI
-  ? `pglite-server -m 100 --port=${DB_PORT} --include-database-url --run "node ./node_modules/npm-run-all/bin/run-s/index.js db:migrate start"`
-  : `pglite-server -m 100 --port=${DB_PORT} --include-database-url --run "node ./node_modules/npm-run-all/bin/run-s/index.js db:migrate dev:next"`;
+// E2E uses a loopback AI provider. Production mode correctly blocks private
+// outbound URLs, so browser tests run against Next's isolated dev server.
+// The workflow's separate build job remains the production compilation gate.
+const webServerCommand
+  = `pglite-server -m 100 --port=${DB_PORT} --include-database-url --run "node ./node_modules/npm-run-all/bin/run-s/index.js db:migrate dev:next"`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig<ChromaticConfig>({
   testDir: './tests',
+  // Browser projects share the same seeded database and platform AI provider.
+  // Keep CI execution sequential so one project cannot replace another
+  // project's mock provider configuration while tests are still running.
+  workers: process.env.CI ? 1 : undefined,
   // Look for files with the .integ.js or .e2e.js extension
   testMatch: '*.@(integ|e2e).?(c|m)[jt]s?(x)',
   // Timeout per test, test running locally are slower due to database connections with PGLite
@@ -54,6 +61,7 @@ export default defineConfig<ChromaticConfig>({
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
         nonEmptyEnv(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, 'pk_test_playwright'),
       PLATFORM_ADMIN_USER_IDS: nonEmptyEnv(process.env.PLATFORM_ADMIN_USER_IDS, 'user_playwright_admin'),
+      PLATFORM_SECRETS_ENCRYPTION_KEY: E2E_PLATFORM_ENCRYPTION_KEY,
       PORT,
     },
   },
