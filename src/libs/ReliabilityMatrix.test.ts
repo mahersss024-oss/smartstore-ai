@@ -8,6 +8,7 @@ vi.mock('@/libs/DB', () => ({
 }));
 
 vi.mock('@/models/Schema', () => ({
+  aiInboundJobsTable: { id: 'aiJobId', status: 'aiJobStatus', updatedAt: 'aiJobUpdatedAt' },
   publicEndpointRateLimitsTable: { expiresAt: 'expiresAt', id: 'id' },
   webhookEventsTable: { id: 'id', status: 'status', updatedAt: 'updatedAt' },
 }));
@@ -37,11 +38,19 @@ vi.mock('./PlatformAIProviderConfig', () => ({
 
 const makeTx = (
   rateLimitsDeleted: Array<{ id: number }>,
+  finishedAiInboundJobsDeleted: Array<{ id: number }>,
+  deadAiInboundJobsDeleted: Array<{ id: number }>,
   finishedWebhooksDeleted: Array<{ id: number }>,
   failedWebhooksDeleted: Array<{ id: number }>,
 ) => {
   let deleteCallIndex = 0;
-  const deletedBatches = [rateLimitsDeleted, finishedWebhooksDeleted, failedWebhooksDeleted];
+  const deletedBatches = [
+    rateLimitsDeleted,
+    finishedAiInboundJobsDeleted,
+    deadAiInboundJobsDeleted,
+    finishedWebhooksDeleted,
+    failedWebhooksDeleted,
+  ];
 
   return {
     delete: vi.fn(() => ({
@@ -83,13 +92,15 @@ describe('Reliability matrix — DB cleanup and AI failure modes', () => {
   describe('cleanupExpiredOperationalData DB operations', () => {
     it('returns zero counts when nothing has expired', async () => {
       const { cleanupExpiredOperationalData } = await import('./OperationalDataRetention');
-      const tx = makeTx([], [], []);
+      const tx = makeTx([], [], [], [], []);
       mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => cb(tx));
 
       const result = await cleanupExpiredOperationalData(new Date('2026-01-01T12:00:00Z'));
 
       expect(result).toEqual({
+        deadAiInboundJobsDeleted: 0,
         failedWebhooksDeleted: 0,
+        finishedAiInboundJobsDeleted: 0,
         finishedWebhooksDeleted: 0,
         rateLimitsDeleted: 0,
       });
@@ -99,6 +110,8 @@ describe('Reliability matrix — DB cleanup and AI failure modes', () => {
       const { cleanupExpiredOperationalData } = await import('./OperationalDataRetention');
       const tx = makeTx(
         [{ id: 10 }, { id: 11 }],
+        [{ id: 15 }],
+        [{ id: 16 }, { id: 17 }],
         [{ id: 20 }, { id: 21 }, { id: 22 }],
         [{ id: 30 }],
       );
@@ -107,7 +120,9 @@ describe('Reliability matrix — DB cleanup and AI failure modes', () => {
       const result = await cleanupExpiredOperationalData(new Date('2026-06-17T12:00:00Z'));
 
       expect(result).toEqual({
+        deadAiInboundJobsDeleted: 2,
         failedWebhooksDeleted: 1,
+        finishedAiInboundJobsDeleted: 1,
         finishedWebhooksDeleted: 3,
         rateLimitsDeleted: 2,
       });
@@ -115,13 +130,13 @@ describe('Reliability matrix — DB cleanup and AI failure modes', () => {
 
     it('runs all three deletes inside a single transaction', async () => {
       const { cleanupExpiredOperationalData } = await import('./OperationalDataRetention');
-      const tx = makeTx([], [], []);
+      const tx = makeTx([], [], [], [], []);
       mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => cb(tx));
 
       await cleanupExpiredOperationalData(new Date('2026-06-17T12:00:00Z'));
 
       expect(mockTransaction).toHaveBeenCalledTimes(1);
-      expect(tx.delete).toHaveBeenCalledTimes(3);
+      expect(tx.delete).toHaveBeenCalledTimes(5);
     });
 
     it('propagates a DB transaction failure without swallowing it', async () => {
@@ -135,7 +150,7 @@ describe('Reliability matrix — DB cleanup and AI failure modes', () => {
     it('uses a reference timestamp so cutoffs are deterministic', async () => {
       const { cleanupExpiredOperationalData, OPERATIONAL_RETENTION } = await import('./OperationalDataRetention');
       const { lt } = await import('drizzle-orm');
-      const tx = makeTx([], [], []);
+      const tx = makeTx([], [], [], [], []);
       mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => cb(tx));
 
       const now = new Date('2026-06-17T00:00:00.000Z');

@@ -23,8 +23,8 @@ items are tracked explicitly in the ledgers.
 - Lint gate passed with zero warnings.
 - Dependency/dead-code scan passed.
 - i18n check passed.
-- Full unit/UI test suite passed: 98 test files and 912 tests.
-- Production build passed and generated 88 static pages.
+- Full unit/UI test suite passed: 103 test files and 941 tests.
+- Production build passed and generated 89 pages/routes.
 - Playwright E2E passed: 27 Chromium tests.
 - Coverage gate passed with permanent floors in place.
 - Production dependency audit passed with 0 vulnerabilities.
@@ -42,6 +42,12 @@ items are tracked explicitly in the ledgers.
   Auth Token.
 - Per-store Twilio outbound sending and recipient-to-store isolation are covered
   by focused tests.
+- Durable WhatsApp AI processing is implemented behind `AI_PROCESSING_MODE` with
+  a tenant-scoped outbox, signed QStash worker, lease fencing, strict
+  per-conversation ordering, database-owned retry/backoff, dead-lettering, and a
+  Vercel Cron recovery sweeper.
+- PostgreSQL runtime verification proved tenant-safe duplicate keys, one-winner
+  concurrent claims, stale-lease rejection, and backoff enforcement.
 - Production DB-backed public connect and web-order routes returned HTTP 200 for
   the current organization.
 

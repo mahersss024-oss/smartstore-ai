@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/maintenance/ai-inbound-jobs",
+      "schedule": "* * * * *"
+    }
+  ]
+}

@@ -192,6 +192,42 @@ export const webhookEventsTable = pgTable('webhook_events', {
 ]);
 
 // ============================================
+// Durable inbound AI job queue (outbox) for asynchronous customer-message
+// processing. The webhook persists a job here and returns immediately; a worker
+// claims the job with a processing lease and runs the AI reply pipeline.
+// ============================================
+export const aiInboundJobsTable = pgTable('ai_inbound_jobs', {
+  id: serial('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  channel: varchar('channel', { length: 50 }).notNull(), // whatsapp | web_chat
+  externalThreadId: text('external_thread_id'),
+  dedupeKey: text('dedupe_key').notNull(), // twilio MessageSid / clientSubmissionId
+  payload: jsonb('payload').notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending|processing|done|failed|dead
+  attempts: integer('attempts').default(0).notNull(),
+  leaseToken: text('lease_token'),
+  lockedUntil: timestamp('locked_until', { mode: 'date' }),
+  lastDispatchedAt: timestamp('last_dispatched_at', { mode: 'date' }),
+  nextAttemptAt: timestamp('next_attempt_at', { mode: 'date' }),
+  lastError: text('last_error'),
+  processedAt: timestamp('processed_at', { mode: 'date' }),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdateFn(() => sql`localtimestamp`)
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, table => [
+  uniqueIndex('ai_inbound_jobs_org_channel_dedupe_unique').on(
+    table.organizationId,
+    table.channel,
+    table.dedupeKey,
+  ),
+  index('ai_inbound_jobs_status_next_attempt_idx').on(table.status, table.nextAttemptAt),
+  index('ai_inbound_jobs_dispatch_recovery_idx').on(table.status, table.lastDispatchedAt),
+  index('ai_inbound_jobs_organization_created_idx').on(table.organizationId, table.createdAt),
+]);
+
+// ============================================
 // Durable public endpoint rate limits
 // ============================================
 export const publicEndpointRateLimitsTable = pgTable('public_endpoint_rate_limits', {
@@ -393,7 +429,7 @@ export const phoneVerificationsTable = pgTable('phone_verifications', {
   verifiedAt: timestamp('verified_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
-  index('phone_verifications_org_session_phone_idx').on(table.organizationId, table.sessionId, table.phone),
+  uniqueIndex('phone_verifications_org_session_phone_unique').on(table.organizationId, table.sessionId, table.phone),
   index('phone_verifications_expires_idx').on(table.expiresAt),
 ]);
 

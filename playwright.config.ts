@@ -16,7 +16,7 @@ const baseURL = `http://localhost:${PORT}`;
 // outbound URLs, so browser tests run against Next's isolated dev server.
 // The workflow's separate build job remains the production compilation gate.
 const webServerCommand
-  = `pglite-server -m 100 --port=${DB_PORT} --include-database-url --run "node ./node_modules/npm-run-all/bin/run-s/index.js db:migrate dev:next"`;
+  = `npm run clean:dev && pglite-server -m 100 --port=${DB_PORT} --include-database-url --run "node ./node_modules/npm-run-all/bin/run-s/index.js db:migrate dev:next"`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.

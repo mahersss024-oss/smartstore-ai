@@ -11,10 +11,15 @@ const doesValueLookLikeProviderSecret = (value: string) => {
 export const Env = createEnv({
   server: {
     AI_EMPLOYEE_WEBHOOK_SECRET: z.string().optional(),
+    // Controls how inbound customer messages are processed. 'sync' runs the AI
+    // reply inside the inbound request (current behavior). 'outbox' persists a
+    // durable job and processes it in the QStash-driven worker.
+    AI_PROCESSING_MODE: z.enum(['sync', 'outbox']).default('sync'),
     BETTER_STACK_INGESTING_HOST: z.string().optional(),
     BETTER_STACK_SOURCE_TOKEN: z.string().optional(),
     CLERK_SECRET_KEY: z.string().min(1),
     CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(),
+    CRON_SECRET: z.string().min(32).optional(),
     DATABASE_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10_000),
     DATABASE_IDLE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30_000),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
@@ -42,6 +47,11 @@ export const Env = createEnv({
         'Every previous platform encryption key must be at least 32 characters and must not be a provider API key.',
       )
       .optional(),
+    // QStash (Upstash) drives the async AI worker. Token publishes jobs; the two
+    // signing keys verify that worker requests genuinely originate from QStash.
+    QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+    QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+    QSTASH_TOKEN: z.string().optional(),
     STRIPE_PRICE_EXTRA_AI_ORDERS: z.string().optional(),
     STRIPE_PRICE_EXTRA_CATALOG_ITEMS: z.string().optional(),
     STRIPE_PRICE_EXTRA_IMAGE_STORAGE: z.string().optional(),
@@ -66,10 +76,12 @@ export const Env = createEnv({
   // You need to destructure all the keys manually
   runtimeEnv: {
     AI_EMPLOYEE_WEBHOOK_SECRET: process.env.AI_EMPLOYEE_WEBHOOK_SECRET,
+    AI_PROCESSING_MODE: process.env.AI_PROCESSING_MODE,
     BETTER_STACK_INGESTING_HOST: process.env.BETTER_STACK_INGESTING_HOST,
     BETTER_STACK_SOURCE_TOKEN: process.env.BETTER_STACK_SOURCE_TOKEN,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     CLERK_WEBHOOK_SIGNING_SECRET: process.env.CLERK_WEBHOOK_SIGNING_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
     DATABASE_CONNECTION_TIMEOUT_MS: process.env.DATABASE_CONNECTION_TIMEOUT_MS,
     DATABASE_IDLE_TIMEOUT_MS: process.env.DATABASE_IDLE_TIMEOUT_MS,
     DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
@@ -81,6 +93,9 @@ export const Env = createEnv({
     PLATFORM_SECRETS_ENCRYPTION_KEY: process.env.PLATFORM_SECRETS_ENCRYPTION_KEY,
     PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS:
       process.env.PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS,
+    QSTASH_CURRENT_SIGNING_KEY: process.env.QSTASH_CURRENT_SIGNING_KEY,
+    QSTASH_NEXT_SIGNING_KEY: process.env.QSTASH_NEXT_SIGNING_KEY,
+    QSTASH_TOKEN: process.env.QSTASH_TOKEN,
     STRIPE_PRICE_EXTRA_AI_ORDERS: process.env.STRIPE_PRICE_EXTRA_AI_ORDERS,
     STRIPE_PRICE_EXTRA_CATALOG_ITEMS: process.env.STRIPE_PRICE_EXTRA_CATALOG_ITEMS,
     STRIPE_PRICE_EXTRA_IMAGE_STORAGE: process.env.STRIPE_PRICE_EXTRA_IMAGE_STORAGE,
@@ -100,6 +115,21 @@ export const Env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
   },
 });
+
+if (
+  Env.AI_PROCESSING_MODE === 'outbox'
+  && (
+    !Env.NEXT_PUBLIC_APP_URL
+    || !Env.QSTASH_TOKEN
+    || !Env.QSTASH_CURRENT_SIGNING_KEY
+    || !Env.QSTASH_NEXT_SIGNING_KEY
+  )
+) {
+  throw new Error(
+    'AI_PROCESSING_MODE=outbox requires NEXT_PUBLIC_APP_URL, QSTASH_TOKEN, '
+    + 'QSTASH_CURRENT_SIGNING_KEY, and QSTASH_NEXT_SIGNING_KEY.',
+  );
+}
 
 const isProductionDeployment = process.env.VERCEL_ENV === 'production'
   || process.env.SMARTSTORE_VALIDATE_PRODUCTION_ENV === 'true';

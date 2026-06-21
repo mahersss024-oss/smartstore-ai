@@ -79,7 +79,33 @@ export const guardReplyLanguageAndDialect = (params: {
   };
 };
 
-const normalizePrivateDigits = (value: string) => value.replace(/\D/g, '');
+// Map Eastern Arabic (U+0660-0669) and Persian (U+06F0-06F9) digits to ASCII so
+// that phone-number detection cannot be bypassed by writing a leaked number in
+// Arabic-Indic numerals, which the ASCII-only \d class would otherwise miss.
+const normalizeEasternDigitsToAscii = (value: string) => {
+  const arabicZero = 0x0660;
+  const persianZero = 0x06F0;
+
+  return Array.from(value)
+    .map((char) => {
+      const code = char.charCodeAt(0);
+
+      if (code >= arabicZero && code <= arabicZero + 9) {
+        return String(code - arabicZero);
+      }
+
+      if (code >= persianZero && code <= persianZero + 9) {
+        return String(code - persianZero);
+      }
+
+      return char;
+    })
+    .join('');
+};
+
+const normalizePrivateDigits = (value: string) => {
+  return normalizeEasternDigitsToAscii(value).replace(/\D/g, '');
+};
 
 const normalizeAllowedPrivateValues = (values: Array<null | string | undefined> | undefined) => {
   return new Set((values ?? [])
@@ -130,7 +156,8 @@ export const guardCustomerPrivacyReply = (params: {
     };
   }
 
-  const replyPhones = params.reply.match(/(?:\+?\d[\s().-]*){9,16}/g) ?? [];
+  const replyPhones = normalizeEasternDigitsToAscii(params.reply)
+    .match(/(?:\+?\d[\s().-]*){9,16}/g) ?? [];
   const leakedPhone = replyPhones.find((phone) => {
     const normalizedPhone = normalizePrivateDigits(phone);
 

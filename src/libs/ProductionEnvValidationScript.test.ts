@@ -89,4 +89,18 @@ describe('production environment validation script', () => {
     expect(result.stderr).toContain('contains a key shorter than 32 characters');
     expect(result.stderr).toContain('must contain only dedicated encryption roots');
   });
+
+  it('requires all QStash credentials when outbox processing is enabled', () => {
+    const result = runValidation([], {
+      AI_PROCESSING_MODE: 'outbox',
+      QSTASH_CURRENT_SIGNING_KEY: undefined,
+      QSTASH_NEXT_SIGNING_KEY: undefined,
+      QSTASH_TOKEN: undefined,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('QSTASH_TOKEN is missing');
+    expect(result.stderr).toContain('QSTASH_CURRENT_SIGNING_KEY is missing');
+    expect(result.stderr).toContain('QSTASH_NEXT_SIGNING_KEY is missing');
+  });
 });

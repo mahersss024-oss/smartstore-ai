@@ -19,12 +19,19 @@ const requiredVariables = [
 
 const recommendedVariables = [
   'AI_EMPLOYEE_WEBHOOK_SECRET',
+  'CRON_SECRET',
   'MAINTENANCE_SECRET',
   'PLATFORM_ADMIN_USER_IDS',
   'PLATFORM_SECRETS_ENCRYPTION_KEY',
   'PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS',
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
+];
+
+const qstashVariables = [
+  'QSTASH_TOKEN',
+  'QSTASH_CURRENT_SIGNING_KEY',
+  'QSTASH_NEXT_SIGNING_KEY',
 ];
 
 const stripeVariables = [
@@ -131,6 +138,7 @@ const validateSecretLength = (key, value, issues) => {
   if (
     (
       key === 'MAINTENANCE_SECRET'
+      || key === 'CRON_SECRET'
       || key === 'AI_EMPLOYEE_WEBHOOK_SECRET'
       || key === 'PLATFORM_SECRETS_ENCRYPTION_KEY'
     )
@@ -247,6 +255,16 @@ for (const key of recommendedVariables) {
 
 for (const key of stripeVariables) {
   warnings.push(...validateVariable(key, warnings));
+}
+
+if (getEnvValue('AI_PROCESSING_MODE') === 'outbox') {
+  for (const key of qstashVariables) {
+    failures.push(...validateVariable(key, warnings, { required: true }));
+  }
+
+  if (!getEnvValue('CRON_SECRET') && !getEnvValue('MAINTENANCE_SECRET')) {
+    failures.push('Outbox processing requires CRON_SECRET or MAINTENANCE_SECRET for recovery sweeps.');
+  }
 }
 
 if (!getEnvValue('TWILIO_ACCOUNT_SID') || !getEnvValue('TWILIO_AUTH_TOKEN')) {

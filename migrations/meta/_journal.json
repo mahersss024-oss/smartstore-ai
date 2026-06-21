@@ -176,6 +176,20 @@
       "when": 1781959500000,
       "tag": "0024_twilio_only_whatsapp",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782045900000,
+      "tag": "0025_dedupe_phone_verifications_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782132300000,
+      "tag": "0026_ai_inbound_jobs",
+      "breakpoints": true
     }
   ]
 }

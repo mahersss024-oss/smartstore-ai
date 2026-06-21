@@ -2,24 +2,50 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockAcquireWebhookProcessingLock,
+  mockBuildTwilioOutboundBody,
+  mockDispatchAndRecordAiInboundJob,
+  mockEnqueueAiInboundJob,
   mockFindTwilioStoreConnection,
+  mockLoadTwilioConversationMetadata,
   mockLoggerInfo,
   mockLoggerWarn,
   mockReleaseWebhookProcessingLock,
+  mockResolveTwilioSemanticHints,
   mockRunWebhookEventOnce,
   mockSendTrustedWebhookChatMessage,
   mockSendTwilioWhatsAppMessage,
   mockValidateRequest,
 } = vi.hoisted(() => ({
   mockAcquireWebhookProcessingLock: vi.fn(),
+  mockBuildTwilioOutboundBody: vi.fn(),
+  mockDispatchAndRecordAiInboundJob: vi.fn(),
+  mockEnqueueAiInboundJob: vi.fn(),
   mockFindTwilioStoreConnection: vi.fn(),
+  mockLoadTwilioConversationMetadata: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockReleaseWebhookProcessingLock: vi.fn(),
+  mockResolveTwilioSemanticHints: vi.fn(),
   mockRunWebhookEventOnce: vi.fn(),
   mockSendTrustedWebhookChatMessage: vi.fn(),
   mockSendTwilioWhatsAppMessage: vi.fn(),
   mockValidateRequest: vi.fn(),
+}));
+
+const mockEnv = vi.hoisted(() => ({
+  AI_PROCESSING_MODE: 'sync' as 'outbox' | 'sync',
+}));
+
+vi.mock('@/libs/Env', () => ({
+  Env: mockEnv,
+}));
+
+vi.mock('@/libs/AIInboundJobDispatch', () => ({
+  dispatchAndRecordAiInboundJob: mockDispatchAndRecordAiInboundJob,
+}));
+
+vi.mock('@/libs/AIInboundJobQueue', () => ({
+  enqueueAiInboundJob: mockEnqueueAiInboundJob,
 }));
 
 vi.mock('@/libs/Logger', () => ({
@@ -52,6 +78,12 @@ vi.mock('@/libs/TwilioWhatsApp', () => ({
     waId: params.get('WaId') ?? undefined,
   })),
   sendTwilioWhatsAppMessage: mockSendTwilioWhatsAppMessage,
+}));
+
+vi.mock('@/libs/TwilioConversationAdapter', () => ({
+  buildTwilioOutboundBody: mockBuildTwilioOutboundBody,
+  loadTwilioConversationMetadata: mockLoadTwilioConversationMetadata,
+  resolveTwilioSemanticHints: mockResolveTwilioSemanticHints,
 }));
 
 vi.mock('@/libs/WebhookIdempotency', () => ({
@@ -89,6 +121,14 @@ describe('Twilio WhatsApp webhook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFindTwilioStoreConnection.mockResolvedValue(connection);
+    mockBuildTwilioOutboundBody.mockImplementation(
+      (result: { replyToCustomer: string }) => result.replyToCustomer.trim(),
+    );
+    mockLoadTwilioConversationMetadata.mockResolvedValue(undefined);
+    mockResolveTwilioSemanticHints.mockReturnValue(undefined);
+    mockEnv.AI_PROCESSING_MODE = 'sync';
+    mockEnqueueAiInboundJob.mockResolvedValue({ enqueued: true, jobId: 7 });
+    mockDispatchAndRecordAiInboundJob.mockResolvedValue({ dispatched: true });
     mockValidateRequest.mockReturnValue(true);
     mockAcquireWebhookProcessingLock.mockResolvedValue({
       acquired: true,
@@ -157,6 +197,36 @@ describe('Twilio WhatsApp webhook', () => {
     expect(mockSendTwilioWhatsAppMessage).not.toHaveBeenCalled();
   });
 
+  it('passes a trusted Twilio text selection into the shared conversation engine', async () => {
+    const semanticHints = {
+      selectedProductId: 15,
+      systemEvent: {
+        source: 'web_order_ui',
+        type: 'product_selected',
+      },
+    };
+    mockLoadTwilioConversationMetadata.mockResolvedValue({
+      lastSuggestedProducts: [{ id: 15, name: 'نص مضغوط دجاج' }],
+    });
+    mockResolveTwilioSemanticHints.mockReturnValue(semanticHints);
+
+    const { POST } = await import('./route');
+    const response = await POST(buildRequest());
+
+    expect(response.status).toBe(200);
+    expect(mockResolveTwilioSemanticHints).toHaveBeenCalledWith({
+      message: 'سلام',
+      metadata: {
+        lastSuggestedProducts: [{ id: 15, name: 'نص مضغوط دجاج' }],
+      },
+    });
+    expect(mockSendTrustedWebhookChatMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticHints,
+      }),
+    );
+  });
+
   it('does not process or send when no active Twilio store matches the recipient', async () => {
     mockFindTwilioStoreConnection.mockResolvedValue(null);
     const { POST } = await import('./route');
@@ -216,5 +286,27 @@ describe('Twilio WhatsApp webhook', () => {
       connection,
       to: 'whatsapp:+966500000001',
     });
+  });
+
+  it('persists and dispatches the message without running AI in outbox mode', async () => {
+    mockEnv.AI_PROCESSING_MODE = 'outbox';
+    const { POST } = await import('./route');
+    const response = await POST(buildRequest());
+
+    expect(response.status).toBe(200);
+    expect(mockEnqueueAiInboundJob).toHaveBeenCalledWith({
+      channel: 'whatsapp',
+      dedupeKey: 'SM_message_1',
+      externalThreadId: 'twa:14155552671:966500000001',
+      organizationId: 'org_store_1',
+      payload: {
+        message: expect.objectContaining({
+          messageSid: 'SM_message_1',
+        }),
+      },
+    });
+    expect(mockDispatchAndRecordAiInboundJob).toHaveBeenCalledWith({ jobId: 7 });
+    expect(mockSendTrustedWebhookChatMessage).not.toHaveBeenCalled();
+    expect(mockSendTwilioWhatsAppMessage).not.toHaveBeenCalled();
   });
 });

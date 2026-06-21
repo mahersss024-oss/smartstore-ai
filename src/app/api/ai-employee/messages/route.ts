@@ -21,6 +21,11 @@ import {
 } from '@/libs/StoreServiceControls';
 import { isSubscriptionLimitError } from '@/libs/SubscriptionEntitlements';
 
+// The AI reply path can chain several sequential model calls (reply generation,
+// safety review, and a bounded repair + re-guard cycle). Give the function
+// enough headroom to persist the reply before the platform terminates it.
+export const maxDuration = 60;
+
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 
 const requestSchema = z.object({

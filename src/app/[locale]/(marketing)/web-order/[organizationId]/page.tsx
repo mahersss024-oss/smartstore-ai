@@ -16,6 +16,11 @@ import {
 } from '@/models/Schema';
 import { normalizeCustomerChannelSource } from '@/utils/CustomerChannels';
 
+// The web chat server action runs the AI reply path, which can chain several
+// sequential model calls (reply generation, safety review, and a bounded repair
+// cycle). Give the route headroom to finish before the platform terminates it.
+export const maxDuration = 60;
+
 type DeliveryConfig = {
   instructions?: string;
 };

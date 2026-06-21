@@ -1,0 +1,58 @@
+import { NextResponse } from 'next/server';
+import { dispatchAndRecordAiInboundJob } from '@/libs/AIInboundJobDispatch';
+import { findDispatchableAiInboundJobs } from '@/libs/AIInboundJobQueue';
+import { Env } from '@/libs/Env';
+import { getPlatformRuntimeConfig } from '@/libs/PlatformRuntimeConfig';
+import { secureTokenEquals } from '@/libs/SecureTokens';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export const POST = async (request: Request) => {
+  const runtimeConfig = await getPlatformRuntimeConfig();
+  const maintenanceSecret = runtimeConfig.internal.maintenanceSecret;
+
+  const acceptedSecrets = [maintenanceSecret, Env.CRON_SECRET].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  if (acceptedSecrets.length === 0) {
+    return NextResponse.json(
+      { error: 'Maintenance endpoint is not configured' },
+      { status: 503 },
+    );
+  }
+
+  const authorization = request.headers.get('authorization');
+  const token = authorization?.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length)
+    : null;
+
+  if (!acceptedSecrets.some(secret => secureTokenEquals(token, secret))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (Env.AI_PROCESSING_MODE !== 'outbox') {
+    return NextResponse.json({
+      dispatched: 0,
+      failed: 0,
+      scanned: 0,
+      skipped: true,
+    });
+  }
+
+  const jobs = await findDispatchableAiInboundJobs({ limit: 100 });
+  const results = await Promise.all(
+    jobs.map(job => dispatchAndRecordAiInboundJob({ jobId: job.id })),
+  );
+  const dispatched = results.filter(result => result.dispatched).length;
+
+  return NextResponse.json({
+    dispatched,
+    failed: jobs.length - dispatched,
+    scanned: jobs.length,
+    skipped: false,
+  });
+};
+
+export const GET = POST;

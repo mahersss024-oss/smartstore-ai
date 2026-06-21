@@ -648,7 +648,14 @@ export const requestPhoneOtp = async (input: z.infer<typeof otpRequestSchema>) =
   await db
     .insert(phoneVerificationsTable)
     .values({ expiresAt, organizationId, phone, sessionId, status: 'pending' })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      set: { expiresAt, status: 'pending', verifiedAt: null },
+      target: [
+        phoneVerificationsTable.organizationId,
+        phoneVerificationsTable.sessionId,
+        phoneVerificationsTable.phone,
+      ],
+    });
 
   return { ok: true as const };
 };
