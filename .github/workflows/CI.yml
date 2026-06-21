@@ -155,6 +155,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [build]
+    env:
+      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -177,12 +179,17 @@ jobs:
           sudo chmod -R 777 test-results
 
       - name: Run visual regression tests
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
         uses: chromaui/action@v17
         with:
           playwright: true
           exitOnceUploaded: true # Speed up by skipping the build results
           outputDir: storybook-static
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          projectToken: ${{ env.CHROMATIC_PROJECT_TOKEN }}
+
+      - name: Report skipped visual regression upload
+        if: env.CHROMATIC_PROJECT_TOKEN == ''
+        run: echo "::notice::Chromatic upload skipped because CHROMATIC_PROJECT_TOKEN is not configured."
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
