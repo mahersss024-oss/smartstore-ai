@@ -1,6 +1,6 @@
 # Current Completion Status
 
-Date saved: 2026-06-20
+Date saved: 2026-06-21
 
 This file is the short handoff record for the latest certification work. It
 does not store secrets, tokens, database URLs, customer private data, or
@@ -23,9 +23,9 @@ items are tracked explicitly in the ledgers.
 - Lint gate passed with zero warnings.
 - Dependency/dead-code scan passed.
 - i18n check passed.
-- Full unit/UI test suite passed: 90 test files and 571 tests.
+- Full unit/UI test suite passed: 98 test files and 912 tests.
 - Production build passed and generated 88 static pages.
-- Playwright E2E passed: 18 Chromium tests.
+- Playwright E2E passed: 27 Chromium tests.
 - Coverage gate passed with permanent floors in place.
 - Production dependency audit passed with 0 vulnerabilities.
 - Full npm audit passed in the latest recorded pass.
@@ -58,6 +58,8 @@ items are tracked explicitly in the ledgers.
 - Provider error logging redacts exact runtime credentials before logging.
 - Twilio provider failures return safe retry responses without exposing
   credentials.
+- Twilio non-retryable AI failures return readable Arabic fallback replies and
+  are covered by a regression test.
 - WhatsApp webhook delivery no longer acknowledges incomplete customer-facing
   processing as success.
 - Same-customer WhatsApp messages remain ordered, while different customer

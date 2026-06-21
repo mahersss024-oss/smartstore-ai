@@ -196,4 +196,25 @@ describe('Twilio WhatsApp webhook', () => {
       }),
     );
   });
+
+  it('sends a readable Arabic fallback for non-retryable AI failures', async () => {
+    mockSendTrustedWebhookChatMessage.mockResolvedValueOnce({
+      error: 'invalid_message',
+      ok: false,
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(buildRequest());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      status: 'processed',
+    });
+    expect(mockSendTwilioWhatsAppMessage).toHaveBeenCalledWith({
+      body: 'لم أستطع قراءة الرسالة بشكل صحيح. فضلاً أعد إرسال طلبك بصيغة أوضح.',
+      connection,
+      to: 'whatsapp:+966500000001',
+    });
+  });
 });

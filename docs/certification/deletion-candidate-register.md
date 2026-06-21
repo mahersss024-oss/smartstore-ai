@@ -107,7 +107,7 @@ candidates.
 | `src/app/api/maintenance/cleanup/route.ts` | Maintenance cleanup | Called by Vercel cron for operational data retention. |
 | `src/app/api/payments/moyasar/callback/route.ts` | Moyasar callback | Receives Moyasar payment callback redirects. |
 | `src/app/api/stripe/webhooks/route.ts` | Stripe webhook | Receives Stripe subscription lifecycle events. |
-| `src/app/api/twilio/webhook/route.ts` | WhatsApp webhook | Receives Meta WhatsApp inbound messages. |
+| `src/app/api/twilio/webhook/route.ts` | WhatsApp webhook | Receives signed Twilio WhatsApp inbound messages. |
 | `src/app/global-error.tsx` | Global error | Next.js global error boundary for root-layout failures. |
 
 **Conclusion**: All 53 route files are active Next.js conventions. Zero deletion candidates.
@@ -134,8 +134,8 @@ None are deletion candidates.
 
 | Script | Activation | Decision |
 | --- | --- | --- |
-| `scripts/validate-production-env.mjs` | `package.json` `validate:production-env` command; called by `test:production` and CI gates. | keep |
-| `scripts/check-production-runtime.mjs` | `package.json` `check:production-runtime` command; called by production smoke script. | keep |
+| `scripts/validate-production-env.mjs` | `package.json` `check:env:production` command; used for production environment validation gates. | keep |
+| `scripts/check-production-runtime.mjs` | `package.json` `check:runtime:production` command; used by runtime validation and production smoke workflows. | keep |
 
 **Conclusion**: Both operational scripts are referenced by `package.json` commands. Zero deletion candidates.
 
