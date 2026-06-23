@@ -131,7 +131,6 @@ vi.mock('@/libs/AIEmployeeOrderLifecycle', () => ({
   canAIEmployeeAddItemsToExistingOrder: vi.fn(() => false),
   createAIEmployeeCustomerFeedbackEvent: vi.fn(async () => undefined),
   createAIEmployeeDraftOrder: vi.fn(async () => null),
-  createAIEmployeeSupportEscalationEvent: vi.fn(async () => undefined),
   getMostRelevantAIEmployeeDeliveryStageOpenOrder: vi.fn(() => null),
   handleAIEmployeeOrderCancellationRequest: vi.fn(async () => ({
     applied: false,

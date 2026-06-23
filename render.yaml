@@ -11,24 +11,24 @@ services:
   - type: web
     name: smartstore-ai
     runtime: node
-    region: virginia        # matches Neon us-east-1
-    plan: starter            # always-on; do NOT use `free` (it sleeps → webhooks fail)
+    region: virginia # matches Neon us-east-1
+    plan: starter # always-on; do NOT use `free` (it sleeps → webhooks fail)
     branch: main
     autoDeploy: true
     buildCommand: npm ci && npm run build
-    preDeployCommand: npx drizzle-kit migrate   # applies Neon migrations before going live
+    preDeployCommand: npx drizzle-kit migrate # applies Neon migrations before going live
     startCommand: npm start
-    healthCheckPath: /robots.txt                # static 200, no auth/DB
+    healthCheckPath: /robots.txt # static 200, no auth/DB
 
     envVars:
       # --- public / inline (also inlined into the client bundle at build) ---
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_APP_URL
-        value: https://smartstore-ai.com        # was empty on Vercel — required
+        value: https://smartstore-ai.com # was empty on Vercel — required
 
       # --- required (build fails without them); set values in the dashboard ---
-      - key: DATABASE_URL                        # Neon pooled connection string
+      - key: DATABASE_URL # Neon pooled connection string
         sync: false
       - key: CLERK_SECRET_KEY
         sync: false
@@ -50,7 +50,7 @@ services:
         sync: false
       - key: TWILIO_VERIFY_SERVICE_SID
         sync: false
-      - key: MAINTENANCE_SECRET                  # Bearer for the sweeper endpoint
+      - key: MAINTENANCE_SECRET # Bearer for the sweeper endpoint
         sync: false
       - key: NEXT_PUBLIC_SENTRY_DSN
         sync: false
