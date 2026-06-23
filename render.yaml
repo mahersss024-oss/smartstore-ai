@@ -1,0 +1,76 @@
+# Render Blueprint for SmartStore AI.
+# In Render: New → Blueprint → connect this repo. Render reads this file, creates
+# the web service, and prompts you to fill the `sync: false` secrets.
+#
+# ⚠️ REGION: set `region` to the one CLOSEST to your Neon database (every request
+# hits Neon). If your Neon project is in EU, keep `frankfurt`; if it is in US,
+# use `ohio`/`virginia`. Mismatched regions add latency to every query.
+#
+# ⚠️ BRANCH: deploys `feat/async-ai-outbox` (current production-ready code).
+# After merging it into `main`, change `branch` to `main`.
+
+services:
+  - type: web
+    name: smartstore-ai
+    runtime: node
+    region: frankfurt
+    plan: starter            # always-on; do NOT use `free` (it sleeps → webhooks fail)
+    branch: feat/async-ai-outbox
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npx drizzle-kit migrate   # applies Neon migrations before going live
+    startCommand: npm start
+    healthCheckPath: /robots.txt                # static 200, no auth/DB
+
+    envVars:
+      # --- public / inline (also inlined into the client bundle at build) ---
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://smartstore-ai.com        # was empty on Vercel — required
+
+      # --- required (build fails without them); set values in the dashboard ---
+      - key: DATABASE_URL                        # Neon pooled connection string
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+
+      # --- critical: decrypts stored Twilio secrets — must match the old value ---
+      - key: PLATFORM_SECRETS_ENCRYPTION_KEY
+        sync: false
+
+      # --- features you already use ---
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
+        sync: false
+      - key: PLATFORM_ADMIN_USER_IDS
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      - key: MAINTENANCE_SECRET                  # Bearer for the sweeper endpoint
+        sync: false
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      - key: SENTRY_AUTH_TOKEN
+        sync: false
+      - key: SENTRY_ORGANIZATION
+        sync: false
+      - key: SENTRY_PROJECT
+        sync: false
+
+      # --- optional: add these in the dashboard only if you enable the feature ---
+      # Billing:  STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*
+      # Outbox:   AI_PROCESSING_MODE=outbox, QSTASH_TOKEN,
+      #           QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY, CRON_SECRET
+      # Payments: MOYASAR_SECRET_KEY
+      # Logging:  BETTER_STACK_SOURCE_TOKEN, BETTER_STACK_INGESTING_HOST
+
+# Sweeper (only when AI_PROCESSING_MODE=outbox): schedule a 1-minute POST to
+#   https://smartstore-ai.com/api/maintenance/ai-inbound-jobs
+#   with header  Authorization: Bearer <MAINTENANCE_SECRET>
+# Cleanest via a QStash Schedule (already a dependency) or a Render Cron Job.
