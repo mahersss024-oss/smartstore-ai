@@ -65,6 +65,29 @@ describe('TwilioConversationAdapter', () => {
     })).toBeUndefined();
   });
 
+  it('maps a product name preceded by an affirmative word to the product selection event', () => {
+    expect(resolveTwilioSemanticHints({
+      message: 'ايوه نص مضغوط',
+      metadata: {
+        lastSuggestedProducts: [
+          {
+            availability: 'available',
+            id: 15,
+            name: 'نص مضغوط دجاج',
+            price: '15.00',
+          },
+        ],
+        visibleSystemActions: ['product_choices'],
+      },
+    })).toEqual({
+      selectedProductId: 15,
+      systemEvent: {
+        source: 'web_order_ui',
+        type: 'product_selected',
+      },
+    });
+  });
+
   it('replaces web-only instructions and renders actionable WhatsApp choices', () => {
     expect(buildTwilioOutboundBody({
       availableFulfillmentTypes: ['delivery', 'pickup'],
@@ -86,6 +109,35 @@ describe('TwilioConversationAdapter', () => {
       + 'لإضافة المنتج، اكتب اسمه كما هو:\n'
       + '1. نص مضغوط دجاج - 15.00 ريال',
     );
+  });
+
+  it('replaces "الخيارات الظاهرة لك قدامك على الشاشة" and "بالضغط عليها" patterns', () => {
+    const result = buildTwilioOutboundBody({
+      replyToCustomer: 'لاحظت الخيارات الظاهرة لك قدامك على الشاشة—تقدر تختار نص مضغوط دجاج بالضغط عليها.',
+      suggestedProducts: [{
+        availability: 'available',
+        id: 15,
+        name: 'نص مضغوط دجاج',
+        price: '15.00',
+      }],
+      visibleSystemActions: ['product_choices'],
+    });
+
+    expect(result).not.toContain('الشاشة');
+    expect(result).not.toContain('قدامك');
+    expect(result).not.toContain('بالضغط');
+    expect(result).toContain('الخيارات التالية');
+  });
+
+  it('replaces "من الخيارات الظاهرة لك" without leaving trailing "لك"', () => {
+    const result = buildTwilioOutboundBody({
+      replyToCustomer: 'اختر المنتج المناسب من الخيارات الظاهرة لك، أو اكتب توضيحاً.',
+      visibleSystemActions: [],
+    });
+
+    expect(result).not.toContain('الظاهرة');
+    expect(result).toContain('من الخيارات التالية');
+    expect(result).not.toMatch(/التاليةلك/);
   });
 
   it('renders the current checkout action instead of referring to hidden web UI', () => {

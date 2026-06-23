@@ -69,6 +69,14 @@ const normalizedTokens = (value: string) => {
     'طلب',
     'ودي',
     'want',
+    // affirmative / confirmation words — irrelevant for product name matching
+    'ايه',
+    'ايوه',
+    'اوك',
+    'تمام',
+    'نعم',
+    'yes',
+    'ok',
   ]);
 
   return normalizeArabicText(value)
@@ -336,15 +344,23 @@ export const loadTwilioConversationMetadata = async (params: {
 
 const replaceWebOnlyInstructions = (reply: string) => {
   return reply
+    // "من/في الخيارات الظاهرة [لك] [على الشاشة]" — keep preposition
     .replace(
-      /(من|في)\s+الخيارات\s+الظاهرة\s+(?:لك\s+)?(?:على\s+الشاشة)?/gu,
+      /(من|في)\s+الخيارات\s+الظاهرة(?:\s+لك)?(?:\s+على\s+الشاشة)?/gu,
       'من الخيارات التالية',
     )
+    // "الخيارات الظاهرة [لك] [قدامك/أمامك] [عالشاشة/على الشاشة]"
+    .replace(
+      /الخيارات\s+الظاهرة(?:\s+لك)?(?:\s+(?:قدامك|أمامك))?(?:\s+(?:عالشاشة|على\s+الشاشة))?/gu,
+      'الخيارات التالية',
+    )
+    // "الخيارات [التي] [قدامك/أمامك] [عالشاشة/على الشاشة]"
     .replace(
       /الخيارات\s+(?:التي\s+)?(?:قدامك|أمامك)\s+(?:عالشاشة|على\s+الشاشة)/gu,
       'الخيارات التالية',
     )
     .replace(/(?:عالشاشة|على\s+الشاشة)/gu, '')
+    .replace(/بالضغط\s+عليها?/gu, 'باختياره')
     .replace(/اضغط\s+عليها?/gu, 'اكتب اسمه')
     .replace(/اضغط\s+على\s+زر/gu, 'اكتب');
 };

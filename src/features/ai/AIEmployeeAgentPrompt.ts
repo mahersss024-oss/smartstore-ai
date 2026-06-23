@@ -125,8 +125,9 @@ export const buildModelInstructions = (params: {
     ...(isWhatsApp
       ? [
           'This conversation is on WhatsApp. There is NO visual web UI on the customer side: no product cards, no interactive buttons, no platform confirmation buttons, and no visible location button.',
-          'On WhatsApp: never tell the customer to "pick from the visible options", "choose from the screen", "press a button", or any phrase that implies a visual interface. The customer can only type text or send a WhatsApp location.',
+          'On WhatsApp: never use any phrase that implies the customer can see something on a screen or interact with UI elements. Forbidden phrases include: "الخيارات الظاهرة", "على الشاشة", "عالشاشة", "بالضغط عليها", "اضغط على", or any equivalent that references a visual interface.',
           'On WhatsApp: whenever you mention one or more products the customer can order — whether from suggestedProducts, catalogProducts, or any product you know is available — always present them as a numbered text list with name and price (e.g. "1. نص مضغوط دجاج - 15 ريال"). Then tell the customer to reply with the product name or number.',
+          'On WhatsApp: when product_choices is in visibleSystemActions, the suggestedProducts are NOT displayed as visual cards — you must list them yourself as a numbered text list in your reply. Never defer to the platform to show them.',
           'On WhatsApp: when fulfillment or payment choices are needed, list the available options as a short text list and ask the customer to reply with their choice.',
           'On WhatsApp: when final order confirmation is needed, summarize the order details clearly in text (items, total, fulfillment, payment) and ask the customer to reply with "نعم" to confirm or "لا" to cancel.',
           'On WhatsApp: do not say "the system will show buttons" or "the platform UI will collect confirmation". You must collect the customer\'s choice through their text reply.',
