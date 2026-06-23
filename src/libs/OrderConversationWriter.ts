@@ -95,7 +95,7 @@ export const writeOrderCustomerConversationMessage = async (params: {
       .update(conversationsTable)
       .set({
         aiStatus: 'reply_ready',
-        lastMessageAt: sql`localtimestamp`,
+        lastMessageAt: new Date(),
         lastMessagePreview: params.body.slice(0, 180),
         metadata: conversationMetadata,
         status: 'open',
@@ -118,7 +118,7 @@ export const writeOrderCustomerConversationMessage = async (params: {
         aiStatus: 'reply_ready',
         channel: params.channel,
         externalThreadId: conversationReference.externalThreadId ?? params.fallbackThreadId,
-        lastMessageAt: sql`localtimestamp`,
+        lastMessageAt: new Date(),
         lastMessagePreview: params.body.slice(0, 180),
         metadata: conversationMetadata,
         organizationId: params.organizationId,
@@ -127,7 +127,7 @@ export const writeOrderCustomerConversationMessage = async (params: {
       .onConflictDoUpdate({
         set: {
           aiStatus: 'reply_ready',
-          lastMessageAt: sql`localtimestamp`,
+          lastMessageAt: new Date(),
           lastMessagePreview: params.body.slice(0, 180),
           metadata: conversationMetadata,
           status: 'open',

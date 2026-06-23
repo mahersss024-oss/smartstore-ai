@@ -8,7 +8,7 @@ import type {
   ConversationDecision,
   ConversationOrderItem,
 } from './ConversationEngine';
-import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or } from 'drizzle-orm';
 import {
   orderEventsTable,
   ordersTable,
@@ -699,7 +699,7 @@ export const createAIEmployeeDraftOrder = async (params: {
           },
         },
         customerAddress: orderCustomerAddress,
-        customerConfirmationAt: sql`localtimestamp`,
+        customerConfirmationAt: new Date(),
         customerEmail: params.customerEmail,
         customerName: params.customerName,
         customerPhone: params.customerPhone,

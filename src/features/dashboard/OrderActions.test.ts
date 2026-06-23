@@ -207,10 +207,7 @@ describe('OrderActions', () => {
 
     expect(mockTxUpdate).toHaveBeenCalled();
     expect(mockTxUpdateSet).toHaveBeenCalledWith({
-      archivedAt: expect.objectContaining({
-        query: 'localtimestamp',
-        type: 'sql',
-      }),
+      archivedAt: expect.any(Date),
     });
     expect(mockTxInsertValues).toHaveBeenCalledWith(expect.objectContaining({
       actorId: 'user_1',

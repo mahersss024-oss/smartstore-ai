@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockAuth = vi.fn();
-const mockDbSelectLimit = vi.fn();
+const mockDbSelectLimitResult: unknown[][] = [];
+const mockDbSelectLimit = vi.fn(() => {
+  const result = mockDbSelectLimitResult.shift() ?? [{ metadata: {} }];
+  return Object.assign(Promise.resolve(result), {
+    for: vi.fn(async () => result),
+  });
+});
 const mockDbSelectWhere = vi.fn(() => ({ limit: mockDbSelectLimit }));
 const mockDbSelectFrom = vi.fn(() => ({ where: mockDbSelectWhere }));
 const mockDbSelect = vi.fn(() => ({ from: mockDbSelectFrom }));
@@ -37,11 +43,16 @@ vi.mock('@/libs/AISimulation', () => ({
 vi.mock('@/libs/DB', () => ({
   db: {
     select: mockDbSelect,
+    transaction: vi.fn(async (callback: (tx: unknown) => Promise<void>) => callback({
+      select: mockDbSelect,
+      update: mockDbUpdate,
+    })),
     update: mockDbUpdate,
   },
 }));
 
 vi.mock('@/libs/StoreAIContext', () => ({
+  loadProductImageMap: vi.fn(async () => new Map()),
   loadStoreAIContext: mockLoadStoreAIContext,
 }));
 
@@ -63,8 +74,8 @@ vi.mock('@/utils/Helpers', () => ({
 describe('AISimulationActions tenant authorization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDbSelectLimitResult.length = 0;
     mockAuth.mockResolvedValue({ orgId: 'org_a' });
-    mockDbSelectLimit.mockResolvedValue([{ metadata: {} }]);
     mockLoadStoreAIContext.mockResolvedValue({});
   });
 

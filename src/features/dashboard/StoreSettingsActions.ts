@@ -572,7 +572,6 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
     }
   }
 
-  const existingMetadata = (existingSettings[0]?.metadata ?? {}) as StoreSettingsMetadata;
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
   const twilio = resolveTwilioConnectionInput(formData, existingWhatsappConfig);
   const hasAnyTwilioSetting = Boolean(
@@ -601,57 +600,84 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
     twilioMessagingServiceSid: twilio.messagingServiceSid,
     twilioWhatsAppFrom: twilio.whatsappFrom,
   });
-  const metadata: StoreSettingsMetadata = {
-    ...existingMetadata,
-    businessType,
-    channelIntegrations: {
-      ...(existingMetadata.channelIntegrations ?? {}),
-      whatsapp: {
-        connectionStatus: whatsappChannel.connectionStatus,
-        mode: whatsappChannel.mode,
-        phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
-        twilioAccountSid: twilio.accountSid,
-        twilioAuthTokenPreview: twilio.authTokenPreview,
-        twilioMessagingServiceSid: twilio.messagingServiceSid,
-        twilioWhatsAppFrom: twilio.whatsappFrom,
-        webhookReady: whatsappChannel.connectionStatus === 'connected',
-        whatsappLink: whatsappChannel.whatsappLink,
-        whatsappTarget: whatsappChannel.whatsappTarget,
-      },
-    },
-    contactChannels: {
-      ...(existingMetadata.contactChannels ?? {}),
-      whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
-      email: email || undefined,
-      phone: phone || undefined,
-    },
-    customerEntry: {
-      ...(existingMetadata.customerEntry ?? {}),
-      defaultChannel: defaultCustomerEntryChannel,
-      mode: customerEntryMode,
-    },
-    knowledgeBase,
-    location: {
-      ...location,
-      latitude: mapsCoordinates?.latitude,
-      longitude: mapsCoordinates?.longitude,
-    },
-  };
-  if (restoreDefaultTheme) {
-    delete metadata.brandTheme;
-  } else {
-    metadata.brandTheme = {
-      ...(existingMetadata.brandTheme ?? {}),
-      accentColor: accentColor || undefined,
-      backgroundColor: backgroundColor || undefined,
-      primaryColor: primaryColor || undefined,
-    };
-  }
 
-  if (existingSettings[0]) {
-    await db
-      .update(storeSettingsTable)
-      .set({
+  // Store settings metadata and the WhatsApp channel connection must move
+  // together: inbound routing reads channel_connections while the dashboard reads
+  // metadata, so a partial write would leave them inconsistent.
+  // The FOR UPDATE re-read inside the transaction prevents a concurrent save from
+  // silently clobbering another writer's metadata keys (last-writer-wins race).
+  await db.transaction(async (tx) => {
+    const [lockedSettings] = await tx
+      .select({ metadata: storeSettingsTable.metadata })
+      .from(storeSettingsTable)
+      .where(eq(storeSettingsTable.organizationId, organizationId))
+      .limit(1)
+      .for('update');
+
+    const lockedMetadata = (lockedSettings?.metadata ?? existingSettings[0]?.metadata ?? {}) as StoreSettingsMetadata;
+    const metadata: StoreSettingsMetadata = {
+      ...lockedMetadata,
+      businessType,
+      channelIntegrations: {
+        ...(lockedMetadata.channelIntegrations ?? {}),
+        whatsapp: {
+          connectionStatus: whatsappChannel.connectionStatus,
+          mode: whatsappChannel.mode,
+          phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
+          twilioAccountSid: twilio.accountSid,
+          twilioAuthTokenPreview: twilio.authTokenPreview,
+          twilioMessagingServiceSid: twilio.messagingServiceSid,
+          twilioWhatsAppFrom: twilio.whatsappFrom,
+          webhookReady: whatsappChannel.connectionStatus === 'connected',
+          whatsappLink: whatsappChannel.whatsappLink,
+          whatsappTarget: whatsappChannel.whatsappTarget,
+        },
+      },
+      contactChannels: {
+        ...(lockedMetadata.contactChannels ?? {}),
+        whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
+        email: email || undefined,
+        phone: phone || undefined,
+      },
+      customerEntry: {
+        ...(lockedMetadata.customerEntry ?? {}),
+        defaultChannel: defaultCustomerEntryChannel,
+        mode: customerEntryMode,
+      },
+      knowledgeBase,
+      location: {
+        ...location,
+        latitude: mapsCoordinates?.latitude,
+        longitude: mapsCoordinates?.longitude,
+      },
+    };
+    if (restoreDefaultTheme) {
+      delete metadata.brandTheme;
+    } else {
+      metadata.brandTheme = {
+        ...(lockedMetadata.brandTheme ?? {}),
+        accentColor: accentColor || undefined,
+        backgroundColor: backgroundColor || undefined,
+        primaryColor: primaryColor || undefined,
+      };
+    }
+
+    if (lockedSettings || existingSettings[0]) {
+      await tx
+        .update(storeSettingsTable)
+        .set({
+          storeName: storeName || null,
+          logo: logo || null,
+          storeDescription: storeDescription || null,
+          welcomeMessage: welcomeMessage || null,
+          currency,
+          timezone,
+          metadata,
+        })
+        .where(eq(storeSettingsTable.organizationId, organizationId));
+    } else {
+      await tx.insert(storeSettingsTable).values({
+        organizationId,
         storeName: storeName || null,
         logo: logo || null,
         storeDescription: storeDescription || null,
@@ -659,45 +685,34 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
         currency,
         timezone,
         metadata,
-      })
-      .where(eq(storeSettingsTable.organizationId, organizationId));
-  } else {
-    await db.insert(storeSettingsTable).values({
-      organizationId,
-      storeName: storeName || null,
-      logo: logo || null,
-      storeDescription: storeDescription || null,
-      welcomeMessage: welcomeMessage || null,
-      currency,
-      timezone,
-      metadata,
-    });
-  }
+      });
+    }
 
-  await db
-    .insert(channelConnectionsTable)
-    .values({
-      aiMode: 'assist',
-      channel: 'whatsapp',
-      config: whatsappChannel.config,
-      connectionStatus: whatsappChannel.connectionStatus,
-      displayName: 'WhatsApp',
-      isActive: whatsappChannel.isActive,
-      organizationId,
-    })
-    .onConflictDoUpdate({
-      set: {
+    await tx
+      .insert(channelConnectionsTable)
+      .values({
         aiMode: 'assist',
+        channel: 'whatsapp',
         config: whatsappChannel.config,
         connectionStatus: whatsappChannel.connectionStatus,
         displayName: 'WhatsApp',
         isActive: whatsappChannel.isActive,
-      },
-      target: [
-        channelConnectionsTable.organizationId,
-        channelConnectionsTable.channel,
-      ],
-    });
+        organizationId,
+      })
+      .onConflictDoUpdate({
+        set: {
+          aiMode: 'assist',
+          config: whatsappChannel.config,
+          connectionStatus: whatsappChannel.connectionStatus,
+          displayName: 'WhatsApp',
+          isActive: whatsappChannel.isActive,
+        },
+        target: [
+          channelConnectionsTable.organizationId,
+          channelConnectionsTable.channel,
+        ],
+      });
+  });
 
   revalidatePath(getI18nPath('/dashboard/settings', locale));
   revalidatePath(getI18nPath('/dashboard/launch-readiness', locale));
@@ -727,7 +742,6 @@ export const saveWhatsAppSettings = async (
     .where(eq(storeSettingsTable.organizationId, organizationId))
     .limit(1);
 
-  const existingMetadata = (existingSettings?.metadata ?? {}) as StoreSettingsMetadata;
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
   const twilio = resolveTwilioConnectionInput(formData, existingWhatsappConfig);
 
@@ -751,66 +765,80 @@ export const saveWhatsAppSettings = async (
     twilioMessagingServiceSid: twilio.messagingServiceSid,
     twilioWhatsAppFrom: twilio.whatsappFrom,
   });
-  const metadata: StoreSettingsMetadata = {
-    ...existingMetadata,
-    channelIntegrations: {
-      ...(existingMetadata.channelIntegrations ?? {}),
-      whatsapp: {
-        connectionStatus: whatsappChannel.connectionStatus,
-        mode: whatsappChannel.mode,
-        phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
-        twilioAccountSid: twilio.accountSid,
-        twilioAuthTokenPreview: twilio.authTokenPreview,
-        twilioMessagingServiceSid: twilio.messagingServiceSid,
-        twilioWhatsAppFrom: twilio.whatsappFrom,
-        webhookReady: whatsappChannel.connectionStatus === 'connected',
-        whatsappLink: whatsappChannel.whatsappLink,
-        whatsappTarget: whatsappChannel.whatsappTarget,
+
+  // Keep metadata and the WhatsApp channel connection atomic (see saveStoreSettings).
+  // Re-read the metadata row with FOR UPDATE inside the transaction so a concurrent
+  // settings save cannot silently clobber other metadata keys (race condition fix).
+  await db.transaction(async (tx) => {
+    const [lockedSettings] = await tx
+      .select({ metadata: storeSettingsTable.metadata })
+      .from(storeSettingsTable)
+      .where(eq(storeSettingsTable.organizationId, organizationId))
+      .limit(1)
+      .for('update');
+
+    const lockedMetadata = (lockedSettings?.metadata ?? existingSettings?.metadata ?? {}) as StoreSettingsMetadata;
+    const metadata: StoreSettingsMetadata = {
+      ...lockedMetadata,
+      channelIntegrations: {
+        ...(lockedMetadata.channelIntegrations ?? {}),
+        whatsapp: {
+          connectionStatus: whatsappChannel.connectionStatus,
+          mode: whatsappChannel.mode,
+          phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
+          twilioAccountSid: twilio.accountSid,
+          twilioAuthTokenPreview: twilio.authTokenPreview,
+          twilioMessagingServiceSid: twilio.messagingServiceSid,
+          twilioWhatsAppFrom: twilio.whatsappFrom,
+          webhookReady: whatsappChannel.connectionStatus === 'connected',
+          whatsappLink: whatsappChannel.whatsappLink,
+          whatsappTarget: whatsappChannel.whatsappTarget,
+        },
       },
-    },
-    contactChannels: {
-      ...(existingMetadata.contactChannels ?? {}),
-      whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
-    },
-  };
+      contactChannels: {
+        ...(lockedMetadata.contactChannels ?? {}),
+        whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
+      },
+    };
 
-  if (existingSettings) {
-    await db
-      .update(storeSettingsTable)
-      .set({ metadata })
-      .where(eq(storeSettingsTable.organizationId, organizationId));
-  } else {
-    await db.insert(storeSettingsTable).values({
-      metadata,
-      organizationId,
-      storeName: String(formData.get('storeName') ?? '').trim() || null,
-    });
-  }
+    if (lockedSettings || existingSettings) {
+      await tx
+        .update(storeSettingsTable)
+        .set({ metadata })
+        .where(eq(storeSettingsTable.organizationId, organizationId));
+    } else {
+      await tx.insert(storeSettingsTable).values({
+        metadata,
+        organizationId,
+        storeName: String(formData.get('storeName') ?? '').trim() || null,
+      });
+    }
 
-  await db
-    .insert(channelConnectionsTable)
-    .values({
-      aiMode: 'assist',
-      channel: 'whatsapp',
-      config: whatsappChannel.config,
-      connectionStatus: whatsappChannel.connectionStatus,
-      displayName: 'WhatsApp',
-      isActive: whatsappChannel.isActive,
-      organizationId,
-    })
-    .onConflictDoUpdate({
-      set: {
+    await tx
+      .insert(channelConnectionsTable)
+      .values({
         aiMode: 'assist',
+        channel: 'whatsapp',
         config: whatsappChannel.config,
         connectionStatus: whatsappChannel.connectionStatus,
         displayName: 'WhatsApp',
         isActive: whatsappChannel.isActive,
-      },
-      target: [
-        channelConnectionsTable.organizationId,
-        channelConnectionsTable.channel,
-      ],
-    });
+        organizationId,
+      })
+      .onConflictDoUpdate({
+        set: {
+          aiMode: 'assist',
+          config: whatsappChannel.config,
+          connectionStatus: whatsappChannel.connectionStatus,
+          displayName: 'WhatsApp',
+          isActive: whatsappChannel.isActive,
+        },
+        target: [
+          channelConnectionsTable.organizationId,
+          channelConnectionsTable.channel,
+        ],
+      });
+  });
 
   revalidatePath(getI18nPath('/dashboard/settings', locale));
   revalidatePath(getI18nPath('/dashboard/launch-readiness', locale));
@@ -826,50 +854,55 @@ export const saveWhatsAppSettings = async (
 export const disconnectWhatsApp = async (locale: string) => {
   const organizationId = await getActiveOrganizationId();
 
-  await db
-    .insert(channelConnectionsTable)
-    .values({
-      aiMode: 'assist',
-      channel: 'whatsapp',
-      config: {},
-      connectionStatus: 'not_connected',
-      displayName: 'WhatsApp',
-      isActive: false,
-      organizationId,
-    })
-    .onConflictDoUpdate({
-      set: {
+  // Channel disconnect + metadata clearing must be atomic; the metadata row is
+  // locked FOR UPDATE so a concurrent settings save cannot clobber the change.
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(channelConnectionsTable)
+      .values({
+        aiMode: 'assist',
+        channel: 'whatsapp',
         config: {},
         connectionStatus: 'not_connected',
+        displayName: 'WhatsApp',
         isActive: false,
-      },
-      target: [
-        channelConnectionsTable.organizationId,
-        channelConnectionsTable.channel,
-      ],
-    });
-
-  const [existingSettings] = await db
-    .select({ metadata: storeSettingsTable.metadata })
-    .from(storeSettingsTable)
-    .where(eq(storeSettingsTable.organizationId, organizationId))
-    .limit(1);
-
-  if (existingSettings) {
-    const existingMetadata = (existingSettings.metadata ?? {}) as StoreSettingsMetadata;
-    await db
-      .update(storeSettingsTable)
-      .set({
-        metadata: {
-          ...existingMetadata,
-          channelIntegrations: {
-            ...(existingMetadata.channelIntegrations ?? {}),
-            whatsapp: {},
-          },
-        },
+        organizationId,
       })
-      .where(eq(storeSettingsTable.organizationId, organizationId));
-  }
+      .onConflictDoUpdate({
+        set: {
+          config: {},
+          connectionStatus: 'not_connected',
+          isActive: false,
+        },
+        target: [
+          channelConnectionsTable.organizationId,
+          channelConnectionsTable.channel,
+        ],
+      });
+
+    const [existingSettings] = await tx
+      .select({ metadata: storeSettingsTable.metadata })
+      .from(storeSettingsTable)
+      .where(eq(storeSettingsTable.organizationId, organizationId))
+      .limit(1)
+      .for('update');
+
+    if (existingSettings) {
+      const existingMetadata = (existingSettings.metadata ?? {}) as StoreSettingsMetadata;
+      await tx
+        .update(storeSettingsTable)
+        .set({
+          metadata: {
+            ...existingMetadata,
+            channelIntegrations: {
+              ...(existingMetadata.channelIntegrations ?? {}),
+              whatsapp: {},
+            },
+          },
+        })
+        .where(eq(storeSettingsTable.organizationId, organizationId));
+    }
+  });
 
   revalidatePath(getI18nPath('/dashboard/settings', locale));
   revalidatePath(getI18nPath('/dashboard/launch-readiness', locale));

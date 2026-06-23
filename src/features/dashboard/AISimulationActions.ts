@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { simulateAIEmployeeReply } from '@/libs/AISimulation';
 import { db } from '@/libs/DB';
-import { loadStoreAIContext } from '@/libs/StoreAIContext';
+import { loadProductImageMap, loadStoreAIContext } from '@/libs/StoreAIContext';
 import { assertStoreFeatureEnabled } from '@/libs/StoreServiceControls';
 import { storeSettingsTable } from '@/models/Schema';
 import { getI18nPath } from '@/utils/Helpers';
@@ -50,37 +50,45 @@ export const runAIEmployeeSimulation = async (locale: string, formData: FormData
   await assertStoreFeatureEnabled(organizationId, 'ai');
   const context = await loadStoreAIContext({ organizationId });
   const result = simulateAIEmployeeReply(context, message);
-  const [settings] = await db
-    .select({ metadata: storeSettingsTable.metadata })
-    .from(storeSettingsTable)
-    .where(eq(storeSettingsTable.organizationId, organizationId))
-    .limit(1);
-  const metadata = (settings?.metadata ?? {}) as StoreSettingsMetadata;
+  const recommendedImages = await loadProductImageMap(
+    organizationId,
+    result.recommendedProducts.map(product => product.id),
+  );
 
-  await db
-    .update(storeSettingsTable)
-    .set({
-      metadata: {
-        ...metadata,
-        aiSimulation: {
-          ...(metadata.aiSimulation ?? {}),
-          lastResult: {
-            createdAt: new Date().toISOString(),
-            message,
-            missingDetails: result.missingDetails,
-            recommendedProducts: result.recommendedProducts.map(product => ({
-              category: product.category,
-              id: product.id,
-              image: product.image,
-              name: product.name,
-              price: product.price,
-            })),
-            reply: result.reply,
+  await db.transaction(async (tx) => {
+    const [settings] = await tx
+      .select({ metadata: storeSettingsTable.metadata })
+      .from(storeSettingsTable)
+      .where(eq(storeSettingsTable.organizationId, organizationId))
+      .limit(1)
+      .for('update');
+    const metadata = (settings?.metadata ?? {}) as StoreSettingsMetadata;
+
+    await tx
+      .update(storeSettingsTable)
+      .set({
+        metadata: {
+          ...metadata,
+          aiSimulation: {
+            ...(metadata.aiSimulation ?? {}),
+            lastResult: {
+              createdAt: new Date().toISOString(),
+              message,
+              missingDetails: result.missingDetails,
+              recommendedProducts: result.recommendedProducts.map(product => ({
+                category: product.category,
+                id: product.id,
+                image: recommendedImages.get(product.id) ?? null,
+                name: product.name,
+                price: product.price,
+              })),
+              reply: result.reply,
+            },
           },
         },
-      },
-    })
-    .where(eq(storeSettingsTable.organizationId, organizationId));
+      })
+      .where(eq(storeSettingsTable.organizationId, organizationId));
+  });
 
   revalidatePath(getI18nPath('/dashboard/ai-operations', locale));
 };

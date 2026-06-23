@@ -12,8 +12,10 @@ const mocks = vi.hoisted(() => {
   const from = vi.fn(() => ({ where }));
   const select = vi.fn(() => ({ from }));
   const insertReturning = vi.fn(async () => [{ id: 999 }]);
+  const insertOnConflictDoNothing = vi.fn(() => ({ returning: insertReturning }));
   const insertOnConflictDoUpdate = vi.fn(() => ({ returning: insertReturning }));
   const insertValues = vi.fn(() => ({
+    onConflictDoNothing: insertOnConflictDoNothing,
     onConflictDoUpdate: insertOnConflictDoUpdate,
     returning: insertReturning,
   }));

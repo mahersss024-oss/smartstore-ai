@@ -81,6 +81,7 @@ vi.mock('@/models/Schema', () => ({
     id: 'customerId',
     organizationId: 'organizationId',
     phone: 'phone',
+    sourceChannel: 'sourceChannel',
   },
   invoicesTable: {
     orderId: 'orderId',
@@ -95,6 +96,7 @@ vi.mock('@/models/Schema', () => ({
     customerPhone: 'customerPhone',
     id: 'orderId',
     organizationId: 'organizationId',
+    source: 'source',
   },
 }));
 
@@ -130,7 +132,7 @@ describe('CustomerActions', () => {
     mockTxSelectWhere.mockReset();
     mockAuth.mockResolvedValue({ orgId: 'org_1', userId: 'user_1' });
     const selectResults = [
-      [{ email: 'customer@example.com', phone: '0500000000' }],
+      [{ email: 'customer@example.com', phone: '0500000000', sourceChannel: 'whatsapp' }],
       [{ id: 77 }],
       [{ id: 55 }, { id: 56 }],
     ];
@@ -218,6 +220,15 @@ describe('CustomerActions', () => {
       'customerPhone',
       expect.arrayContaining(['0500000000', '966500000000']),
     );
+  });
+
+  it('scopes related order deletion to the same source channel as the deleted customer record', async () => {
+    const { eq } = await import('drizzle-orm');
+    const { deleteCustomerRecord } = await import('./CustomerActions');
+
+    await expect(deleteCustomerRecord('ar', 123)).rejects.toThrow('redirect:/dashboard/customers');
+
+    expect(eq).toHaveBeenCalledWith('source', 'whatsapp');
   });
 
   it('allows only the active store to permanently delete one customer conversation', async () => {

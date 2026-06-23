@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { headers } from 'next/headers';
 import { OrderTrackingFeedbackPanel } from '@/features/customer/OrderTrackingFeedbackPanel';
 import { Section } from '@/features/landing/Section';
 import { customerPhonesMatch } from '@/libs/CustomerIdentity';
@@ -9,6 +10,10 @@ import {
   buildOrderTimeline,
   mapOrderStatusToProductionState,
 } from '@/libs/OrderOperations';
+import {
+  checkPublicReadRateLimit,
+  PublicEndpointRateLimitError,
+} from '@/libs/PublicEndpointRateLimit';
 import {
   orderEventsTable,
   ordersTable,
@@ -46,10 +51,11 @@ export default async function OrderTrackingPage(props: {
   }>;
   searchParams: Promise<{
     phone?: string;
+    token?: string;
   }>;
 }) {
   const { locale, orderId, organizationId } = await props.params;
-  const { phone } = await props.searchParams;
+  const { phone, token } = await props.searchParams;
   setRequestLocale(locale);
   const t = await getTranslations({
     locale,
@@ -69,7 +75,35 @@ export default async function OrderTrackingPage(props: {
     .from(storeSettingsTable)
     .where(eq(storeSettingsTable.organizationId, organizationId))
     .limit(1);
-  const [order] = Number.isFinite(numericOrderId)
+
+  // Rate-limit lookups by IP so the phone+sequential-id pair cannot be brute
+  // forced to enumerate a customer's orders. Only attempt a lookup when a phone
+  // is supplied, and never reveal an order to a throttled client.
+  const requestHeaders = await headers();
+  const ipAddress = requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? requestHeaders.get('x-real-ip');
+  let rateLimited = false;
+
+  const hasLookupIdentifier = Boolean(phone || token);
+  if (hasLookupIdentifier && Number.isFinite(numericOrderId)) {
+    try {
+      await checkPublicReadRateLimit({
+        channel: 'order_tracking:read',
+        customerExternalId: (phone?.replace(/\D/g, '') || token?.slice(0, 8)) ?? 'unknown',
+        externalThreadId: `track:${organizationId}:${numericOrderId}`,
+        ipAddress,
+        organizationId,
+      });
+    } catch (error) {
+      if (error instanceof PublicEndpointRateLimitError) {
+        rateLimited = true;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  const [order] = hasLookupIdentifier && Number.isFinite(numericOrderId) && !rateLimited
     ? await db
         .select()
         .from(ordersTable)
@@ -82,7 +116,14 @@ export default async function OrderTrackingPage(props: {
         )
         .limit(1)
     : [];
-  const isAuthorized = Boolean(order && customerPhonesMatch(phone, order.customerPhone));
+  // Token-based auth (new orders): exact match against non-guessable trackingToken.
+  // Phone-based auth (legacy): phone match for orders that predate the tracking token.
+  const isAuthorized = Boolean(
+    order && (
+      (token && order.trackingToken && order.trackingToken === token)
+      || customerPhonesMatch(phone, order.customerPhone)
+    ),
+  );
   const events = isAuthorized
     ? await db
         .select()
@@ -238,7 +279,7 @@ export default async function OrderTrackingPage(props: {
                 text-muted-foreground
               "
               >
-                {phone
+                {hasLookupIdentifier
                   ? t('not_found')
                   : t('phone_required')}
               </div>

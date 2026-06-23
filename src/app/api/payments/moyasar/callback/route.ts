@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import {
@@ -143,7 +143,7 @@ export const POST = async (request: Request) => {
       await tx
         .update(invoicesTable)
         .set({
-          paidAt: sql`localtimestamp`,
+          paidAt: new Date(),
           paymentStatus: PAYMENT_STATUS.PAID,
           status: 'paid',
         })

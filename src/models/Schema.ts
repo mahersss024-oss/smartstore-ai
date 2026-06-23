@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { boolean, decimal, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 
 // ============================================
@@ -18,7 +17,7 @@ export const productsTable = pgTable('products', {
   metadata: jsonb('metadata'), // Additional flexible data (JSON)
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -42,7 +41,7 @@ export const paymentMethodsTable = pgTable('payment_methods', {
   config: jsonb('config'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -64,7 +63,7 @@ export const deliveryMethodsTable = pgTable('delivery_methods', {
   config: jsonb('config'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -94,12 +93,13 @@ export const ordersTable = pgTable('orders', {
   assignedTo: text('assigned_to'), // Assigned employee (optional)
   aiAnalysis: jsonb('ai_analysis'),
   storeReviewNotes: text('store_review_notes'),
+  trackingToken: text('tracking_token'),
   customerConfirmationAt: timestamp('customer_confirmation_at', { mode: 'date' }),
   storeApprovedAt: timestamp('store_approved_at', { mode: 'date' }),
   archivedAt: timestamp('archived_at', { mode: 'date' }),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -147,7 +147,7 @@ export const storeSettingsTable = pgTable('store_settings', {
   metadata: jsonb('metadata'), // Additional flexible data
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -163,7 +163,7 @@ export const platformSettingsTable = pgTable('platform_settings', {
   value: jsonb('value'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
@@ -183,7 +183,7 @@ export const webhookEventsTable = pgTable('webhook_events', {
   processedAt: timestamp('processed_at', { mode: 'date' }),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -213,7 +213,7 @@ export const aiInboundJobsTable = pgTable('ai_inbound_jobs', {
   processedAt: timestamp('processed_at', { mode: 'date' }),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -225,6 +225,13 @@ export const aiInboundJobsTable = pgTable('ai_inbound_jobs', {
   index('ai_inbound_jobs_status_next_attempt_idx').on(table.status, table.nextAttemptAt),
   index('ai_inbound_jobs_dispatch_recovery_idx').on(table.status, table.lastDispatchedAt),
   index('ai_inbound_jobs_organization_created_idx').on(table.organizationId, table.createdAt),
+  // Supports the per-claim conversation-ordering NOT EXISTS guard and the reaper.
+  index('ai_inbound_jobs_ordering_guard_idx').on(
+    table.organizationId,
+    table.channel,
+    table.externalThreadId,
+    table.status,
+  ),
 ]);
 
 // ============================================
@@ -240,7 +247,7 @@ export const publicEndpointRateLimitsTable = pgTable('public_endpoint_rate_limit
   metadata: jsonb('metadata'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -263,7 +270,7 @@ export const customersTable = pgTable('customers', {
   metadata: jsonb('metadata'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -288,7 +295,7 @@ export const channelConnectionsTable = pgTable('channel_connections', {
   lastSyncedAt: timestamp('last_synced_at', { mode: 'date' }),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -311,7 +318,7 @@ export const conversationsTable = pgTable('conversations', {
   metadata: jsonb('metadata'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
@@ -409,7 +416,7 @@ export const invoicesTable = pgTable('invoices', {
   metadata: jsonb('metadata'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
-    .$onUpdateFn(() => sql`localtimestamp`)
+    .$onUpdateFn(() => new Date())
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [

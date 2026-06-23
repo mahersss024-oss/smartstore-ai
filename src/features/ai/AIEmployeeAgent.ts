@@ -96,7 +96,7 @@ import { ORDER_STATUS } from '@/libs/OrderWorkflow';
 import { getPlatformAIProviderConfig } from '@/libs/PlatformAIProviderConfig';
 import { normalizeProductCatalogMetadata } from '@/libs/ProductCatalogMetadata';
 import { analyzeSalesConversation } from '@/libs/SalesConversationIntelligence';
-import { loadStoreAIContext } from '@/libs/StoreAIContext';
+import { loadProductImageMap, loadStoreAIContext } from '@/libs/StoreAIContext';
 import { assertStoreFeatureEnabled } from '@/libs/StoreServiceControls';
 import {
   conversationMessagesTable,
@@ -227,8 +227,18 @@ const analyzeRequestedProducts = async (params: {
   message: string;
   organizationId: string;
 }) => {
+  // `image` is intentionally excluded: catalog images are base64 data URLs
+  // (megabytes each) and this runs on every inbound AI message. Images are
+  // hydrated only for the few suggested/unavailable products after the decision.
   const products = await db
-    .select()
+    .select({
+      category: productsTable.category,
+      description: productsTable.description,
+      id: productsTable.id,
+      metadata: productsTable.metadata,
+      name: productsTable.name,
+      price: productsTable.price,
+    })
     .from(productsTable)
     .where(
       and(
@@ -260,7 +270,7 @@ const analyzeRequestedProducts = async (params: {
         category: product.category,
         description: product.description,
         id: product.id,
-        image: product.image,
+        image: null,
         name: product.name,
         price: product.price,
         productType: metadata.productType,
@@ -885,6 +895,33 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     suggestedProducts: effectiveSuggestedProducts,
     unavailableProduct: dialogue.shouldSuppressCommerce ? undefined : unavailableProduct,
   });
+  // Hydrate base64 images only for the handful of products the customer will
+  // actually see (suggestion cards + an unavailable-product reference). The bulk
+  // catalog load above excludes images to avoid loading every product's data URL
+  // on every message. All downstream persists/returns read decision.* so doing it
+  // here once covers the conversation metadata and the customer response.
+  if ((decision.suggestedProducts?.length ?? 0) > 0 || decision.unavailableProduct) {
+    const decisionImages = await loadProductImageMap(message.organizationId, [
+      ...(decision.suggestedProducts ?? []).map(product => product.id),
+      ...(decision.unavailableProduct ? [decision.unavailableProduct.id] : []),
+    ]);
+
+    if (decision.suggestedProducts) {
+      decision.suggestedProducts = decision.suggestedProducts.map(product => ({
+        ...product,
+        image: decisionImages.get(product.id) ?? product.image ?? null,
+      }));
+    }
+
+    if (decision.unavailableProduct) {
+      decision.unavailableProduct = {
+        ...decision.unavailableProduct,
+        image: decisionImages.get(decision.unavailableProduct.id)
+          ?? decision.unavailableProduct.image
+          ?? null,
+      };
+    }
+  }
   const shouldRequestCustomerOrderConfirmation = decision.requiresCustomerConfirmation === true
     && currentCart?.status === 'collecting'
     && currentCart.items.length > 0;
@@ -1037,7 +1074,7 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
       displayName: customerDetails?.name ?? message.customer.name,
       email: customerDetails?.email ?? message.customer.email,
       externalId: message.customer.externalId,
-      lastContactAt: sql`localtimestamp`,
+      lastContactAt: new Date(),
       organizationId: message.organizationId,
       phone: customerDetails?.phone ?? message.customer.phone,
       sourceChannel: message.channel,
@@ -1046,7 +1083,7 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
       set: {
         displayName: customerDetails?.name ?? message.customer.name,
         email: customerDetails?.email ?? message.customer.email,
-        lastContactAt: sql`localtimestamp`,
+        lastContactAt: new Date(),
         phone: customerDetails?.phone ?? message.customer.phone,
       },
       target: [
@@ -1060,11 +1097,11 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
   const [conversation] = await db
     .insert(conversationsTable)
     .values({
-      aiStatus: 'reply_ready',
+      aiStatus: 'processing',
       channel: message.channel,
       customerId: customer?.id,
       externalThreadId: message.externalThreadId,
-      lastMessageAt: sql`localtimestamp`,
+      lastMessageAt: new Date(),
       lastMessagePreview: message.body.slice(0, 180),
       metadata: {
         aiOrchestration: aiOrchestrationBeforeExecution,
@@ -1088,9 +1125,9 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     })
     .onConflictDoUpdate({
       set: {
-        aiStatus: 'reply_ready',
+        aiStatus: 'processing',
         customerId: customer?.id,
-        lastMessageAt: sql`localtimestamp`,
+        lastMessageAt: new Date(),
         lastMessagePreview: message.body.slice(0, 180),
         metadata: {
           aiOrchestration: aiOrchestrationBeforeExecution,
@@ -1324,7 +1361,7 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     });
   }
 
-  await db.insert(conversationMessagesTable).values({
+  const [insertedInboundMessage] = await db.insert(conversationMessagesTable).values({
     aiConfidence: decision.confidence.toFixed(2),
     aiIntent: decision.intent,
     body: message.body,
@@ -1339,7 +1376,77 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     },
     organizationId: message.organizationId,
     senderType: 'customer',
-  });
+  }).onConflictDoNothing().returning({ id: conversationMessagesTable.id });
+
+  // DB unique index on (conversation_id, metadata->>'clientSubmissionId') caught a
+  // concurrent duplicate submission. Return the cached reply to prevent a second order.
+  if (!insertedInboundMessage?.id && message.clientSubmissionId) {
+    const [concurrentDupMsg] = await db
+      .select({ id: conversationMessagesTable.id })
+      .from(conversationMessagesTable)
+      .where(
+        and(
+          eq(conversationMessagesTable.organizationId, message.organizationId),
+          eq(conversationMessagesTable.conversationId, conversation.id),
+          eq(conversationMessagesTable.senderType, 'customer'),
+          sql`${conversationMessagesTable.metadata}->>'clientSubmissionId' = ${message.clientSubmissionId}`,
+        ),
+      )
+      .orderBy(desc(conversationMessagesTable.id))
+      .limit(1);
+
+    if (concurrentDupMsg?.id) {
+      const [existingReply] = await db
+        .select({
+          body: conversationMessagesTable.body,
+          id: conversationMessagesTable.id,
+          metadata: conversationMessagesTable.metadata,
+        })
+        .from(conversationMessagesTable)
+        .where(
+          and(
+            eq(conversationMessagesTable.organizationId, message.organizationId),
+            eq(conversationMessagesTable.conversationId, conversation.id),
+            eq(conversationMessagesTable.direction, 'outbound'),
+            sql`${conversationMessagesTable.id} > ${concurrentDupMsg.id}`,
+          ),
+        )
+        .orderBy(conversationMessagesTable.id)
+        .limit(1);
+
+      const replyMetadata = existingReply?.metadata && typeof existingReply.metadata === 'object'
+        ? existingReply.metadata as ConversationMessageMetadata
+        : {};
+
+      return {
+        aiOrchestration: replyMetadata.aiOrchestration,
+        cancelledCartSnapshot: replyMetadata.cancelledCartSnapshot,
+        cartMutation: replyMetadata.cartMutation,
+        conversationId: conversation.id,
+        currentCart: replyMetadata.currentCart,
+        customerDetails: replyMetadata.customerDetails,
+        intent: decision.intent,
+        missingDetails: Array.isArray(replyMetadata.missingDetails)
+          ? replyMetadata.missingDetails.filter((item): item is string => typeof item === 'string')
+          : [],
+        orderId: typeof replyMetadata.orderId === 'number' ? replyMetadata.orderId : null,
+        orderCancellation: replyMetadata.orderCancellation,
+        orderModification: replyMetadata.orderModification,
+        replyToCustomer: existingReply?.body ?? '',
+        responseMessageId: existingReply?.id,
+        reviewCaptured: false,
+        suggestedProducts: Array.isArray(replyMetadata.productCards)
+          ? replyMetadata.productCards
+          : [],
+        unavailableProduct: replyMetadata.unavailableProduct ?? null,
+        visibleSystemActions: Array.isArray(replyMetadata.visibleSystemActions)
+          ? replyMetadata.visibleSystemActions.filter((item): item is VisibleSystemAction => {
+              return typeof item === 'string';
+            })
+          : [],
+      };
+    }
+  }
   const conversationHistory = await loadConversationHistory({
     conversationId: conversation.id,
     organizationId: message.organizationId,
@@ -2274,6 +2381,7 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
   await db
     .update(conversationsTable)
     .set({
+      aiStatus: 'reply_ready',
       metadata: {
         aiOrchestration: aiOrchestrationFinal,
         cancelledCartSnapshot: orderId || orderModification.created

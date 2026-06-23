@@ -190,6 +190,27 @@
       "when": 1782132300000,
       "tag": "0026_ai_inbound_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782218700000,
+      "tag": "0027_ai_inbound_jobs_ordering_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782305100000,
+      "tag": "0028_conversation_messages_client_submission_id_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782391500000,
+      "tag": "0029_orders_tracking_token",
+      "breakpoints": true
     }
   ]
 }

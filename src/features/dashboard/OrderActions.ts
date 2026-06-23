@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { generateCustomerReplyForSystemEvent } from '@/features/ai/AIEmployeeAgent';
 import { OrderConcurrencyError } from '@/features/dashboard/OrderErrors';
@@ -163,7 +163,7 @@ export const approveOrderForCustomer = async (locale: string, orderId: number) =
       .update(ordersTable)
       .set({
         status: nextOrderStatus,
-        storeApprovedAt: sql`localtimestamp`,
+        storeApprovedAt: new Date(),
       })
       .where(
         and(
@@ -374,7 +374,7 @@ export const deleteOrderFromDashboard = async (locale: string, orderId: number) 
     const updated = await tx
       .update(ordersTable)
       .set({
-        archivedAt: sql`localtimestamp`,
+        archivedAt: new Date(),
       })
       .where(
         and(

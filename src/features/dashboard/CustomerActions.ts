@@ -194,6 +194,7 @@ export const deleteCustomerRecord = async (
       .select({
         email: customersTable.email,
         phone: customersTable.phone,
+        sourceChannel: customersTable.sourceChannel,
       })
       .from(customersTable)
       .where(
@@ -222,6 +223,9 @@ export const deleteCustomerRecord = async (
           .where(
             and(
               eq(ordersTable.organizationId, organizationId),
+              customer?.sourceChannel
+                ? eq(ordersTable.source, customer.sourceChannel)
+                : undefined,
               orderIdentityConditions.length === 1
                 ? orderIdentityConditions[0]
                 : or(...orderIdentityConditions),
