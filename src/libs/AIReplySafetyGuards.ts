@@ -1,3 +1,5 @@
+import { getCustomerPhoneIdentityVariants } from './CustomerIdentity';
+
 type GuardResult = {
   guarded: boolean;
   reason?: string;
@@ -135,7 +137,14 @@ export const guardCustomerPrivacyReply = (params: {
   reply: string;
 }): GuardResult => {
   const allowedEmails = normalizeAllowedPrivateValues(params.allowedPrivateData?.emails);
-  const allowedPhones = normalizeAllowedPrivateValues(params.allowedPrivateData?.phoneNumbers);
+  // Expand each allowed phone into its formatting variants (with/without country
+  // code or leading zero) so the customer's OWN number written in a different
+  // shape is not misflagged as a third-party leak.
+  const allowedPhoneVariants = new Set(
+    (params.allowedPrivateData?.phoneNumbers ?? [])
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .flatMap(value => getCustomerPhoneIdentityVariants(value)),
+  );
 
   if (hasSecretLikeValue(params.reply)) {
     return {
@@ -161,7 +170,14 @@ export const guardCustomerPrivacyReply = (params: {
   const leakedPhone = replyPhones.find((phone) => {
     const normalizedPhone = normalizePrivateDigits(phone);
 
-    return normalizedPhone.length >= 9 && !allowedPhones.has(normalizedPhone);
+    if (normalizedPhone.length < 9) {
+      return false;
+    }
+
+    const replyVariants = getCustomerPhoneIdentityVariants(phone);
+
+    return !allowedPhoneVariants.has(normalizedPhone)
+      && !replyVariants.some(variant => allowedPhoneVariants.has(variant));
   });
 
   if (leakedPhone) {

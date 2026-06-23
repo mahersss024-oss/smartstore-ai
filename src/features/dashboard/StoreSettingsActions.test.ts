@@ -15,7 +15,14 @@ const {
   selectRows,
 } = vi.hoisted(() => {
   const rows: unknown[][] = [];
-  const selectLimit = vi.fn(async () => rows.shift() ?? []);
+  const selectLimit = vi.fn(() => {
+    const result = rows.shift() ?? [];
+
+    // Awaitable and also supports `.for('update')` (row locking inside a tx).
+    return Object.assign(Promise.resolve(result), {
+      for: vi.fn(async () => result),
+    });
+  });
   const selectWhere = vi.fn(() => ({ limit: selectLimit }));
   const selectFrom = vi.fn(() => ({ where: selectWhere }));
   const insertOnConflictDoUpdate = vi.fn(async () => undefined);
@@ -75,6 +82,11 @@ vi.mock('@/libs/DB', () => ({
   db: {
     insert: mockDbInsert,
     select: mockDbSelect,
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback({
+      insert: mockDbInsert,
+      select: mockDbSelect,
+      update: mockDbUpdate,
+    })),
     update: mockDbUpdate,
   },
 }));

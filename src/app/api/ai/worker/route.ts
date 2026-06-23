@@ -12,10 +12,39 @@ import { Env } from '@/libs/Env';
 import { logger } from '@/libs/Logger';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
 import {
+  ConversationBusyError,
   MessageRetryError,
   processTwilioInboundMessage,
 } from '@/libs/TwilioInboundProcessor';
 import { findTwilioStoreConnection } from '@/libs/TwilioWhatsApp';
+
+// Classifies a worker failure so the queue can dead-letter deterministic errors
+// immediately, retry transient contention without depleting the attempt ceiling,
+// and apply normal backoff to genuine processing failures.
+const classifyWorkerError = (
+  error: unknown,
+): 'retryable' | 'terminal' | 'transient' => {
+  if (error instanceof ConversationBusyError) {
+    return 'transient';
+  }
+
+  if (error instanceof MessageRetryError) {
+    return error.reason === 'ai_inbound_job_lease_lost' ? 'transient' : 'retryable';
+  }
+
+  if (error instanceof z.ZodError) {
+    return 'terminal';
+  }
+
+  if (
+    error instanceof Error
+    && error.message.startsWith('Unsupported AI inbound channel')
+  ) {
+    return 'terminal';
+  }
+
+  return 'retryable';
+};
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -158,16 +187,19 @@ export const POST = async (request: Request) => {
       status: completed ? 'done' : 'lease_lost',
     });
   } catch (error) {
+    const kind = classifyWorkerError(error);
     const failed = await failAiInboundJob({
       attempts: claimed.attempts,
       error,
       jobId: claimed.id,
+      kind,
       leaseToken,
     });
 
     logger.warn('AI inbound worker deferred a failed job', {
       attempts: claimed.attempts,
       jobId: claimed.id,
+      kind,
       organizationId: claimed.organizationId,
       status: failed.status,
       updated: failed.updated,

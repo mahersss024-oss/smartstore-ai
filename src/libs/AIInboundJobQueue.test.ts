@@ -6,6 +6,7 @@ import {
   completeAiInboundJob,
   enqueueAiInboundJob,
   failAiInboundJob,
+  reapStuckAiInboundJobs,
   renewAiInboundJobLease,
 } from './AIInboundJobQueue';
 
@@ -167,6 +168,52 @@ describe('AIInboundJobQueue', () => {
     expect(setArg?.nextAttemptAt).toBeNull();
   });
 
+  it('dead-letters a terminal error immediately, below the attempt ceiling', async () => {
+    const result = await failAiInboundJob({
+      attempts: 1,
+      error: new Error('Unsupported AI inbound channel: web_chat'),
+      jobId: 7,
+      kind: 'terminal',
+      leaseToken: 'lease-1',
+      now: new Date('2026-06-21T00:00:00Z'),
+    });
+
+    expect(result).toEqual({ status: 'dead', updated: true });
+
+    const setCalls = mocks.mockUpdateSet.mock.calls as unknown as Array<[{
+      nextAttemptAt: Date | null;
+      status: string;
+    }]>;
+    const setArg = setCalls.at(-1)?.[0];
+
+    expect(setArg?.status).toBe('dead');
+    expect(setArg?.nextAttemptAt).toBeNull();
+  });
+
+  it('keeps a transient failure retryable at the ceiling and rolls back the attempt', async () => {
+    const result = await failAiInboundJob({
+      attempts: AI_INBOUND_JOB_MAX_ATTEMPTS,
+      error: new Error('conversation busy'),
+      jobId: 7,
+      kind: 'transient',
+      leaseToken: 'lease-1',
+      now: new Date('2026-06-21T00:00:00Z'),
+    });
+
+    expect(result).toEqual({ status: 'failed', updated: true });
+
+    const setCalls = mocks.mockUpdateSet.mock.calls as unknown as Array<[{
+      attempts?: unknown;
+      nextAttemptAt: Date | null;
+      status: string;
+    }]>;
+    const setArg = setCalls.at(-1)?.[0];
+
+    expect(setArg?.status).toBe('failed');
+    expect(setArg?.nextAttemptAt).toBeInstanceOf(Date);
+    expect(setArg?.attempts).toBeDefined();
+  });
+
   it('does not let a worker update a job after losing its lease', async () => {
     mocks.mockUpdateReturning.mockResolvedValueOnce([]);
 
@@ -174,6 +221,27 @@ describe('AIInboundJobQueue', () => {
       jobId: 7,
       leaseToken: 'expired-lease',
     })).resolves.toBe(false);
+  });
+
+  it('reaps stuck processing jobs that exhausted attempts with an expired lease', async () => {
+    mocks.mockUpdateReturning.mockResolvedValueOnce([{ id: 7 }, { id: 8 }]);
+
+    await expect(
+      reapStuckAiInboundJobs({ now: new Date('2026-06-21T00:00:00Z') }),
+    ).resolves.toBe(2);
+
+    expect(mocks.mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+      leaseToken: null,
+      lockedUntil: null,
+      nextAttemptAt: null,
+      status: 'dead',
+    }));
+  });
+
+  it('reaps nothing when no job is stuck', async () => {
+    mocks.mockUpdateReturning.mockResolvedValueOnce([]);
+
+    await expect(reapStuckAiInboundJobs()).resolves.toBe(0);
   });
 
   it('renews a lease only for the worker that still owns it', async () => {

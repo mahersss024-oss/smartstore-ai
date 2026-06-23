@@ -6,6 +6,14 @@ import type {
 
 const MAX_CART_ITEM_QUANTITY = 99;
 
+const clampAIEmployeeCartQuantity = (quantity: number) => {
+  if (!Number.isFinite(quantity)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(Math.trunc(quantity), MAX_CART_ITEM_QUANTITY));
+};
+
 export type AIEmployeeConversationCart = {
   confirmationRequestedAt?: string;
   deliveryFee?: number;
@@ -127,19 +135,20 @@ export const mergeAIEmployeeCartItems = (
     const existing = itemsByProductId.get(item.productId);
 
     if (existing) {
+      const incomingQuantity = clampAIEmployeeCartQuantity(item.quantity);
       const newQuantity = options?.replaceExisting
-        ? item.quantity
-        : existing.quantity + item.quantity;
+        ? incomingQuantity
+        : existing.quantity + incomingQuantity;
       itemsByProductId.set(item.productId, {
         ...existing,
-        quantity: Math.min(newQuantity, MAX_CART_ITEM_QUANTITY),
+        quantity: clampAIEmployeeCartQuantity(newQuantity),
       });
       continue;
     }
 
     itemsByProductId.set(item.productId, {
       ...item,
-      quantity: Math.min(item.quantity, MAX_CART_ITEM_QUANTITY),
+      quantity: clampAIEmployeeCartQuantity(item.quantity),
     });
   }
 
@@ -153,9 +162,12 @@ export const buildAIEmployeeCartState = (
   semanticUnderstanding?: CartSemanticUnderstanding,
 ): AIEmployeeConversationCart | undefined => {
   const requestedQuantity = semanticUnderstanding?.requestedQuantity;
+  const normalizedRequestedQuantity = requestedQuantity && requestedQuantity > 0
+    ? clampAIEmployeeCartQuantity(requestedQuantity)
+    : undefined;
   const replaceExisting = semanticUnderstanding?.replaceExistingQuantity ?? false;
-  const normalizedIncomingItems = requestedQuantity
-    ? incomingItems.map(item => ({ ...item, quantity: requestedQuantity }))
+  const normalizedIncomingItems = normalizedRequestedQuantity
+    ? incomingItems.map(item => ({ ...item, quantity: normalizedRequestedQuantity }))
     : incomingItems;
   const previousItems = previousCart?.status === 'collecting'
     ? previousCart.items

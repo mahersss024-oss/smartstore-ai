@@ -233,6 +233,19 @@ describe('SubscriptionEntitlements', () => {
     });
 
     mocks.getConfiguredSubscriptionPlan.mockReturnValue(AllPlans[1]);
+    mocks.queryRows.push([], [{ total: 300 }], [{ total: 0 }], [{ total: 0 }]);
+
+    await expect(entitlementsModule.assertCanCreateAiOrder('org_1')).rejects.toMatchObject({
+      feature: 'aiOrders',
+      limit: 300,
+      name: 'SubscriptionLimitError',
+      used: 300,
+    });
+
+    mocks.queryRows.push([], [{ total: 12 }], [{ total: 0 }], [{ total: 0 }]);
+
+    await expect(entitlementsModule.assertCanCreateAiOrder('org_1')).resolves.toBeUndefined();
+
     mocks.queryRows.push([], [{ total: 0 }], [{ total: 99 }], [{ total: 49 * 1024 * 1024 }]);
 
     await expect(entitlementsModule.assertCanCreateProducts('org_1', 2, 0)).rejects.toMatchObject({

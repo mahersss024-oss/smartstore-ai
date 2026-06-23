@@ -13,18 +13,22 @@ export const ensureStoreSettings = async (organizationId: string) => {
     return;
   }
 
-  await db.insert(storeSettingsTable).values({
-    organizationId,
-    currency: 'SAR',
-    metadata: {
-      platform: {
-        status: 'active',
+  await db
+    .insert(storeSettingsTable)
+    .values({
+      organizationId,
+      currency: 'SAR',
+      metadata: {
+        platform: {
+          status: 'active',
+        },
+        subscription: {
+          plan: 'free',
+          status: 'active',
+        },
       },
-      subscription: {
-        plan: 'free',
-        status: 'active',
-      },
-    },
-    timezone: 'Asia/Riyadh',
-  });
+      timezone: 'Asia/Riyadh',
+    })
+    // Concurrent first-time creation must not throw on the unique organizationId.
+    .onConflictDoNothing({ target: storeSettingsTable.organizationId });
 };

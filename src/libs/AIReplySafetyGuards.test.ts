@@ -78,6 +78,33 @@ describe('AIReplySafetyGuards', () => {
     });
   });
 
+  it('treats the customer own number written in another format as allowed (GUARDS-2)', () => {
+    const reply = 'تم تسجيل رقمك 966549764152 للتواصل.';
+    const result = guardCustomerPrivacyReply({
+      allowedPrivateData: {
+        phoneNumbers: ['0549764152'],
+      },
+      reply,
+    });
+
+    expect(result.guarded).toBe(false);
+  });
+
+  it('still flags a genuinely different third-party number', () => {
+    const reply = 'Call our other branch on 0500000000 instead.';
+    const result = guardCustomerPrivacyReply({
+      allowedPrivateData: {
+        phoneNumbers: ['0549764152'],
+      },
+      reply,
+    });
+
+    expect(result).toMatchObject({
+      guarded: true,
+      reason: 'private_phone_leak',
+    });
+  });
+
   it('detects replacement characters and repeated encoding placeholders', () => {
     const replacementCharacterReply = 'The response contains \uFFFD invalid text.';
     const placeholderReply = 'The response contains ???? invalid text.';

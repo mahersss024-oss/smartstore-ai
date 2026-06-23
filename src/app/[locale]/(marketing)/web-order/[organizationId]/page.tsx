@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { and, asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { CheckCircle2 } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { WebOrderChat } from '@/features/customer/WebOrderChat';
@@ -109,7 +109,18 @@ export default async function WebOrderPage(props: {
   });
   const [settings] = await db
     .select({
-      metadata: storeSettingsTable.metadata,
+      // Only the public-facing metadata sub-objects are loaded; this deliberately
+      // excludes channelIntegrations (which holds the encrypted Twilio auth token)
+      // from a public, unauthenticated page query.
+      metadata: sql<{
+        aiEmployee?: unknown;
+        brandTheme?: unknown;
+        location?: StoreLocation;
+      } | null>`jsonb_build_object(
+        'aiEmployee', ${storeSettingsTable.metadata} -> 'aiEmployee',
+        'brandTheme', ${storeSettingsTable.metadata} -> 'brandTheme',
+        'location', ${storeSettingsTable.metadata} -> 'location'
+      )`,
       logo: storeSettingsTable.logo,
       storeDescription: storeSettingsTable.storeDescription,
       storeName: storeSettingsTable.storeName,

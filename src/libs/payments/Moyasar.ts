@@ -27,6 +27,11 @@ export const isMoyasarConfigured = () => {
   return Boolean(Env.MOYASAR_SECRET_KEY);
 };
 
+// Moyasar invoice ids are hex UUID-like tokens; constrain to that shape and
+// URL-encode before path interpolation so a crafted `id` cannot traverse to a
+// different Moyasar endpoint or inject query parameters.
+const MOYASAR_INVOICE_ID_PATTERN = /^[\w-]{1,64}$/;
+
 export const fetchMoyasarInvoice = async (invoiceId: string) => {
   const authorization = getMoyasarAuthHeader();
 
@@ -34,12 +39,19 @@ export const fetchMoyasarInvoice = async (invoiceId: string) => {
     throw new Error('Moyasar is not configured');
   }
 
-  const response = await fetchWithTimeout(`${MOYASAR_API_BASE_URL}/invoices/${invoiceId}`, {
-    headers: {
-      authorization,
+  if (!MOYASAR_INVOICE_ID_PATTERN.test(invoiceId)) {
+    throw new Error('Invalid Moyasar invoice id');
+  }
+
+  const response = await fetchWithTimeout(
+    `${MOYASAR_API_BASE_URL}/invoices/${encodeURIComponent(invoiceId)}`,
+    {
+      headers: {
+        authorization,
+      },
+      method: 'GET',
     },
-    method: 'GET',
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`Moyasar invoice fetch failed: ${response.status}`);

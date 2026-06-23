@@ -25,15 +25,23 @@ const mockDbInsertOnConflictDoUpdate = vi.fn(async () => undefined);
 const mockDbInsertValues = vi.fn((_values: unknown) => ({ onConflictDoUpdate: mockDbInsertOnConflictDoUpdate }));
 const mockDbInsert = vi.fn(() => ({ values: mockDbInsertValues }));
 const mockTxDelete = vi.fn(() => ({ where: vi.fn(async () => undefined) }));
-const mockTxSelect = vi.fn(() => ({
-  from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => []) })) })),
+const mockTxSelectFor = vi.fn(() => ({
+  from: vi.fn(() => ({
+    where: vi.fn(() => ({
+      limit: vi.fn(() => Object.assign(Promise.resolve([] as unknown[]), {
+        for: vi.fn(async () => [] as unknown[]),
+      })),
+    })),
+  })),
 }));
 const mockDbTransaction = vi.fn(async (cb: (tx: unknown) => Promise<void>) => {
+  // Reuse the top-level insert/update mocks so existing scoping assertions still
+  // observe the writes made inside the transaction.
   await cb({
     delete: mockTxDelete,
-    insert: vi.fn(() => ({ values: vi.fn(async () => undefined) })),
-    select: mockTxSelect,
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => undefined) })) })),
+    insert: mockDbInsert,
+    select: mockTxSelectFor,
+    update: mockDbUpdate,
   });
 });
 
@@ -95,6 +103,7 @@ vi.mock('@/models/Schema', () => {
 // ─── External service mocks shared across all tests ───────────────────────────
 const mockLoadStoreAIContext = vi.fn(async () => ({}));
 vi.mock('@/libs/StoreAIContext', () => ({
+  loadProductImageMap: vi.fn(async () => new Map()),
   loadStoreAIContext: mockLoadStoreAIContext,
 }));
 

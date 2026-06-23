@@ -33,6 +33,7 @@ vi.mock('@/libs/AIInboundJobQueue', () => ({
 }));
 
 vi.mock('@/libs/TwilioInboundProcessor', () => ({
+  ConversationBusyError: class ConversationBusyError extends Error {},
   MessageRetryError: class MessageRetryError extends Error {},
   processTwilioInboundMessage: mocks.processTwilioInboundMessage,
 }));
@@ -159,9 +160,24 @@ describe('AI inbound worker', () => {
       attempts: 1,
       error: expect.any(Error),
       jobId: 7,
+      kind: 'retryable',
       leaseToken: 'lease-1',
     });
     expect(await response.json()).toEqual({ ok: true, status: 'failed' });
+  });
+
+  it('classifies an unsupported-channel error as terminal', async () => {
+    mocks.processTwilioInboundMessage.mockRejectedValueOnce(
+      new Error('Unsupported AI inbound channel: web_chat'),
+    );
+    mocks.failAiInboundJob.mockResolvedValueOnce({ status: 'dead', updated: true });
+    const { POST } = await import('./route');
+    const response = await POST(buildRequest());
+
+    expect(mocks.failAiInboundJob).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'terminal' }),
+    );
+    expect(await response.json()).toEqual({ ok: true, status: 'dead' });
   });
 
   it('defers a non-terminal job that cannot currently be claimed', async () => {

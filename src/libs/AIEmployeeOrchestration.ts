@@ -187,8 +187,17 @@ export const orchestrateAIEmployeeDialogueState = (params: {
   const hasCatalogInquiry = semanticState === 'catalog_inquiry';
   const hasOrderPause = hasActiveCart && semanticState === 'order_pause';
   const hasRecommendationInquiry = semanticState === 'order_request';
+  // A bare 1-5 digit is treated as a rating ONLY when nothing in the turn signals
+  // an order; otherwise a quantity like "اريد 2 برجر" / "اضف 2" would be misrouted
+  // to review and have commerce suppressed. An explicit model `review` state always
+  // wins.
+  const hasOrderSignal = params.requestedItems.length > 0
+    || hasActiveCart
+    || semanticState === 'order_request'
+    || semanticState === 'order_confirmation'
+    || params.suggestedProducts.length > 0;
   const hasReviewIntent = semanticState === 'review'
-    || extractConversationRating(params.message) !== null;
+    || (extractConversationRating(params.message) !== null && !hasOrderSignal);
   const hasFollowupIntent = semanticState === 'order_followup';
   const hasCheckoutDetailIntent = hasActiveCart
     && (params.semanticUnderstanding?.deliveryPreference

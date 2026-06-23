@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dispatchAndRecordAiInboundJob } from '@/libs/AIInboundJobDispatch';
-import { findDispatchableAiInboundJobs } from '@/libs/AIInboundJobQueue';
+import { findDispatchableAiInboundJobs, reapStuckAiInboundJobs } from '@/libs/AIInboundJobQueue';
 import { Env } from '@/libs/Env';
 import { getPlatformRuntimeConfig } from '@/libs/PlatformRuntimeConfig';
 import { secureTokenEquals } from '@/libs/SecureTokens';
@@ -41,6 +41,7 @@ export const POST = async (request: Request) => {
     });
   }
 
+  const reaped = await reapStuckAiInboundJobs();
   const jobs = await findDispatchableAiInboundJobs({ limit: 100 });
   const results = await Promise.all(
     jobs.map(job => dispatchAndRecordAiInboundJob({ jobId: job.id })),
@@ -50,6 +51,7 @@ export const POST = async (request: Request) => {
   return NextResponse.json({
     dispatched,
     failed: jobs.length - dispatched,
+    reaped,
     scanned: jobs.length,
     skipped: false,
   });

@@ -5,12 +5,14 @@ const mocks = vi.hoisted(() => {
   const where = vi.fn(() => ({ limit }));
   const from = vi.fn(() => ({ where }));
   const select = vi.fn(() => ({ from }));
-  const values = vi.fn();
+  const onConflictDoNothing = vi.fn(async () => undefined);
+  const values = vi.fn(() => ({ onConflictDoNothing }));
   const insert = vi.fn(() => ({ values }));
 
   return {
     insert,
     limit,
+    onConflictDoNothing,
     select,
     values,
   };

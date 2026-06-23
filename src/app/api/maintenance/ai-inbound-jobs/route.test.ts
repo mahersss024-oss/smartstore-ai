@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   dispatchAndRecordAiInboundJob: vi.fn(),
   findDispatchableAiInboundJobs: vi.fn(),
+  reapStuckAiInboundJobs: vi.fn(),
   getPlatformRuntimeConfig: vi.fn(),
   secureTokenEquals: vi.fn(),
 }));
@@ -17,6 +18,7 @@ vi.mock('@/libs/AIInboundJobDispatch', () => ({
 }));
 vi.mock('@/libs/AIInboundJobQueue', () => ({
   findDispatchableAiInboundJobs: mocks.findDispatchableAiInboundJobs,
+  reapStuckAiInboundJobs: mocks.reapStuckAiInboundJobs,
 }));
 vi.mock('@/libs/PlatformRuntimeConfig', () => ({
   getPlatformRuntimeConfig: mocks.getPlatformRuntimeConfig,
@@ -44,6 +46,7 @@ describe('AI inbound job sweeper', () => {
     });
     mocks.secureTokenEquals.mockReturnValue(true);
     mocks.findDispatchableAiInboundJobs.mockResolvedValue([{ id: 7 }, { id: 8 }]);
+    mocks.reapStuckAiInboundJobs.mockResolvedValue(0);
     mocks.dispatchAndRecordAiInboundJob
       .mockResolvedValueOnce({ dispatched: true })
       .mockResolvedValueOnce({ dispatched: false });
@@ -59,6 +62,7 @@ describe('AI inbound job sweeper', () => {
   });
 
   it('re-dispatches due jobs and reports failures', async () => {
+    mocks.reapStuckAiInboundJobs.mockResolvedValue(3);
     const { POST } = await import('./route');
     const response = await POST(buildRequest());
 
@@ -66,9 +70,11 @@ describe('AI inbound job sweeper', () => {
     expect(await response.json()).toEqual({
       dispatched: 1,
       failed: 1,
+      reaped: 3,
       scanned: 2,
       skipped: false,
     });
+    expect(mocks.reapStuckAiInboundJobs).toHaveBeenCalledTimes(1);
   });
 
   it('does not dispatch while synchronous processing is active', async () => {

@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { normalizeAIEmployeeSettings } from '@/libs/AIEmployeeSettings';
 import { db } from '@/libs/DB';
 import {
@@ -45,12 +45,15 @@ export const loadStoreAIContext = async (params: {
     .where(eq(storeSettingsTable.organizationId, params.organizationId))
     .limit(1);
   const metadata = (settings?.metadata ?? {}) as StoreSettingsMetadata;
+  // `image` is intentionally NOT selected here: catalog images are base64 data
+  // URLs (megabytes each) and this context is loaded on every AI message. The
+  // only consumer that needs images (the AI simulation) hydrates them for the
+  // few matched products via `loadProductImageMap`.
   const products = await db
     .select({
       category: productsTable.category,
       description: productsTable.description,
       id: productsTable.id,
-      image: productsTable.image,
       isActive: productsTable.isActive,
       metadata: productsTable.metadata,
       name: productsTable.name,
@@ -127,7 +130,7 @@ export const loadStoreAIContext = async (params: {
           category: product.category,
           description: product.description,
           id: product.id,
-          image: product.image,
+          image: null,
           name: product.name,
           price: product.price,
           productType: catalogMetadata.productType,
@@ -162,4 +165,33 @@ export const loadStoreAIContext = async (params: {
       welcomeMessage: settings?.welcomeMessage,
     },
   };
+};
+
+/**
+ * Loads catalog images for a small set of product ids on demand. Catalog images
+ * are base64 data URLs, so they are excluded from the bulk catalog loads and
+ * hydrated only for the few products actually shown to a customer (suggestions)
+ * or store user (simulation results).
+ */
+export const loadProductImageMap = async (
+  organizationId: string,
+  productIds: number[],
+): Promise<Map<number, null | string>> => {
+  const uniqueIds = [...new Set(productIds)].filter(id => Number.isInteger(id));
+
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({ id: productsTable.id, image: productsTable.image })
+    .from(productsTable)
+    .where(
+      and(
+        eq(productsTable.organizationId, organizationId),
+        inArray(productsTable.id, uniqueIds),
+      ),
+    );
+
+  return new Map(rows.map(row => [row.id, row.image]));
 };

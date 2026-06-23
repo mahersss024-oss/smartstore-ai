@@ -186,6 +186,13 @@ export const assertCanCreateAiOrder = async (organizationId: string) => {
   if (!entitlements.isPaidSubscriptionActive || !entitlements.plan.features.aiAgent) {
     throw new SubscriptionFeatureError('aiAgent', PLAN_NAME.STARTER);
   }
+
+  assertWithinLimit(
+    'aiOrders',
+    entitlements.limits.aiOrders,
+    entitlements.usage.aiOrders,
+    1,
+  );
 };
 
 export const assertCanCreateProducts = async (

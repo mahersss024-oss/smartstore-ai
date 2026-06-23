@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { aiInboundJobsTable } from '@/models/Schema';
 import { db } from './DB';
 
@@ -192,14 +192,22 @@ export const renewAiInboundJobLease = async (params: {
 };
 
 /**
- * Records a processing failure. Below the attempt ceiling the job returns to a
- * retryable state with exponential backoff; once exhausted it is dead-lettered
- * for manual review. `attempts` is the post-claim attempt count of the job.
+ * Records a processing failure, classified by `kind`:
+ * - `terminal` — deterministic error that cannot succeed on retry (unsupported
+ *   channel, malformed payload): dead-lettered immediately instead of wasting
+ *   the full attempt budget.
+ * - `transient` — contention/lease loss that is expected to clear soon: returns
+ *   to a retryable state on a short fixed backoff and ROLLS BACK the attempt
+ *   consumed at claim time, so transient contention never depletes the ceiling.
+ * - `retryable` (default) — genuine processing failure: exponential backoff and
+ *   dead-letter once the attempt ceiling is reached.
+ * `attempts` is the post-claim attempt count of the job.
  */
 export const failAiInboundJob = async (params: {
   attempts: number;
   error: unknown;
   jobId: number;
+  kind?: 'retryable' | 'terminal' | 'transient';
   leaseToken: string;
   now?: Date;
 }): Promise<{
@@ -207,22 +215,31 @@ export const failAiInboundJob = async (params: {
   updated: boolean;
 }> => {
   const now = params.now ?? new Date();
-  const exhausted = params.attempts >= AI_INBOUND_JOB_MAX_ATTEMPTS;
+  const kind = params.kind ?? 'retryable';
+  const exhausted = kind === 'terminal'
+    || (kind === 'retryable' && params.attempts >= AI_INBOUND_JOB_MAX_ATTEMPTS);
   const status = exhausted ? 'dead' as const : 'failed' as const;
   const lastError = (params.error instanceof Error
     ? params.error.message
     : 'unknown_ai_inbound_job_error').slice(0, 1000);
+  const backoffMs = kind === 'transient'
+    ? RETRY_BACKOFF_BASE_MS
+    : computeBackoffMs(params.attempts);
 
   const updated = await db
     .update(aiInboundJobsTable)
     .set({
+      // Transient failures must not count toward the dead-letter ceiling.
+      ...(kind === 'transient'
+        ? { attempts: sql`GREATEST(${aiInboundJobsTable.attempts} - 1, 0)` }
+        : {}),
       lastDispatchedAt: null,
       lastError,
       leaseToken: null,
       lockedUntil: null,
       nextAttemptAt: exhausted
         ? null
-        : new Date(now.getTime() + computeBackoffMs(params.attempts)),
+        : new Date(now.getTime() + backoffMs),
       status,
       updatedAt: now,
     })
@@ -309,4 +326,41 @@ export const findDispatchableAiInboundJobs = async (params?: {
     )
     .orderBy(aiInboundJobsTable.id)
     .limit(limit);
+};
+
+/**
+ * Dead-letters jobs whose worker died on their final attempt: status='processing'
+ * with attempts at the ceiling and an expired lease. Such jobs are otherwise
+ * stranded forever — neither `claimAiInboundJob` nor `findDispatchableAiInboundJobs`
+ * can recover them (both require attempts < MAX), `failAiInboundJob` never runs so
+ * they never reach `dead`, and the claim ordering guard treats `processing` as
+ * non-terminal, permanently blocking every later message in the same conversation.
+ * The sweeper calls this so the thread is freed and the dead job is purgeable.
+ */
+export const reapStuckAiInboundJobs = async (params?: {
+  now?: Date;
+}): Promise<number> => {
+  const now = params?.now ?? new Date();
+
+  const reaped = await db
+    .update(aiInboundJobsTable)
+    .set({
+      lastError: 'reaped_stuck_processing_job',
+      leaseToken: null,
+      lockedUntil: null,
+      nextAttemptAt: null,
+      processedAt: now,
+      status: 'dead',
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(aiInboundJobsTable.status, 'processing'),
+        gte(aiInboundJobsTable.attempts, AI_INBOUND_JOB_MAX_ATTEMPTS),
+        lt(aiInboundJobsTable.lockedUntil, now),
+      ),
+    )
+    .returning({ id: aiInboundJobsTable.id });
+
+  return reaped.length;
 };

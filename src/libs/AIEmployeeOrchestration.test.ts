@@ -79,6 +79,30 @@ describe('AIEmployeeOrchestration', () => {
     });
   });
 
+  it('does not misroute an order message with a bare quantity digit to review (ENGINE-1)', () => {
+    expect(orchestrateAIEmployeeDialogueState({
+      message: 'اريد 2 برجر',
+      requestedItems: [{ name: 'برجر', productId: 1, quantity: 2, unitPrice: 10 }],
+      semanticUnderstanding: {},
+      suggestedProducts: [],
+    })).toMatchObject({
+      shouldSuppressCommerce: false,
+      state: 'order_request',
+    });
+  });
+
+  it('still treats a bare rating digit with no order signal as review', () => {
+    expect(orchestrateAIEmployeeDialogueState({
+      message: '5',
+      requestedItems: [],
+      semanticUnderstanding: {},
+      suggestedProducts: [],
+    })).toMatchObject({
+      shouldSuppressCommerce: true,
+      state: 'review',
+    });
+  });
+
   it('derives visible controls from structured state only', () => {
     expect(getVisibleAIEmployeeSystemActions({
       cart,

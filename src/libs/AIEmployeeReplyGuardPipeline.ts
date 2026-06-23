@@ -17,6 +17,7 @@ import {
   guardCustomerPrivacyReply,
   guardReplyLanguageAndDialect,
 } from './AIReplySafetyGuards';
+import { logger } from './Logger';
 import { generatePlatformAIText } from './PlatformAIClient';
 import { getPlatformAIProviderConfig } from './PlatformAIProviderConfig';
 
@@ -1446,6 +1447,16 @@ export const guardModelReplyAgainstFalseActions = async (params: {
   const hasCertainFactContradiction = review?.factContradiction === true
     && review.confidence === 'certain';
 
+  if (review === undefined) {
+    // The deterministic guards already passed, so the reply will be sent WITHOUT
+    // a semantic second opinion. Emit a stable signal so ops can alert on the
+    // unavailable-review rate (provider outage / unparseable output).
+    logger.warn('AI semantic reply review unavailable; sending after deterministic guards only', {
+      event: 'ai_semantic_reply_review_unavailable',
+      storeName: params.storeName,
+    });
+  }
+
   checks.push({
     mode: 'semantic_review',
     name: 'contextual_reply_review',
@@ -1574,49 +1585,63 @@ export const repairGuardedReplyIfPossible = async (params: {
     supportEscalation: params.supportEscalation,
     visibleSystemActions: params.visibleSystemActions,
   };
-  let repairedReply: string | undefined;
+  // Iterative repair: each attempt rewrites against the LATEST guard failure,
+  // then re-guards. The first reply that passes the full guard is returned; a
+  // repaired reply that only trips a cosmetic contextual_rewrite is released.
+  let attemptInput = repairInput;
+  let producedAnyRepair = false;
+
   for (let attempt = 0; attempt < MODEL_REPLY_REPAIR_ATTEMPTS; attempt += 1) {
-    repairedReply = await repairUnsafeModelReply(repairInput);
+    const repairedReply = await repairUnsafeModelReply(attemptInput);
 
-    if (repairedReply) {
-      break;
-    }
-  }
-
-  if (!repairedReply) {
-    if (params.guardedReply.reason?.startsWith('contextual_rewrite:')) {
-      return releaseContextualRewrite(
-        params.guardedReply.checks,
-        params.originalReply,
-      );
+    if (!repairedReply) {
+      continue;
     }
 
-    throw new Error('AI model reply repair unavailable.');
-  }
+    producedAnyRepair = true;
 
-  const repairedGuard = await guardModelReplyAgainstFalseActions({
-    cart: params.cart,
-    cartMutation: params.cartMutation,
-    catalogProducts: params.catalogProducts,
-    customerDetails: params.customerDetails,
-    customerMessage: params.customerMessage,
-    customerOrders: params.customerOrders,
-    hasPriorAssistantReply: params.hasPriorAssistantReply,
-    locale: params.locale,
-    missingDetails: params.missingDetails,
-    orderCancellation: params.orderCancellation,
-    orderId: params.orderId,
-    orderModification: params.orderModification,
-    reply: repairedReply,
-    reviewCaptured: params.reviewCaptured,
-    storeContext: params.storeContext,
-    storeName: params.storeName,
-    suggestedProducts: params.suggestedProducts,
-    supportEscalation: params.supportEscalation,
-    visibleSystemActions: params.visibleSystemActions,
-  });
+    const repairedGuard = await guardModelReplyAgainstFalseActions({
+      cart: params.cart,
+      cartMutation: params.cartMutation,
+      catalogProducts: params.catalogProducts,
+      customerDetails: params.customerDetails,
+      customerMessage: params.customerMessage,
+      customerOrders: params.customerOrders,
+      hasPriorAssistantReply: params.hasPriorAssistantReply,
+      locale: params.locale,
+      missingDetails: params.missingDetails,
+      orderCancellation: params.orderCancellation,
+      orderId: params.orderId,
+      orderModification: params.orderModification,
+      reply: repairedReply,
+      reviewCaptured: params.reviewCaptured,
+      storeContext: params.storeContext,
+      storeName: params.storeName,
+      suggestedProducts: params.suggestedProducts,
+      supportEscalation: params.supportEscalation,
+      visibleSystemActions: params.visibleSystemActions,
+    });
 
-  if (repairedGuard.guarded) {
+    if (!repairedGuard.guarded) {
+      return {
+        checks: [
+          ...markGuardedChecksAsRepaired(params.guardedReply.checks),
+          {
+            mode: 'model_repair',
+            name: 'model_reply_repair',
+            reason: params.guardedReply.reason,
+            result: 'passed',
+          },
+          ...prefixReplyGuardCheckNames(repairedGuard.checks, 'post_repair'),
+        ],
+        guarded: false,
+        reason: undefined,
+        repaired: true,
+        repairReason: params.guardedReply.reason,
+        reply: repairedReply,
+      };
+    }
+
     if (
       params.guardedReply.reason?.startsWith('contextual_rewrite:')
       && repairedGuard.reason?.startsWith('contextual_rewrite:')
@@ -1630,24 +1655,24 @@ export const repairGuardedReplyIfPossible = async (params: {
       );
     }
 
-    throw new Error('AI model reply repair failed safety review.');
+    // Feed the new failure reason into the next repair attempt.
+    attemptInput = {
+      ...repairInput,
+      guardChecks: repairedGuard.checks,
+      guardReason: repairedGuard.reason,
+    };
   }
 
-  return {
-    checks: [
-      ...markGuardedChecksAsRepaired(params.guardedReply.checks),
-      {
-        mode: 'model_repair',
-        name: 'model_reply_repair',
-        reason: params.guardedReply.reason,
-        result: 'passed',
-      },
-      ...prefixReplyGuardCheckNames(repairedGuard.checks, 'post_repair'),
-    ],
-    guarded: false,
-    reason: undefined,
-    repaired: true,
-    repairReason: params.guardedReply.reason,
-    reply: repairedReply,
-  };
+  if (params.guardedReply.reason?.startsWith('contextual_rewrite:')) {
+    return releaseContextualRewrite(
+      params.guardedReply.checks,
+      params.originalReply,
+    );
+  }
+
+  throw new Error(
+    producedAnyRepair
+      ? 'AI model reply repair failed safety review.'
+      : 'AI model reply repair unavailable.',
+  );
 };

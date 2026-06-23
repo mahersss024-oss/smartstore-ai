@@ -43,6 +43,25 @@ describe('AIEmployeeCart', () => {
     )).toEqual([{ ...item, quantity: 4 }]);
   });
 
+  it('clamps non-positive quantities before mutating the cart', () => {
+    expect(mergeAIEmployeeCartItems([], [{ ...item, quantity: 0 }])).toEqual([
+      { ...item, quantity: 1 },
+    ]);
+    expect(mergeAIEmployeeCartItems([item], [{ ...item, quantity: -5 }])).toEqual([
+      { ...item, quantity: 2 },
+    ]);
+
+    const nextCart = buildAIEmployeeCartState(
+      undefined,
+      [{ ...item, quantity: 1 }],
+      '',
+      { requestedQuantity: -3 },
+    );
+
+    expect(nextCart?.items).toEqual([{ ...item, quantity: 1 }]);
+    expect(nextCart?.subtotal).toBe(10);
+  });
+
   it('removes a product by its system identifier', () => {
     const cart = buildAIEmployeeCartState(
       {
