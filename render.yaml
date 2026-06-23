@@ -5,8 +5,7 @@
 # REGION: matched to the Neon database region (us-east-1 → Render `virginia`).
 # Keep these aligned — every request hits Neon, so a mismatch adds latency.
 #
-# ⚠️ BRANCH: deploys `feat/async-ai-outbox` (current production-ready code).
-# After merging it into `main`, change `branch` to `main`.
+# BRANCH: deploys `main` (production-ready code merged from feat/async-ai-outbox).
 
 services:
   - type: web
@@ -14,7 +13,7 @@ services:
     runtime: node
     region: virginia        # matches Neon us-east-1
     plan: starter            # always-on; do NOT use `free` (it sleeps → webhooks fail)
-    branch: feat/async-ai-outbox
+    branch: main
     autoDeploy: true
     buildCommand: npm ci && npm run build
     preDeployCommand: npx drizzle-kit migrate   # applies Neon migrations before going live
