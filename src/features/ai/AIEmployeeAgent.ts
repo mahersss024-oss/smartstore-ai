@@ -63,7 +63,6 @@ import {
   canAIEmployeeAddItemsToExistingOrder,
   createAIEmployeeCustomerFeedbackEvent,
   createAIEmployeeDraftOrder,
-  createAIEmployeeSupportEscalationEvent,
   getMostRelevantAIEmployeeDeliveryStageOpenOrder,
   handleAIEmployeeOrderCancellationRequest,
   isAIEmployeeOrderInDeliveryStage,
@@ -111,7 +110,6 @@ import {
   getCatalogSummary,
   pushUniqueIssue,
   selectCatalogProductsForModel,
-  shouldApplyRequestedItemsToCart,
   toSuggestedProduct,
 } from './AIEmployeeAgentCatalog';
 import { generateCustomerReplyWithPlatformModel } from './AIEmployeeAgentContext';
@@ -602,7 +600,6 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
       ? [toAIEmployeeOrderItem(selectedCatalogProduct, semanticHints?.requestedQuantity ?? 1)]
       : [];
   const cartItemRemovalRequest = Boolean(semanticHints?.removeCartItemProductId);
-  const shouldApplyRequestedItems = shouldApplyRequestedItemsToCart(effectiveSemanticUnderstanding);
   const catalogInquiryHasComparableChoices = effectiveSemanticUnderstanding.dialogueState === 'catalog_inquiry'
     && suggestedProducts.length > 1;
   const customerRequestedProductChoices = Boolean(
@@ -625,14 +622,11 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     && effectiveSemanticUnderstanding.dialogueState === 'order_request'
     ? [toSuggestedProduct(availableCatalog[0]!)]
     : [];
-  let analyzedRequestedItems: AgentOrderItem[] = [];
-  if (systemSelectedRequestedItems.length > 0) {
-    analyzedRequestedItems = systemSelectedRequestedItems;
-  } else if (cartItemRemovalRequest || !shouldApplyRequestedItems) {
-    analyzedRequestedItems = [];
-  } else {
-    analyzedRequestedItems = [];
-  }
+  // Requested items only enter the cart via an explicit system selection; text
+  // matches never auto-add, so without a system selection the list stays empty.
+  const analyzedRequestedItems: AgentOrderItem[] = systemSelectedRequestedItems.length > 0
+    ? systemSelectedRequestedItems
+    : [];
   let analyzedSuggestedProducts = customerRequestedProductChoices
     ? suggestedProducts
     : [];
@@ -1003,7 +997,6 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     systemNextCustomerNeed,
     visibleSystemActions,
   });
-  const supportEscalationRequested = false;
   const nextPendingSupportIssue = null;
   const addOnSnapshotCart = activeAddOnOrderContext
     ? {
@@ -1241,56 +1234,9 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     summary: 'AI reply prepared for customer.',
   });
 
+  // Complaint/support escalation is captured via the WhatsApp feedback path below
+  // (which reassigns this), not from this turn directly.
   let supportEscalation: SupportEscalationResult = { created: false };
-  if (supportEscalationRequested) {
-    if (!aiSettings.handoffRules.complaints) {
-      await logAIAction({
-        actionType: 'capture_complaint',
-        aiConfidence: decision.confidence,
-        allowed: false,
-        conversationId: conversation.id,
-        metadata: {
-          previousDialogueState: previousMetadata.lastDialogueState,
-        },
-        organizationId: message.organizationId,
-        requiredPermission: 'handoff_rules.complaints',
-        summary: 'Complaint escalation blocked by store settings.',
-      });
-
-      throw new Error('Complaint escalation is disabled by store settings.');
-    }
-
-    supportEscalation = await createAIEmployeeSupportEscalationEvent({
-      conversationId: conversation.id,
-      currentCart: currentCartForConversation ?? previousSubmittedCart,
-      customerEmail: customerDetails?.email ?? message.customer.email,
-      customerPhone: customerDetails?.phone ?? message.customer.phone,
-      lastOrder: previousMetadata.lastOrder,
-      message: message.body,
-      organizationId: message.organizationId,
-      previousDialogueState: previousMetadata.lastDialogueState,
-      referencedOrderId: dialogue.referencedOrderId,
-      semanticUnderstanding,
-      supportIssue: nextPendingSupportIssue,
-    });
-
-    if (supportEscalation.created) {
-      await logAIAction({
-        actionType: 'capture_complaint',
-        aiConfidence: decision.confidence,
-        allowed: true,
-        conversationId: conversation.id,
-        metadata: {
-          orderId: supportEscalation.orderId,
-          previousDialogueState: previousMetadata.lastDialogueState,
-        },
-        orderId: supportEscalation.orderId,
-        organizationId: message.organizationId,
-        requiredPermission: 'handoff_rules.complaints',
-        summary: 'Customer complaint escalated to order events.',
-      });
-    }
-  }
   const pendingSupportIssueForConversation = supportEscalation.created
     ? null
     : nextPendingSupportIssue;

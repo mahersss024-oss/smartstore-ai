@@ -1,5 +1,4 @@
 import type { AIEmployeeConversationCart } from '@/libs/AIEmployeeCart';
-import type { AIEmployeeSemanticUnderstanding } from '@/libs/AIEmployeeOrchestration';
 import type { ConversationCatalogProduct, ConversationSuggestedProduct } from '@/libs/ConversationEngine';
 
 export type AgentCatalogProduct = ConversationCatalogProduct & {
@@ -24,26 +23,6 @@ export const toSuggestedProduct = (product: AgentCatalogProduct): ConversationSu
   name: product.name,
   price: product.price,
 });
-
-export const shouldApplyRequestedItemsToCart = (
-  semanticUnderstanding: AIEmployeeSemanticUnderstanding,
-) => {
-  if (
-    semanticUnderstanding.dialogueState === 'catalog_inquiry'
-    || semanticUnderstanding.dialogueState === 'general'
-    || semanticUnderstanding.dialogueState === 'order_followup'
-    || semanticUnderstanding.dialogueState === 'order_pause'
-    || semanticUnderstanding.dialogueState === 'post_purchase_support'
-    || semanticUnderstanding.dialogueState === 'complaint'
-    || semanticUnderstanding.dialogueState === 'review'
-  ) {
-    return false;
-  }
-
-  return semanticUnderstanding.dialogueState === undefined
-    || semanticUnderstanding.dialogueState === 'order_request'
-    || semanticUnderstanding.dialogueState === 'order_confirmation';
-};
 
 export const getCatalogSummary = (catalog: AgentCatalogProduct[]) => {
   const availableProducts = catalog.filter((product) => {

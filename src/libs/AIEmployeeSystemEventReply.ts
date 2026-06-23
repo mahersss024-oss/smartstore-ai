@@ -151,32 +151,6 @@ const buildFallbackSystemEventReply = (params: {
     return `\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0637\u0644\u0628\u0643 \u0631\u0642\u0645 ${orderId}.`;
   }
 
-  if (isArabic) {
-    if (params.eventType === 'order_approved') {
-      return pickup
-        ? `تمت الموافقة على طلبك رقم ${orderId}. الطلب استلام من الفرع، وسنخبرك عند جاهزيته.`
-        : `تمت الموافقة على طلبك رقم ${orderId}. سنبدأ متابعة الطلب حسب بياناته.`;
-    }
-
-    if (params.eventType === 'order_ready_for_pickup') {
-      return `طلبك رقم ${orderId} جاهز للاستلام من الفرع.`;
-    }
-
-    if (params.eventType === 'order_preparing') {
-      return `طلبك رقم ${orderId} قيد التحضير الآن.`;
-    }
-
-    if (params.eventType === 'review_requested') {
-      return `طلبك رقم ${orderId} تم إنجازه بنجاح. اختر تقييمك من خيارات واتساب أو اكتب ملاحظتك هنا.`;
-    }
-
-    if (params.eventType === 'order_cancelled') {
-      return `تم إلغاء طلبك رقم ${orderId}.`;
-    }
-
-    return `تم تحديث طلبك رقم ${orderId}.`;
-  }
-
   if (params.eventType === 'order_approved') {
     return pickup
       ? `Your order #${orderId} has been approved for store pickup. We will let you know when it is ready.`
