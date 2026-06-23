@@ -75,3 +75,6 @@ build-archive.log
 /playwright/.cache/
 
 .vercel
+
+# generated production secrets for Render setup (never commit)
+.secrets.render.local

@@ -2,9 +2,8 @@
 # In Render: New → Blueprint → connect this repo. Render reads this file, creates
 # the web service, and prompts you to fill the `sync: false` secrets.
 #
-# ⚠️ REGION: set `region` to the one CLOSEST to your Neon database (every request
-# hits Neon). If your Neon project is in EU, keep `frankfurt`; if it is in US,
-# use `ohio`/`virginia`. Mismatched regions add latency to every query.
+# REGION: matched to the Neon database region (us-east-1 → Render `virginia`).
+# Keep these aligned — every request hits Neon, so a mismatch adds latency.
 #
 # ⚠️ BRANCH: deploys `feat/async-ai-outbox` (current production-ready code).
 # After merging it into `main`, change `branch` to `main`.
@@ -13,7 +12,7 @@ services:
   - type: web
     name: smartstore-ai
     runtime: node
-    region: frankfurt
+    region: virginia        # matches Neon us-east-1
     plan: starter            # always-on; do NOT use `free` (it sleeps → webhooks fail)
     branch: feat/async-ai-outbox
     autoDeploy: true
