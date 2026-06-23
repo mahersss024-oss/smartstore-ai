@@ -705,7 +705,7 @@
     "copied_link": "Copied",
     "copy_failed": "Copy failed",
     "preview_link": "Preview",
-    "validation_error_invalid_whatsapp_business_api": "Enter valid Twilio credentials: Account SID, Auth Token, and a WhatsApp sender in whatsapp:+number format.",
+    "validation_error_invalid_twilio_credentials": "Enter valid Twilio credentials: Account SID, Auth Token, and a WhatsApp sender in whatsapp:+number format.",
     "whatsapp_check_twilio_account_sid": "Twilio Account SID",
     "whatsapp_check_twilio_auth_token": "Twilio Auth Token",
     "whatsapp_check_twilio_number": "Twilio WhatsApp sender",

@@ -328,7 +328,7 @@ export default async function SettingsPage(props: {
     'invalid_logo_url',
     'invalid_map_url',
     'invalid_theme_color',
-    'invalid_whatsapp_business_api',
+    'invalid_twilio_credentials',
     'invalid_store_description',
     'invalid_store_name',
   ] as const;
@@ -347,7 +347,7 @@ export default async function SettingsPage(props: {
   const buildAbsoluteLink = (path: string) => {
     return requestHost ? `${requestProtocol}://${requestHost}${path}` : path;
   };
-  const whatsappBusinessApiChecks = [
+  const twilioCredentialChecks = [
     {
       isReady: /^AC[a-f\d]{32}$/i.test(twilioAccountSid),
       labelKey: 'whatsapp_check_twilio_account_sid',
@@ -874,7 +874,7 @@ export default async function SettingsPage(props: {
                 md:grid-cols-2
               "
               >
-                {whatsappBusinessApiChecks.map(item => (
+                {twilioCredentialChecks.map(item => (
                   <div
                     key={item.labelKey}
                     className="
@@ -947,7 +947,7 @@ export default async function SettingsPage(props: {
             >
               <WhatsAppSettingsSubmit
                 action={saveWhatsAppSettings.bind(null, locale)}
-                errorLabel={t('validation_error_invalid_whatsapp_business_api')}
+                errorLabel={t('validation_error_invalid_twilio_credentials')}
                 pendingLabel={t('save_whatsapp_settings')}
                 saveLabel={t('save_whatsapp_settings')}
                 successLabel={t('whatsapp_saved_description')}

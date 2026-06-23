@@ -705,7 +705,7 @@
     "copied_link": "تم النسخ",
     "copy_failed": "تعذر النسخ",
     "preview_link": "معاينة",
-    "validation_error_invalid_whatsapp_business_api": "أدخل بيانات Twilio صحيحة: معرّف الحساب، رمز المصادقة، ورقم المرسل بصيغة whatsapp:+الرقم.",
+    "validation_error_invalid_twilio_credentials": "أدخل بيانات Twilio صحيحة: معرّف الحساب، رمز المصادقة، ورقم المرسل بصيغة whatsapp:+الرقم.",
     "whatsapp_check_twilio_account_sid": "معرّف حساب Twilio",
     "whatsapp_check_twilio_auth_token": "رمز مصادقة Twilio",
     "whatsapp_check_twilio_number": "رقم واتساب في Twilio",

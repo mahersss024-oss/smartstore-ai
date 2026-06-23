@@ -705,7 +705,7 @@
     "copied_link": "Copié",
     "copy_failed": "Copie impossible",
     "preview_link": "Aperçu",
-    "validation_error_invalid_whatsapp_business_api": "Saisissez des identifiants Twilio valides : SID du compte, jeton d'authentification et expediteur au format whatsapp:+numero.",
+    "validation_error_invalid_twilio_credentials": "Saisissez des identifiants Twilio valides : SID du compte, jeton d'authentification et expediteur au format whatsapp:+numero.",
     "whatsapp_check_twilio_account_sid": "SID du compte Twilio",
     "whatsapp_check_twilio_auth_token": "Jeton d'authentification Twilio",
     "whatsapp_check_twilio_number": "Numero WhatsApp Twilio",

@@ -111,7 +111,7 @@ type SettingsValidationErrorCode
     | 'invalid_logo_url'
     | 'invalid_map_url'
     | 'invalid_theme_color'
-    | 'invalid_whatsapp_business_api'
+    | 'invalid_twilio_credentials'
     | 'invalid_store_description'
     | 'invalid_store_name';
 
@@ -588,7 +588,7 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       || !await verifySubmittedTwilioCredentials(twilio)
     )
   ) {
-    redirectValidationError(locale, 'invalid_whatsapp_business_api');
+    redirectValidationError(locale, 'invalid_twilio_credentials');
   }
 
   const whatsappChannel = buildWhatsAppChannelConfig({
