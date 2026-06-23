@@ -5,9 +5,11 @@ import {
 
 export const buildModelInstructions = (params: {
   assistantDisplayName: string;
+  channel: string;
   configSystemPrompt: string;
   storeName: string;
 }) => {
+  const isWhatsApp = params.channel === 'whatsapp';
   return [
     buildPlatformSystemPrompt(),
     'The platform policy, database facts, and system state below are authoritative.',
@@ -120,6 +122,16 @@ export const buildModelInstructions = (params: {
     'Never ask the customer to type final confirmation. When final confirmation is needed, summarize the facts only; the system UI will collect approval/refusal through buttons.',
     'If an orderId is present, tell the customer the order was received for store review and include the order number.',
     'Keep the reply concise, helpful, and sales-aware.',
+    ...(isWhatsApp
+      ? [
+          'This conversation is on WhatsApp. There is NO visual web UI on the customer side: no product cards, no interactive buttons, no platform confirmation buttons, and no visible location button.',
+          'On WhatsApp: never tell the customer to "pick from the visible options", "choose from the screen", or "press a button". The customer can only type text or send a WhatsApp location.',
+          'On WhatsApp: when presenting product suggestions, list them as a short numbered text list (name and price). Ask the customer to reply with the product name or number they want.',
+          'On WhatsApp: when fulfillment or payment choices are needed, list the available options as a short text list and ask the customer to reply with their choice.',
+          'On WhatsApp: when final order confirmation is needed, summarize the order details clearly in text (items, total, fulfillment, payment) and ask the customer to reply with "نعم" to confirm or "لا" to cancel.',
+          'On WhatsApp: do not say "the system will show buttons" or "the platform UI will collect confirmation". You must collect the customer\'s choice through their text reply.',
+        ]
+      : []),
   ].join('\n');
 };
 

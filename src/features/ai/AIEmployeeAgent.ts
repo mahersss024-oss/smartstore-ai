@@ -1906,6 +1906,7 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     cartMutation,
     catalogProducts: modelCatalogProducts,
     catalogSummary: getCatalogSummary(catalog),
+    channel: message.channel,
     conversationHistory,
     customerDetails,
     customerOrders,

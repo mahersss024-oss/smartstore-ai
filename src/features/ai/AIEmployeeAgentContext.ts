@@ -59,6 +59,7 @@ type ModelContextParams = {
   cartMutation: AIEmployeeCartMutationContext;
   catalogProducts: AgentCatalogProduct[];
   catalogSummary: ReturnType<typeof getCatalogSummary>;
+  channel: string;
   conversationHistory: ConversationHistoryMessage[];
   customerDetails?: AIEmployeeCustomerDetails;
   customerOrders: AIEmployeeCustomerOrderSnapshot;
@@ -86,6 +87,7 @@ const buildModelContext = (params: ModelContextParams) => {
   const latestCustomerTurn = params.systemEvent?.customerMeaning ?? params.message;
 
   return JSON.stringify({
+    channel: params.channel,
     cart: params.cart ?? null,
     cartState: {
       active: Boolean(params.cart?.items.length),
@@ -220,6 +222,7 @@ export const generateCustomerReplyWithPlatformModel = async (
   try {
     const instructions = buildModelInstructions({
       assistantDisplayName: params.storeContext?.aiSettings.displayName ?? 'Store employee',
+      channel: params.channel,
       configSystemPrompt: config.systemPrompt,
       storeName: params.storeName,
     });
