@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { boolean, decimal, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 
 // ============================================
@@ -300,6 +301,12 @@ export const channelConnectionsTable = pgTable('channel_connections', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
   uniqueIndex('channel_connections_organization_channel_unique').on(table.organizationId, table.channel),
+  // Inbound Twilio webhooks look up the store by config->>'twilioWhatsAppFrom'.
+  // Without this expression index every inbound message scans all active
+  // whatsapp connections (a pre-auth full scan that does not scale to many stores).
+  index('channel_connections_whatsapp_from_idx')
+    .on(sql`(${table.config} ->> 'twilioWhatsAppFrom')`)
+    .where(sql`${table.channel} = 'whatsapp' AND ${table.isActive} = true`),
 ]);
 
 // ============================================

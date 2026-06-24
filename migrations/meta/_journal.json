@@ -211,6 +211,13 @@
       "when": 1782391500000,
       "tag": "0029_orders_tracking_token",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782477900000,
+      "tag": "0030_channel_connections_whatsapp_from_idx",
+      "breakpoints": true
     }
   ]
 }
