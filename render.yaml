@@ -15,7 +15,9 @@ services:
     plan: starter # always-on; do NOT use `free` (it sleeps → webhooks fail)
     branch: main
     autoDeploy: true
-    buildCommand: npm ci && npm run build
+    # --include=dev forces devDependencies (next.config.ts needs @next/bundle-analyzer,
+    # plus typescript/tailwind) even though NODE_ENV=production would omit them.
+    buildCommand: npm ci --include=dev && npm run build
     preDeployCommand: npx drizzle-kit migrate # applies Neon migrations before going live
     startCommand: npm start
     healthCheckPath: /robots.txt # static 200, no auth/DB
