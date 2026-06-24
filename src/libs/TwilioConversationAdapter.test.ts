@@ -28,6 +28,36 @@ describe('TwilioConversationAdapter', () => {
     });
   });
 
+  it('maps a numeric reply to the suggestion at that position', () => {
+    const metadata = {
+      lastSuggestedProducts: [
+        { availability: 'available' as const, id: 11, name: 'برجر دجاج', price: '15.00' },
+        { availability: 'available' as const, id: 22, name: 'برجر لحم', price: '20.00' },
+      ],
+      visibleSystemActions: ['product_choices' as const],
+    };
+
+    expect(resolveTwilioSemanticHints({ message: '2', metadata })?.selectedProductId).toBe(22);
+    expect(resolveTwilioSemanticHints({ message: '١', metadata })?.selectedProductId).toBe(11);
+    expect(resolveTwilioSemanticHints({ message: 'رقم 2', metadata })?.selectedProductId).toBe(22);
+    expect(resolveTwilioSemanticHints({ message: 'الخيار ١.', metadata })?.selectedProductId).toBe(11);
+  });
+
+  it('ignores out-of-range numbers and quantities embedded in a sentence', () => {
+    const metadata = {
+      lastSuggestedProducts: [
+        { availability: 'available' as const, id: 11, name: 'برجر دجاج', price: '15.00' },
+        { availability: 'available' as const, id: 22, name: 'برجر لحم', price: '20.00' },
+      ],
+      visibleSystemActions: ['product_choices' as const],
+    };
+
+    // Out of range → no numeric selection (and no unique name match) → undefined.
+    expect(resolveTwilioSemanticHints({ message: '9', metadata })).toBeUndefined();
+    // A quantity inside a sentence must not be read as choosing option #2.
+    expect(resolveTwilioSemanticHints({ message: 'ابي ٢ برجر دجاج', metadata })?.selectedProductId).not.toBe(22);
+  });
+
   it('maps fulfillment and payment text only when the matching step is active', () => {
     expect(resolveTwilioSemanticHints({
       message: 'توصيل',

@@ -104,12 +104,61 @@ const isAffirmative = (message: string) => {
   ].includes(normalized);
 };
 
+// Convert Arabic-Indic (U+0660-0669) and Persian (U+06F0-06F9) digits to ASCII
+// so a numeric reply works regardless of the customer's keyboard.
+const toAsciiDigits = (value: string) => {
+  return Array.from(value, (char) => {
+    const code = char.codePointAt(0) ?? 0;
+
+    if (code >= 0x0660 && code <= 0x0669) {
+      return String(code - 0x0660);
+    }
+
+    if (code >= 0x06F0 && code <= 0x06F9) {
+      return String(code - 0x06F0);
+    }
+
+    return char;
+  }).join('');
+};
+
+// The numbered list shown on WhatsApp invites "reply with the product name OR
+// number". Resolve a 1-based selection from messages that are essentially just a
+// number ("2", "رقم ٢", "الخيار 3.") — converting Arabic-Indic/Persian digits.
+// Messages that merely contain a digit among other words (e.g. a quantity like
+// "ابي ٢ برجر") are intentionally NOT treated as a numeric pick.
+const parseNumericSelection = (
+  message: string,
+  optionCount: number,
+): number | undefined => {
+  const normalized = toAsciiDigits(message)
+    .trim()
+    .toLowerCase()
+    .replace(/^(?:رقم|الرقم|الخيار|خيار|option|number|no\.?|#)\s*/u, '')
+    .replace(/[.،)\-\s]+$/u, '')
+    .trim();
+
+  if (!/^\d{1,3}$/.test(normalized)) {
+    return undefined;
+  }
+
+  const index = Number(normalized);
+
+  return index >= 1 && index <= optionCount ? index : undefined;
+};
+
 const findSelectedSuggestedProduct = (
   message: string,
   products: ConversationSuggestedProduct[],
 ) => {
   if (products.length === 1 && isAffirmative(message)) {
     return products[0];
+  }
+
+  const numericSelection = parseNumericSelection(message, products.length);
+
+  if (numericSelection) {
+    return products[numericSelection - 1];
   }
 
   const messageTokens = normalizedTokens(message);
