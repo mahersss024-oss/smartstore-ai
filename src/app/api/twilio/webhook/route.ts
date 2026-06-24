@@ -51,6 +51,35 @@ const verifyTwilioSignature = (params: {
   }
 };
 
+// Twilio signs the exact PUBLIC URL it called (https://<host>/api/twilio/webhook).
+// Behind a TLS-terminating proxy (Render, etc.) `request.url` is the INTERNAL
+// http URL, so it would never match Twilio's signature. Rebuild candidate public
+// URLs from forwarding headers and the configured app URL, and accept if any
+// validates — keeps signature verification working across hosts.
+const buildTwilioSignatureUrls = (request: Request): string[] => {
+  const original = new URL(request.url);
+  const pathWithQuery = `${original.pathname}${original.search}`;
+  const host = request.headers.get('x-forwarded-host')
+    ?? request.headers.get('host')
+    ?? original.host;
+  const forwardedProto = (request.headers.get('x-forwarded-proto') ?? '')
+    .split(',')[0]
+    ?.trim();
+  const proto = forwardedProto || original.protocol.replace(/:$/, '');
+
+  const candidates = new Set<string>([
+    `${proto}://${host}${pathWithQuery}`,
+    `https://${host}${pathWithQuery}`,
+    request.url,
+  ]);
+
+  if (Env.NEXT_PUBLIC_APP_URL) {
+    candidates.add(`${Env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')}${pathWithQuery}`);
+  }
+
+  return [...candidates];
+};
+
 export const POST = async (request: Request) => {
   let rawBody = '';
 
@@ -82,15 +111,20 @@ export const POST = async (request: Request) => {
   }
 
   const signature = request.headers.get('x-twilio-signature');
-  const valid = verifyTwilioSignature({
-    authToken: connection.authToken,
-    rawBody,
-    signature,
-    url: request.url,
-  });
+  const valid = buildTwilioSignatureUrls(request).some(url =>
+    verifyTwilioSignature({
+      authToken: connection.authToken,
+      rawBody,
+      signature,
+      url,
+    }),
+  );
 
   if (!valid) {
     logger.warn('Twilio webhook signature verification failed', {
+      forwardedHost: request.headers.get('x-forwarded-host') ?? request.headers.get('host'),
+      forwardedProto: request.headers.get('x-forwarded-proto'),
+      hasSignature: Boolean(signature),
       organizationId: connection.organizationId,
     });
 
