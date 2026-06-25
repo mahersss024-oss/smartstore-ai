@@ -7,7 +7,7 @@ import { decryptSecret } from './PlatformAIProviderConfig';
 
 // WhatsApp Cloud API (graph) version. Kept as a constant so the lib stays
 // self-contained; can be promoted to an env var later if a pin is needed.
-const GRAPH_API_VERSION = 'v21.0';
+const GRAPH_API_VERSION = 'v25.0';
 const GRAPH_API_BASE = 'https://graph.facebook.com';
 const WHATSAPP_CHANNEL = 'whatsapp';
 
