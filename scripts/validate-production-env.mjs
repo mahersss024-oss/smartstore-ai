@@ -24,8 +24,8 @@ const recommendedVariables = [
   'PLATFORM_ADMIN_USER_IDS',
   'PLATFORM_SECRETS_ENCRYPTION_KEY',
   'PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
+  'META_APP_SECRET',
+  'META_WEBHOOK_VERIFY_TOKEN',
 ];
 
 const qstashVariables = [
@@ -267,12 +267,8 @@ if (getEnvValue('AI_PROCESSING_MODE') === 'outbox') {
   }
 }
 
-if (!getEnvValue('TWILIO_ACCOUNT_SID') || !getEnvValue('TWILIO_AUTH_TOKEN')) {
-  warnings.push('TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN is missing. Twilio Verify OTP will not work until these are configured.');
-}
-
-if (!getEnvValue('TWILIO_VERIFY_SERVICE_SID')) {
-  warnings.push('TWILIO_VERIFY_SERVICE_SID is missing. Customer phone OTP verification will be disabled.');
+if (!getEnvValue('META_APP_SECRET') || !getEnvValue('META_WEBHOOK_VERIFY_TOKEN')) {
+  warnings.push('META_APP_SECRET or META_WEBHOOK_VERIFY_TOKEN is missing. The WhatsApp Cloud API webhook will reject deliveries until these are configured.');
 }
 
 if (warnings.length > 0) {

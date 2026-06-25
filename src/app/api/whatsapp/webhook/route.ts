@@ -8,7 +8,7 @@ import {
   verifyMetaSignature,
 } from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
-import { ConversationBusyError, MessageRetryError } from '@/libs/TwilioInboundProcessor';
+import { ConversationBusyError, MessageRetryError } from '@/libs/WhatsAppInboundShared';
 import { runWebhookEventOnce } from '@/libs/WebhookIdempotency';
 
 export const runtime = 'nodejs';

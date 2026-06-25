@@ -4,17 +4,18 @@ import { sendTrustedWebhookChatMessage } from '@/features/customer/WebChatAction
 import { logger } from './Logger';
 import { buildMetaOutboundMessage, resolveMetaInteractiveHints } from './MetaInteractiveMessage';
 import {
+  findMetaStoreConnection,
   sendMetaWhatsAppButtons,
   sendMetaWhatsAppList,
   sendMetaWhatsAppText,
 } from './MetaWhatsApp';
-import { loadTwilioConversationMetadata, resolveTwilioSemanticHints } from './TwilioConversationAdapter';
+import { loadWhatsAppConversationMetadata, resolveWhatsAppSemanticHints } from './WhatsAppConversationAdapter';
 import {
   acquireConversationLock,
   buildFallbackReply,
   ConversationBusyError,
   MessageRetryError,
-} from './TwilioInboundProcessor';
+} from './WhatsAppInboundShared';
 
 const META_THREAD_PREFIX = 'mwa';
 const META_CHANNEL = 'whatsapp';
@@ -26,6 +27,57 @@ const buildMetaExternalThreadId = (params: {
   phoneNumberId: string;
 }) => {
   return `${META_THREAD_PREFIX}:${params.phoneNumberId}:${digitsOnly(params.customerFrom)}`;
+};
+
+const parseMetaExternalThreadId = (value?: null | string) => {
+  const match = /^mwa:([^:]+):(\d+)$/.exec(value ?? '');
+
+  if (!match?.[1] || !match?.[2]) {
+    return undefined;
+  }
+
+  return { customerPhone: match[2], phoneNumberId: match[1] };
+};
+
+/**
+ * Send a store-initiated text notification (e.g. order status) back to the
+ * customer over WhatsApp Cloud API, resolving the connection from the stored
+ * Meta thread id. The Meta counterpart of the old Twilio conversation sender.
+ */
+export const sendMetaConversationTextMessage = async (params: {
+  body: string;
+  externalThreadId?: null | string;
+  organizationId: string;
+}) => {
+  const thread = parseMetaExternalThreadId(params.externalThreadId);
+
+  if (!thread) {
+    return { reason: 'not_meta_thread', status: 'skipped' as const };
+  }
+
+  const connection = await findMetaStoreConnection(thread.phoneNumberId);
+
+  if (!connection || connection.organizationId !== params.organizationId) {
+    return { reason: 'store_connection_not_found', status: 'skipped' as const };
+  }
+
+  try {
+    await sendMetaWhatsAppText({
+      accessToken: connection.accessToken,
+      body: params.body,
+      phoneNumberId: connection.phoneNumberId,
+      to: thread.customerPhone,
+    });
+
+    return { status: 'sent' as const };
+  } catch (error) {
+    logger.warn('Meta WhatsApp order notification send failed', {
+      error: error instanceof Error ? error.message : 'unknown_error',
+      organizationId: params.organizationId,
+    });
+
+    return { reason: 'meta_send_failed', status: 'failed' as const };
+  }
 };
 
 const deliverMetaMessage = async (params: {
@@ -78,6 +130,7 @@ const deliverMetaMessage = async (params: {
  * MessageRetryError when the delivery must be retried.
  */
 export const processMetaInboundMessage = async (params: {
+  beforeSend?: () => Promise<void>;
   connection: MetaStoreConnection;
   message: MetaInboundMessage;
 }) => {
@@ -104,13 +157,13 @@ export const processMetaInboundMessage = async (params: {
   }
 
   try {
-    const conversationMetadata = await loadTwilioConversationMetadata({
+    const conversationMetadata = await loadWhatsAppConversationMetadata({
       externalThreadId: threadId,
       organizationId: connection.organizationId,
     });
     const semanticHints = message.interactiveReplyId
       ? resolveMetaInteractiveHints(message.interactiveReplyId, conversationMetadata)
-      : resolveTwilioSemanticHints({ message: message.body, metadata: conversationMetadata });
+      : resolveWhatsAppSemanticHints({ message: message.body, metadata: conversationMetadata });
 
     const aiResult = await sendTrustedWebhookChatMessage({
       body: message.body,
@@ -138,6 +191,7 @@ export const processMetaInboundMessage = async (params: {
       }
 
       try {
+        await params.beforeSend?.();
         await deliverMetaMessage({
           connection,
           message: { body: buildFallbackReply(aiResult.error), kind: 'text' },
@@ -162,6 +216,7 @@ export const processMetaInboundMessage = async (params: {
     }
 
     try {
+      await params.beforeSend?.();
       await deliverMetaMessage({ connection, message: outbound, to: message.from });
 
       logger.info('Meta outbound reply sent', {

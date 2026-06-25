@@ -9,7 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import { conversationsTable } from '@/models/Schema';
 import { db } from './DB';
 
-type TwilioConversationCart = {
+type WhatsAppConversationCart = {
   items?: Array<{
     name?: string;
     productId?: number;
@@ -17,23 +17,23 @@ type TwilioConversationCart = {
   status?: string;
 };
 
-type TwilioConversationCustomerDetails = {
+type WhatsAppConversationCustomerDetails = {
   deliveryPreference?: 'delivery' | 'pickup';
 };
 
-export type TwilioConversationMetadata = {
+export type WhatsAppConversationMetadata = {
   aiOrchestration?: {
     systemDecision?: {
       visibleSystemActions?: AIOrchestrationVisibleSystemAction[];
     };
   };
-  currentCart?: TwilioConversationCart;
-  customerDetails?: TwilioConversationCustomerDetails;
+  currentCart?: WhatsAppConversationCart;
+  customerDetails?: WhatsAppConversationCustomerDetails;
   lastSuggestedProducts?: ConversationSuggestedProduct[];
   visibleSystemActions?: AIOrchestrationVisibleSystemAction[];
 };
 
-type TwilioAIResult = {
+type WhatsAppAIResult = {
   availableFulfillmentTypes?: unknown;
   availablePaymentKinds?: unknown;
   customerDetails?: unknown;
@@ -176,7 +176,7 @@ const findSelectedSuggestedProduct = (
   return matches.length === 1 ? matches[0] : undefined;
 };
 
-const getVisibleActions = (metadata?: TwilioConversationMetadata) => {
+const getVisibleActions = (metadata?: WhatsAppConversationMetadata) => {
   return metadata?.aiOrchestration?.systemDecision?.visibleSystemActions
     ?? metadata?.visibleSystemActions
     ?? [];
@@ -248,7 +248,7 @@ export const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
   };
 };
 
-export const readCustomerDetails = (value: unknown): TwilioConversationCustomerDetails => {
+export const readCustomerDetails = (value: unknown): WhatsAppConversationCustomerDetails => {
   if (!value || typeof value !== 'object') {
     return {};
   }
@@ -260,9 +260,9 @@ export const readCustomerDetails = (value: unknown): TwilioConversationCustomerD
     : {};
 };
 
-export const resolveTwilioSemanticHints = (params: {
+export const resolveWhatsAppSemanticHints = (params: {
   message: string;
-  metadata?: TwilioConversationMetadata;
+  metadata?: WhatsAppConversationMetadata;
 }): AIEmployeeSemanticHints | undefined => {
   const actions = getVisibleActions(params.metadata);
   const suggestedProducts = params.metadata?.lastSuggestedProducts ?? [];
@@ -372,7 +372,7 @@ export const resolveTwilioSemanticHints = (params: {
   return undefined;
 };
 
-export const loadTwilioConversationMetadata = async (params: {
+export const loadWhatsAppConversationMetadata = async (params: {
   externalThreadId: string;
   organizationId: string;
 }) => {
@@ -388,7 +388,7 @@ export const loadTwilioConversationMetadata = async (params: {
     )
     .limit(1);
 
-  return (conversation?.metadata ?? undefined) as TwilioConversationMetadata | undefined;
+  return (conversation?.metadata ?? undefined) as WhatsAppConversationMetadata | undefined;
 };
 
 export const replaceWebOnlyInstructions = (reply: string) => {
@@ -448,7 +448,7 @@ const buildFulfillmentChoices = (choices: AIEmployeeFulfillmentChoice[]) => {
 };
 
 const buildPaymentChoices = (params: {
-  customerDetails?: TwilioConversationCustomerDetails;
+  customerDetails?: WhatsAppConversationCustomerDetails;
   paymentKinds?: AvailablePaymentKinds;
 }) => {
   const preference = params.customerDetails?.deliveryPreference ?? 'pickup';
@@ -460,7 +460,7 @@ const buildPaymentChoices = (params: {
     : undefined;
 };
 
-export const buildTwilioOutboundBody = (result: TwilioAIResult) => {
+export const buildWhatsAppOutboundBody = (result: WhatsAppAIResult) => {
   const reply = replaceWebOnlyInstructions(result.replyToCustomer.trim());
   const actions = readVisibleSystemActions(result.visibleSystemActions);
   const customerDetails = readCustomerDetails(result.customerDetails);

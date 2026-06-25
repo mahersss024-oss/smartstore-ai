@@ -22,7 +22,6 @@ import {
   isSubscriptionFeatureError,
   isSubscriptionLimitError,
 } from '@/libs/SubscriptionEntitlements';
-import { validateTwilioWhatsAppCredentials } from '@/libs/TwilioWhatsApp';
 import {
   channelConnectionsTable,
   storeSettingsTable,
@@ -290,10 +289,9 @@ const verifySubmittedTwilioCredentials = async (
     return false;
   }
 
-  return validateTwilioWhatsAppCredentials({
-    accountSid: input.accountSid,
-    authToken: input.authToken,
-  });
+  // Legacy WhatsApp connection settings are being migrated to Meta Cloud API
+  // onboarding; validate the submitted account id locally (no provider call).
+  return /^AC[a-f\d]{32}$/i.test(input.accountSid);
 };
 
 const normalizeStoreNameForComparison = (value: string) => {

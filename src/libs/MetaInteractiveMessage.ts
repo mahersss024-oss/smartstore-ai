@@ -1,8 +1,8 @@
 import type { AIEmployeeSemanticHints } from './AIEmployeeSemanticHints';
 import type { MetaListRow, MetaReplyButton } from './MetaWhatsApp';
-import type { TwilioConversationMetadata } from './TwilioConversationAdapter';
+import type { WhatsAppConversationMetadata } from './WhatsAppConversationAdapter';
 import {
-  buildTwilioOutboundBody,
+  buildWhatsAppOutboundBody,
   readCustomerDetails,
   readFulfillmentChoices,
   readPaymentKinds,
@@ -10,7 +10,7 @@ import {
   readVisibleSystemActions,
   replaceWebOnlyInstructions,
 
-} from './TwilioConversationAdapter';
+} from './WhatsAppConversationAdapter';
 
 // The AI reply shape shared with the web/Twilio renderers.
 type AIChannelResult = {
@@ -100,7 +100,7 @@ export const buildMetaOutboundMessage = (result: AIChannelResult): MetaOutboundM
     };
   }
 
-  return { body: buildTwilioOutboundBody(result), kind: 'text' };
+  return { body: buildWhatsAppOutboundBody(result), kind: 'text' };
 };
 
 /**
@@ -111,7 +111,7 @@ export const buildMetaOutboundMessage = (result: AIChannelResult): MetaOutboundM
  */
 export const resolveMetaInteractiveHints = (
   replyId: string,
-  metadata?: TwilioConversationMetadata,
+  metadata?: WhatsAppConversationMetadata,
 ): AIEmployeeSemanticHints | undefined => {
   const separator = replyId.indexOf(':');
   const kind = separator === -1 ? replyId : replyId.slice(0, separator);

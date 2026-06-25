@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildTwilioOutboundBody,
-  resolveTwilioSemanticHints,
-} from './TwilioConversationAdapter';
+  buildWhatsAppOutboundBody,
+  resolveWhatsAppSemanticHints,
+} from './WhatsAppConversationAdapter';
 
-describe('TwilioConversationAdapter', () => {
+describe('WhatsAppConversationAdapter', () => {
   it('maps a unique partial product name to the trusted product selection event', () => {
-    expect(resolveTwilioSemanticHints({
+    expect(resolveWhatsAppSemanticHints({
       message: 'ابي نص مضغوط',
       metadata: {
         lastSuggestedProducts: [
@@ -37,10 +37,10 @@ describe('TwilioConversationAdapter', () => {
       visibleSystemActions: ['product_choices' as const],
     };
 
-    expect(resolveTwilioSemanticHints({ message: '2', metadata })?.selectedProductId).toBe(22);
-    expect(resolveTwilioSemanticHints({ message: '١', metadata })?.selectedProductId).toBe(11);
-    expect(resolveTwilioSemanticHints({ message: 'رقم 2', metadata })?.selectedProductId).toBe(22);
-    expect(resolveTwilioSemanticHints({ message: 'الخيار ١.', metadata })?.selectedProductId).toBe(11);
+    expect(resolveWhatsAppSemanticHints({ message: '2', metadata })?.selectedProductId).toBe(22);
+    expect(resolveWhatsAppSemanticHints({ message: '١', metadata })?.selectedProductId).toBe(11);
+    expect(resolveWhatsAppSemanticHints({ message: 'رقم 2', metadata })?.selectedProductId).toBe(22);
+    expect(resolveWhatsAppSemanticHints({ message: 'الخيار ١.', metadata })?.selectedProductId).toBe(11);
   });
 
   it('ignores out-of-range numbers and quantities embedded in a sentence', () => {
@@ -53,13 +53,13 @@ describe('TwilioConversationAdapter', () => {
     };
 
     // Out of range → no numeric selection (and no unique name match) → undefined.
-    expect(resolveTwilioSemanticHints({ message: '9', metadata })).toBeUndefined();
+    expect(resolveWhatsAppSemanticHints({ message: '9', metadata })).toBeUndefined();
     // A quantity inside a sentence must not be read as choosing option #2.
-    expect(resolveTwilioSemanticHints({ message: 'ابي ٢ برجر دجاج', metadata })?.selectedProductId).not.toBe(22);
+    expect(resolveWhatsAppSemanticHints({ message: 'ابي ٢ برجر دجاج', metadata })?.selectedProductId).not.toBe(22);
   });
 
   it('maps fulfillment and payment text only when the matching step is active', () => {
-    expect(resolveTwilioSemanticHints({
+    expect(resolveWhatsAppSemanticHints({
       message: 'توصيل',
       metadata: {
         visibleSystemActions: ['fulfillment_choices'],
@@ -69,7 +69,7 @@ describe('TwilioConversationAdapter', () => {
       fulfillmentType: 'delivery',
     });
 
-    expect(resolveTwilioSemanticHints({
+    expect(resolveWhatsAppSemanticHints({
       message: 'كاش',
       metadata: {
         customerDetails: {
@@ -83,7 +83,7 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('does not treat a bare rejection as an order cancellation', () => {
-    expect(resolveTwilioSemanticHints({
+    expect(resolveWhatsAppSemanticHints({
       message: 'لا',
       metadata: {
         currentCart: {
@@ -96,7 +96,7 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('maps a product name preceded by an affirmative word to the product selection event', () => {
-    expect(resolveTwilioSemanticHints({
+    expect(resolveWhatsAppSemanticHints({
       message: 'ايوه نص مضغوط',
       metadata: {
         lastSuggestedProducts: [
@@ -119,7 +119,7 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('replaces web-only instructions and renders actionable WhatsApp choices', () => {
-    expect(buildTwilioOutboundBody({
+    expect(buildWhatsAppOutboundBody({
       availableFulfillmentTypes: ['delivery', 'pickup'],
       availablePaymentKinds: {
         delivery: ['cash', 'card'],
@@ -142,7 +142,7 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('replaces "الخيارات الظاهرة لك قدامك على الشاشة" and "بالضغط عليها" patterns', () => {
-    const result = buildTwilioOutboundBody({
+    const result = buildWhatsAppOutboundBody({
       replyToCustomer: 'لاحظت الخيارات الظاهرة لك قدامك على الشاشة—تقدر تختار نص مضغوط دجاج بالضغط عليها.',
       suggestedProducts: [{
         availability: 'available',
@@ -160,7 +160,7 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('replaces "من الخيارات الظاهرة لك" without leaving trailing "لك"', () => {
-    const result = buildTwilioOutboundBody({
+    const result = buildWhatsAppOutboundBody({
       replyToCustomer: 'اختر المنتج المناسب من الخيارات الظاهرة لك، أو اكتب توضيحاً.',
       visibleSystemActions: [],
     });
@@ -171,14 +171,14 @@ describe('TwilioConversationAdapter', () => {
   });
 
   it('renders the current checkout action instead of referring to hidden web UI', () => {
-    expect(buildTwilioOutboundBody({
+    expect(buildWhatsAppOutboundBody({
       availableFulfillmentTypes: ['delivery', 'pickup'],
       customerDetails: {},
       replyToCustomer: 'السلة جاهزة.',
       visibleSystemActions: ['fulfillment_choices'],
     })).toContain('توصيل | استلام من الفرع');
 
-    expect(buildTwilioOutboundBody({
+    expect(buildWhatsAppOutboundBody({
       availablePaymentKinds: {
         delivery: ['cash', 'card'],
         pickup: ['cash'],

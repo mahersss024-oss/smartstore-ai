@@ -10,13 +10,10 @@ import {
 } from '@/libs/AIInboundJobQueue';
 import { Env } from '@/libs/Env';
 import { logger } from '@/libs/Logger';
+import { processMetaInboundMessage } from '@/libs/MetaInboundProcessor';
+import { findMetaStoreConnection } from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
-import {
-  ConversationBusyError,
-  MessageRetryError,
-  processTwilioInboundMessage,
-} from '@/libs/TwilioInboundProcessor';
-import { findTwilioStoreConnection } from '@/libs/TwilioWhatsApp';
+import { ConversationBusyError, MessageRetryError } from '@/libs/WhatsAppInboundShared';
 
 // Classifies a worker failure so the queue can dead-letter deterministic errors
 // immediately, retry transient contention without depleting the attempt ceiling,
@@ -55,14 +52,14 @@ const requestSchema = z.object({
   jobId: z.number().int().positive(),
 });
 
-const twilioPayloadSchema = z.object({
+const metaPayloadSchema = z.object({
   message: z.object({
-    body: z.string().min(1),
+    body: z.string(),
     from: z.string().min(1),
-    messageSid: z.string().min(1),
+    interactiveReplyId: z.string().optional(),
+    messageId: z.string().min(1),
+    phoneNumberId: z.string().min(1),
     profileName: z.string().optional(),
-    to: z.string().min(1),
-    waId: z.string().optional(),
   }),
 });
 
@@ -148,14 +145,14 @@ export const POST = async (request: Request) => {
       throw new Error(`Unsupported AI inbound channel: ${claimed.channel}`);
     }
 
-    const payload = twilioPayloadSchema.parse(claimed.payload);
-    const connection = await findTwilioStoreConnection(payload.message.to);
+    const payload = metaPayloadSchema.parse(claimed.payload);
+    const connection = await findMetaStoreConnection(payload.message.phoneNumberId);
 
     if (!connection || connection.organizationId !== claimed.organizationId) {
-      throw new MessageRetryError('twilio_store_connection_not_found');
+      throw new MessageRetryError('meta_store_connection_not_found');
     }
 
-    await processTwilioInboundMessage({
+    await processMetaInboundMessage({
       beforeSend: async () => {
         const renewed = await renewAiInboundJobLease({
           jobId: claimed.id,

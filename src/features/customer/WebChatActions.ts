@@ -1,6 +1,6 @@
 'use server';
 
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { handleCustomerMessageWithAIEmployee } from '@/features/ai/AIEmployeeAgent';
@@ -24,8 +24,6 @@ import {
   StoreSubscriptionInactiveError,
 } from '@/libs/StoreServiceControls';
 import { isSubscriptionLimitError } from '@/libs/SubscriptionEntitlements';
-import { isTwilioVerifyConfigured } from '@/libs/TwilioClient';
-import { checkOtp, sendOtp } from '@/libs/TwilioVerify';
 import {
   conversationMessagesTable,
   conversationsTable,
@@ -33,7 +31,6 @@ import {
   customersTable,
   orderEventsTable,
   ordersTable,
-  phoneVerificationsTable,
 } from '@/models/Schema';
 
 const webChatMessageSchema = z.object({
@@ -623,41 +620,10 @@ export const requestPhoneOtp = async (input: z.infer<typeof otpRequestSchema>) =
     return { error: 'invalid_input', ok: false as const };
   }
 
-  const { organizationId, phone, sessionId } = parsed.data;
-
-  if (!isTwilioVerifyConfigured()) {
-    return { error: 'not_configured', ok: false as const };
-  }
-
-  const result = await sendOtp(phone);
-
-  if (!result.success) {
-    if (result.error === 'rate_limited') {
-      return { error: 'rate_limited', ok: false as const };
-    }
-
-    if (result.error === 'invalid_phone') {
-      return { error: 'invalid_phone', ok: false as const };
-    }
-
-    return { error: 'send_failed', ok: false as const };
-  }
-
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  await db
-    .insert(phoneVerificationsTable)
-    .values({ expiresAt, organizationId, phone, sessionId, status: 'pending' })
-    .onConflictDoUpdate({
-      set: { expiresAt, status: 'pending', verifiedAt: null },
-      target: [
-        phoneVerificationsTable.organizationId,
-        phoneVerificationsTable.sessionId,
-        phoneVerificationsTable.phone,
-      ],
-    });
-
-  return { ok: true as const };
+  // SMS OTP (Twilio Verify) was removed. Web-order phone verification now flows
+  // through WhatsApp (Pattern B: a signed link delivered in the customer's
+  // WhatsApp conversation). Disabled until the WhatsApp-link UI is wired.
+  return { error: 'not_configured', ok: false as const };
 };
 
 export const verifyPhoneOtp = async (input: z.infer<typeof otpVerifySchema>) => {
@@ -667,50 +633,6 @@ export const verifyPhoneOtp = async (input: z.infer<typeof otpVerifySchema>) => 
     return { error: 'invalid_input', ok: false as const };
   }
 
-  const { code, organizationId, phone, sessionId } = parsed.data;
-
-  if (!isTwilioVerifyConfigured()) {
-    return { error: 'not_configured', ok: false as const };
-  }
-
-  const now = new Date();
-  const [pending] = await db
-    .select()
-    .from(phoneVerificationsTable)
-    .where(
-      and(
-        eq(phoneVerificationsTable.sessionId, sessionId),
-        eq(phoneVerificationsTable.organizationId, organizationId),
-        eq(phoneVerificationsTable.phone, phone),
-        eq(phoneVerificationsTable.status, 'pending'),
-        gt(phoneVerificationsTable.expiresAt, now),
-      ),
-    )
-    .limit(1);
-
-  if (!pending) {
-    return { error: 'not_found', ok: false as const };
-  }
-
-  const result = await checkOtp(phone, code);
-
-  if (!result.success) {
-    if (result.error === 'expired') {
-      await db
-        .update(phoneVerificationsTable)
-        .set({ status: 'expired' })
-        .where(eq(phoneVerificationsTable.id, pending.id));
-
-      return { error: 'expired', ok: false as const };
-    }
-
-    return { error: 'invalid_code', ok: false as const };
-  }
-
-  await db
-    .update(phoneVerificationsTable)
-    .set({ status: 'approved', verifiedAt: now })
-    .where(eq(phoneVerificationsTable.id, pending.id));
-
-  return { ok: true as const, verifiedPhone: phone };
+  // See requestPhoneOtp — SMS OTP removed; verification moves to WhatsApp (Pattern B).
+  return { error: 'not_configured', ok: false as const };
 };

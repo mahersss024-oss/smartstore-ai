@@ -176,9 +176,8 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
   maskApiKey: vi.fn(() => 'bbb...bbbb'),
 }));
 
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  sendTwilioConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
-  validateTwilioWhatsAppCredentials: vi.fn(async () => true),
+vi.mock('@/libs/MetaInboundProcessor', () => ({
+  sendMetaConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
 }));
 
 vi.mock('@/libs/ProductImageStorage', () => ({

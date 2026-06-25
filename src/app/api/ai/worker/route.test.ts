@@ -4,9 +4,9 @@ const mocks = vi.hoisted(() => ({
   claimAiInboundJob: vi.fn(),
   completeAiInboundJob: vi.fn(),
   failAiInboundJob: vi.fn(),
-  findTwilioStoreConnection: vi.fn(),
+  findMetaStoreConnection: vi.fn(),
   getAiInboundJob: vi.fn(),
-  processTwilioInboundMessage: vi.fn(),
+  processMetaInboundMessage: vi.fn(),
   renewAiInboundJobLease: vi.fn(),
   verify: vi.fn(),
 }));
@@ -32,14 +32,17 @@ vi.mock('@/libs/AIInboundJobQueue', () => ({
   renewAiInboundJobLease: mocks.renewAiInboundJobLease,
 }));
 
-vi.mock('@/libs/TwilioInboundProcessor', () => ({
+vi.mock('@/libs/WhatsAppInboundShared', () => ({
   ConversationBusyError: class ConversationBusyError extends Error {},
   MessageRetryError: class MessageRetryError extends Error {},
-  processTwilioInboundMessage: mocks.processTwilioInboundMessage,
 }));
 
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  findTwilioStoreConnection: mocks.findTwilioStoreConnection,
+vi.mock('@/libs/MetaInboundProcessor', () => ({
+  processMetaInboundMessage: mocks.processMetaInboundMessage,
+}));
+
+vi.mock('@/libs/MetaWhatsApp', () => ({
+  findMetaStoreConnection: mocks.findMetaStoreConnection,
 }));
 
 vi.mock('@/libs/Logger', () => ({
@@ -77,13 +80,13 @@ describe('AI inbound worker', () => {
       payload: {
         message: {
           body: 'سلام',
-          from: 'whatsapp:+966500000001',
-          messageSid: 'SM1',
-          to: 'whatsapp:+14155552671',
+          from: '966500000001',
+          messageId: 'wamid.1',
+          phoneNumberId: '123456',
         },
       },
     });
-    mocks.findTwilioStoreConnection.mockResolvedValue({
+    mocks.findMetaStoreConnection.mockResolvedValue({
       organizationId: 'org_1',
     });
     mocks.completeAiInboundJob.mockResolvedValue(true);
@@ -125,7 +128,7 @@ describe('AI inbound worker', () => {
     const response = await POST(buildRequest());
 
     expect(response.status).toBe(200);
-    expect(mocks.processTwilioInboundMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.processMetaInboundMessage).toHaveBeenCalledTimes(1);
     expect(mocks.completeAiInboundJob).toHaveBeenCalledWith({
       jobId: 7,
       leaseToken: 'lease-1',
@@ -134,7 +137,7 @@ describe('AI inbound worker', () => {
   });
 
   it('renews the job lease immediately before the processor sends a reply', async () => {
-    mocks.processTwilioInboundMessage.mockImplementationOnce(
+    mocks.processMetaInboundMessage.mockImplementationOnce(
       async (params: { beforeSend: () => Promise<void> }) => {
         await params.beforeSend();
       },
@@ -149,7 +152,7 @@ describe('AI inbound worker', () => {
   });
 
   it('records a retryable failure without leaking it to QStash retries', async () => {
-    mocks.processTwilioInboundMessage.mockRejectedValueOnce(
+    mocks.processMetaInboundMessage.mockRejectedValueOnce(
       new Error('provider credential details'),
     );
     const { POST } = await import('./route');
@@ -167,7 +170,7 @@ describe('AI inbound worker', () => {
   });
 
   it('classifies an unsupported-channel error as terminal', async () => {
-    mocks.processTwilioInboundMessage.mockRejectedValueOnce(
+    mocks.processMetaInboundMessage.mockRejectedValueOnce(
       new Error('Unsupported AI inbound channel: web_chat'),
     );
     mocks.failAiInboundJob.mockResolvedValueOnce({ status: 'dead', updated: true });

@@ -48,8 +48,8 @@ vi.mock('@/libs/AISimulation', () => ({ simulateAIEmployeeReply: vi.fn(() => ({ 
 vi.mock('@/features/ai/AIEmployeeAgent', () => ({
   generateCustomerReplyForSystemEvent: vi.fn(async () => undefined),
 }));
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  sendTwilioConversationTextMessage: vi.fn(),
+vi.mock('@/libs/MetaInboundProcessor', () => ({
+  sendMetaConversationTextMessage: vi.fn(),
 }));
 vi.mock('@/libs/ProductAvailabilitySync', () => ({ syncProductAvailability: vi.fn() }));
 vi.mock('@/libs/ProductCatalogConflict', () => ({

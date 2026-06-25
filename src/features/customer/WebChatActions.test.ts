@@ -124,15 +124,6 @@ vi.mock('@/models/Schema', () => ({
   },
 }));
 
-vi.mock('@/libs/TwilioClient', () => ({
-  isTwilioVerifyConfigured: vi.fn(() => true),
-}));
-
-vi.mock('@/libs/TwilioVerify', () => ({
-  checkOtp: vi.fn(async () => ({ success: true })),
-  sendOtp: vi.fn(async () => ({ success: true })),
-}));
-
 vi.mock('drizzle-orm', () => ({
   and: vi.fn((...conditions: unknown[]) => ({ conditions, type: 'and' })),
   desc: vi.fn(),
@@ -188,32 +179,23 @@ describe('WebChatActions', () => {
     } as never)).rejects.toThrow();
   }, 10000);
 
-  it('upserts a single phone verification row when an OTP is requested', async () => {
-    const { requestPhoneOtp } = await import('./WebChatActions');
+  it('reports SMS OTP as disabled (migrated to WhatsApp verification)', async () => {
+    const { requestPhoneOtp, verifyPhoneOtp } = await import('./WebChatActions');
 
-    const result = await requestPhoneOtp({
+    expect(await requestPhoneOtp({
       organizationId: 'org_1',
       phone: '+966500000000',
       sessionId: 'session_1234567890',
-    });
+    })).toEqual({ error: 'not_configured', ok: false });
 
-    expect(result).toEqual({ ok: true });
-    expect(mockInsertOnConflictDoUpdate).toHaveBeenCalledTimes(1);
+    expect(await verifyPhoneOtp({
+      code: '123456',
+      organizationId: 'org_1',
+      phone: '+966500000000',
+      sessionId: 'session_1234567890',
+    })).toEqual({ error: 'not_configured', ok: false });
 
-    const [conflictOptions] = mockInsertOnConflictDoUpdate.mock.calls[0] as unknown as [
-      {
-        set: Record<string, unknown>;
-        target: unknown[];
-      },
-    ];
-
-    expect(conflictOptions.target).toEqual([
-      'phoneVerificationOrganizationId',
-      'phoneVerificationSessionId',
-      'phoneVerificationPhone',
-    ]);
-    expect(conflictOptions.set.status).toBe('pending');
-    expect(conflictOptions.set.verifiedAt).toBeNull();
+    expect(mockInsertOnConflictDoUpdate).not.toHaveBeenCalled();
   });
 
   it('passes canonical system choices to the AI employee agent', async () => {

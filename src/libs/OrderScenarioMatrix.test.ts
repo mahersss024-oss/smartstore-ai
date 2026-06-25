@@ -93,8 +93,8 @@ vi.mock('@/libs/OrderWorkflow', () => ({
     READY_FOR_PICKUP: 'ready_for_pickup',
   },
 }));
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  sendTwilioConversationTextMessage: mockSendWhatsAppConversationTextMessage,
+vi.mock('@/libs/MetaInboundProcessor', () => ({
+  sendMetaConversationTextMessage: mockSendWhatsAppConversationTextMessage,
 }));
 vi.mock('@/models/Schema', () => ({
   aiActionLogsTable: { orderId: 'orderId', organizationId: 'organizationId' },

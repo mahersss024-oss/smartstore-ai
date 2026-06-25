@@ -11,7 +11,6 @@ const {
   mockEncryptSecret,
   mockRedirect,
   mockRevalidatePath,
-  mockValidateTwilioCredentials,
   selectRows,
 } = vi.hoisted(() => {
   const rows: unknown[][] = [];
@@ -56,7 +55,6 @@ const {
       throw new Error(`redirect:${path}`);
     }),
     mockRevalidatePath: vi.fn(),
-    mockValidateTwilioCredentials: vi.fn(async () => true),
     selectRows: rows,
   };
 });
@@ -97,9 +95,8 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
   maskApiKey: vi.fn(() => 'bbb...bbbb'),
 }));
 
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  validateTwilioWhatsAppCredentials: mockValidateTwilioCredentials,
-}));
+// Twilio WhatsApp credential validation was removed; the action now validates
+// the submitted account id locally.
 
 vi.mock('@/models/Schema', () => ({
   channelConnectionsTable: {
@@ -158,7 +155,6 @@ describe('saveWhatsAppSettings', () => {
     vi.clearAllMocks();
     selectRows.length = 0;
     mockAuth.mockResolvedValue({ orgId: 'org_1', userId: 'user_1' });
-    mockValidateTwilioCredentials.mockResolvedValue(true);
   });
 
   it('rejects settings before database access when no organization is active', async () => {
@@ -183,10 +179,6 @@ describe('saveWhatsAppSettings', () => {
     expect(result).toEqual({
       message: 'twilio_settings_saved',
       status: 'success',
-    });
-    expect(mockValidateTwilioCredentials).toHaveBeenCalledWith({
-      accountSid: validAccountSid,
-      authToken: validAuthToken,
     });
     expect(mockEncryptSecret).toHaveBeenCalledWith(validAuthToken);
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
@@ -225,10 +217,6 @@ describe('saveWhatsAppSettings', () => {
 
     expect(result.status).toBe('success');
     expect(mockEncryptSecret).not.toHaveBeenCalled();
-    expect(mockValidateTwilioCredentials).toHaveBeenCalledWith({
-      accountSid: validAccountSid,
-      authToken: validAuthToken,
-    });
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         encryptedTwilioAuthToken: 'encrypted:stored-token',
@@ -236,14 +224,17 @@ describe('saveWhatsAppSettings', () => {
     );
   });
 
-  it('does not write an invalid or rejected Twilio configuration', async () => {
+  it('does not write an invalid Twilio configuration', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [],
     );
-    mockValidateTwilioCredentials.mockResolvedValue(false);
+    const formData = new FormData();
+    formData.set('twilioAccountSid', 'not-a-valid-account-sid');
+    formData.set('twilioAuthToken', validAuthToken);
+    formData.set('twilioWhatsAppFrom', 'whatsapp:+14155552671');
 
-    const result = await saveWhatsApp(buildTwilioFormData());
+    const result = await saveWhatsApp(formData);
 
     expect(result).toEqual({
       message: 'invalid_twilio_credentials',

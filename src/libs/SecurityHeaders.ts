@@ -20,7 +20,6 @@ const buildCspReportOnly = () => [
     'https://clerk.smartstore-ai.com',
     'https://*.sentry.io',
     'https://api.deepseek.com',
-    'https://api.twilio.com',
   ].join(' '),
   'img-src \'self\' data: blob: https:',
   'style-src \'self\' \'unsafe-inline\'',

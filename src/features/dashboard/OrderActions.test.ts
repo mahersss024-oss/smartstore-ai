@@ -95,8 +95,8 @@ vi.mock('@/libs/OrderWorkflow', () => ({
   },
 }));
 
-vi.mock('@/libs/TwilioWhatsApp', () => ({
-  sendTwilioConversationTextMessage: mockSendWhatsAppConversationTextMessage,
+vi.mock('@/libs/MetaInboundProcessor', () => ({
+  sendMetaConversationTextMessage: mockSendWhatsAppConversationTextMessage,
 }));
 
 vi.mock('@/models/Schema', () => ({
