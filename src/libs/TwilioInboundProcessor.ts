@@ -41,14 +41,14 @@ const NON_RETRYABLE_REPLIES: Record<string, string> = {
   too_many_messages: 'وصلت رسائل كثيرة خلال وقت قصير. فضلاً انتظر لحظات ثم أرسل طلبك مرة أخرى.',
 };
 
-const buildFallbackReply = (error: string) => {
+export const buildFallbackReply = (error: string) => {
   return NON_RETRYABLE_REPLIES[error]
     ?? 'تعذر إكمال الطلب عبر واتساب حاليًا. فضلاً جرّب لاحقًا أو تواصل مع المتجر مباشرة.';
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const acquireConversationLock = async (
+export const acquireConversationLock = async (
   params: Parameters<typeof acquireWebhookProcessingLock>[0],
 ) => {
   const deadline = Date.now() + LOCK_WAIT_MS;

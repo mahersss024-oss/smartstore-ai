@@ -218,6 +218,13 @@
       "when": 1782477900000,
       "tag": "0030_channel_connections_whatsapp_from_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782564300000,
+      "tag": "0031_channel_connections_meta_phone_number_idx",
+      "breakpoints": true
     }
   ]
 }

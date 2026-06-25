@@ -21,7 +21,7 @@ type TwilioConversationCustomerDetails = {
   deliveryPreference?: 'delivery' | 'pickup';
 };
 
-type TwilioConversationMetadata = {
+export type TwilioConversationMetadata = {
   aiOrchestration?: {
     systemDecision?: {
       visibleSystemActions?: AIOrchestrationVisibleSystemAction[];
@@ -196,13 +196,13 @@ const isVisibleSystemAction = (
   ].includes(value);
 };
 
-const readVisibleSystemActions = (value: unknown) => {
+export const readVisibleSystemActions = (value: unknown) => {
   return Array.isArray(value)
     ? value.filter(isVisibleSystemAction)
     : [];
 };
 
-const readSuggestedProducts = (value: unknown) => {
+export const readSuggestedProducts = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -220,7 +220,7 @@ const readSuggestedProducts = (value: unknown) => {
   });
 };
 
-const readFulfillmentChoices = (value: unknown) => {
+export const readFulfillmentChoices = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -230,7 +230,7 @@ const readFulfillmentChoices = (value: unknown) => {
   });
 };
 
-const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
+export const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
   if (!value || typeof value !== 'object') {
     return {};
   }
@@ -248,7 +248,7 @@ const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
   };
 };
 
-const readCustomerDetails = (value: unknown): TwilioConversationCustomerDetails => {
+export const readCustomerDetails = (value: unknown): TwilioConversationCustomerDetails => {
   if (!value || typeof value !== 'object') {
     return {};
   }
@@ -391,7 +391,7 @@ export const loadTwilioConversationMetadata = async (params: {
   return (conversation?.metadata ?? undefined) as TwilioConversationMetadata | undefined;
 };
 
-const replaceWebOnlyInstructions = (reply: string) => {
+export const replaceWebOnlyInstructions = (reply: string) => {
   return reply
     // "من/في الخيارات الظاهرة [لك] [على الشاشة]" — keep preposition
     .replace(

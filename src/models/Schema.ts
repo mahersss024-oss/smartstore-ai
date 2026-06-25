@@ -307,6 +307,10 @@ export const channelConnectionsTable = pgTable('channel_connections', {
   index('channel_connections_whatsapp_from_idx')
     .on(sql`(${table.config} ->> 'twilioWhatsAppFrom')`)
     .where(sql`${table.channel} = 'whatsapp' AND ${table.isActive} = true`),
+  // Meta (WhatsApp Cloud API) inbound webhooks resolve the store by phoneNumberId.
+  index('channel_connections_meta_phone_number_idx')
+    .on(sql`(${table.config} ->> 'phoneNumberId')`)
+    .where(sql`${table.channel} = 'whatsapp' AND ${table.isActive} = true`),
 ]);
 
 // ============================================

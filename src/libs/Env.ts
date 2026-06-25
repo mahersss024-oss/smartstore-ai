@@ -26,6 +26,8 @@ export const Env = createEnv({
     DATABASE_URL: z.string().min(1),
     DEMO_MODE: z.enum(['false', 'true']).default('false').transform(value => value === 'true'),
     MAINTENANCE_SECRET: z.string().min(32).optional(),
+    META_APP_SECRET: z.string().optional(),
+    META_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
     MOYASAR_SECRET_KEY: z.string().optional(),
     PLATFORM_ADMIN_USER_IDS: z.string().optional(),
     PLATFORM_SECRETS_ENCRYPTION_KEY: z
@@ -88,6 +90,8 @@ export const Env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     DEMO_MODE: process.env.DEMO_MODE,
     MAINTENANCE_SECRET: process.env.MAINTENANCE_SECRET,
+    META_APP_SECRET: process.env.META_APP_SECRET,
+    META_WEBHOOK_VERIFY_TOKEN: process.env.META_WEBHOOK_VERIFY_TOKEN,
     MOYASAR_SECRET_KEY: process.env.MOYASAR_SECRET_KEY,
     PLATFORM_ADMIN_USER_IDS: process.env.PLATFORM_ADMIN_USER_IDS,
     PLATFORM_SECRETS_ENCRYPTION_KEY: process.env.PLATFORM_SECRETS_ENCRYPTION_KEY,
