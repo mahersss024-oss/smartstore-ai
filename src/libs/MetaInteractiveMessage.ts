@@ -12,7 +12,7 @@ import {
 
 } from './WhatsAppConversationAdapter';
 
-// The AI reply shape shared with the web/Twilio renderers.
+// The AI reply shape shared with the web renderers.
 type AIChannelResult = {
   availableFulfillmentTypes?: unknown;
   availablePaymentKinds?: unknown;

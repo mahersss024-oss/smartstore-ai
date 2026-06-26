@@ -42,7 +42,7 @@ const parseMetaExternalThreadId = (value?: null | string) => {
 /**
  * Send a store-initiated text notification (e.g. order status) back to the
  * customer over WhatsApp Cloud API, resolving the connection from the stored
- * Meta thread id. The Meta counterpart of the old Twilio conversation sender.
+ * Meta thread id. The Meta counterpart of the previous conversation sender.
  */
 export const sendMetaConversationTextMessage = async (params: {
   body: string;
@@ -123,7 +123,7 @@ const deliverMetaMessage = async (params: {
 
 /**
  * WhatsApp Cloud API (Meta) inbound processing — the provider counterpart of
- * processTwilioInboundMessage. Serializes the conversation, resolves the
+ * the synchronous webhook path. Serializes the conversation, resolves the
  * customer's intent (tapped button/list payload → deterministic hint, otherwise
  * text matching), runs the shared trusted AI pipeline, and delivers the reply as
  * an interactive message (with text fallback). Throws ConversationBusyError /

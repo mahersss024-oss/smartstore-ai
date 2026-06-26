@@ -202,7 +202,7 @@ export const aiInboundJobsTable = pgTable('ai_inbound_jobs', {
   organizationId: text('organization_id').notNull(),
   channel: varchar('channel', { length: 50 }).notNull(), // whatsapp | web_chat
   externalThreadId: text('external_thread_id'),
-  dedupeKey: text('dedupe_key').notNull(), // twilio MessageSid / clientSubmissionId
+  dedupeKey: text('dedupe_key').notNull(), // provider message id / clientSubmissionId
   payload: jsonb('payload').notNull(),
   status: varchar('status', { length: 20 }).default('pending').notNull(), // pending|processing|done|failed|dead
   attempts: integer('attempts').default(0).notNull(),

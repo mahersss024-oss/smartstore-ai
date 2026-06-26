@@ -272,7 +272,7 @@ export const sendMetaWhatsAppList = async (params: {
 };
 
 /**
- * Resolve the store connection that owns the inbound number. Mirrors the Twilio
+ * Resolve the store connection that owns the inbound number. Mirrors the previous
  * lookup but keys on the Cloud-API `phoneNumberId` (Meta sends it in the webhook
  * metadata) and decrypts the per-tenant access token.
  */

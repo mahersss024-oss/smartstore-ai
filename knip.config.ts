@@ -9,6 +9,7 @@ const config: KnipConfig = {
     'src/features/dashboard/PageMessage.tsx',
     'src/types/Auth.ts',
     'public/sw.js',
+    'scripts/seed-meta-whatsapp-connection.mjs', // one-off operational seed, run manually
   ],
   // Dependencies to ignore during analysis
   ignoreDependencies: [

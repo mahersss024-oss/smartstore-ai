@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { webhookEventsTable } from '@/models/Schema';
 import { db } from './DB';
 
-export type WebhookEventProvider = 'clerk' | 'meta' | 'meta_thread_lock' | 'stripe' | 'twilio' | 'twilio_thread_lock';
+export type WebhookEventProvider = 'clerk' | 'meta' | 'meta_thread_lock' | 'stripe';
 export const WEBHOOK_PROCESSING_LEASE_MS = 5 * 60_000;
 
 export type WebhookEventExecutionResult<T> = {

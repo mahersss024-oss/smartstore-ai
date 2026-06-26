@@ -103,10 +103,9 @@ const getRuntimeStatus = (runtimeConfig) => {
       aiEmployeeWebhookSecretStored: typeof internal.encryptedAIEmployeeWebhookSecret === 'string' && internal.encryptedAIEmployeeWebhookSecret.length > 0,
       maintenanceSecretStored: typeof internal.encryptedMaintenanceSecret === 'string' && internal.encryptedMaintenanceSecret.length > 0,
     },
-    twilio: {
-      accountSidConfigured: Boolean(getEnvValue('TWILIO_ACCOUNT_SID')),
-      authTokenConfigured: Boolean(getEnvValue('TWILIO_AUTH_TOKEN')),
-      verifyServiceSidConfigured: Boolean(getEnvValue('TWILIO_VERIFY_SERVICE_SID')),
+    whatsapp: {
+      appSecretConfigured: Boolean(getEnvValue('META_APP_SECRET')),
+      webhookVerifyTokenConfigured: Boolean(getEnvValue('META_WEBHOOK_VERIFY_TOKEN')),
     },
   };
 };

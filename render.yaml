@@ -37,7 +37,7 @@ services:
       - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
         sync: false
 
-      # --- critical: decrypts stored Twilio secrets — must match the old value ---
+      # --- critical: decrypts stored WhatsApp + AI secrets ---
       - key: PLATFORM_SECRETS_ENCRYPTION_KEY
         sync: false
 

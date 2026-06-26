@@ -620,7 +620,7 @@ export const requestPhoneOtp = async (input: z.infer<typeof otpRequestSchema>) =
     return { error: 'invalid_input', ok: false as const };
   }
 
-  // SMS OTP (Twilio Verify) was removed. Web-order phone verification now flows
+  // SMS OTP was removed. Web-order phone verification now flows
   // through WhatsApp (Pattern B: a signed link delivered in the customer's
   // WhatsApp conversation). Disabled until the WhatsApp-link UI is wired.
   return { error: 'not_configured', ok: false as const };
