@@ -593,7 +593,7 @@ describe('OrderActions', () => {
     expect(mockSendWhatsAppConversationTextMessage).not.toHaveBeenCalled();
   });
 
-  it('sends completed WhatsApp orders a review request through Twilio', async () => {
+  it('sends completed WhatsApp orders a review request through WhatsApp Cloud API', async () => {
     const { completeOrderAndRequestReview } = await import('./OrderActions');
 
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('طلبك رقم 162 تم إنجازه بنجاح.');

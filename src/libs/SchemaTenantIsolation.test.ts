@@ -161,10 +161,10 @@ vi.mock('@/libs/OrderWorkflow', () => ({
 
 vi.mock('@/utils/CustomerChannels', () => ({
   buildWhatsAppChannelConfig: vi.fn((params: Record<string, unknown>) => ({
-    config: { ...params, mode: 'twilio', provider: 'twilio' },
+    config: { ...params, mode: 'meta', provider: 'meta' },
     connectionStatus: 'connected',
     isActive: true,
-    mode: 'twilio',
+    mode: 'meta',
     whatsappLink: 'https://wa.me/966500000000',
     whatsappTarget: '966500000000',
   })),
@@ -422,9 +422,9 @@ describe('Store A / Store B tenant isolation matrix', () => {
   describe('StoreSettingsActions — WhatsApp writes scoped to the authenticated org', () => {
     const buildWhatsAppFormData = (phone: string) => {
       const fd = new FormData();
-      fd.set('twilioAccountSid', `AC${'a'.repeat(32)}`);
-      fd.set('twilioAuthToken', 'b'.repeat(32));
-      fd.set('twilioWhatsAppFrom', `whatsapp:${phone}`);
+      fd.set('metaPhoneNumberId', '1119417571262523');
+      fd.set('metaAccessToken', `EAA${'b'.repeat(40)}`);
+      fd.set('metaDisplayPhoneNumber', phone);
 
       return fd;
     };

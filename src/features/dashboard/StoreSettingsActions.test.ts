@@ -36,12 +36,12 @@ const {
     mockBuildWhatsAppChannelConfig: vi.fn((params: Record<string, unknown>) => ({
       config: {
         ...params,
-        mode: 'twilio',
-        provider: 'twilio',
+        mode: 'meta',
+        provider: 'meta',
       },
-      connectionStatus: params.hasTwilioAuthToken ? 'connected' : 'pending_setup',
-      isActive: Boolean(params.hasTwilioAuthToken),
-      mode: 'twilio',
+      connectionStatus: params.hasAccessToken ? 'connected' : 'pending_setup',
+      isActive: Boolean(params.hasAccessToken),
+      mode: 'meta',
       whatsappLink: 'https://wa.me/14155552671',
       whatsappTarget: 'https://wa.me/14155552671',
     })),
@@ -95,7 +95,7 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
   maskApiKey: vi.fn(() => 'bbb...bbbb'),
 }));
 
-// Twilio WhatsApp credential validation was removed; the action now validates
+// WhatsApp credential validation is done locally; the action now validates
 // the submitted account id locally.
 
 vi.mock('@/models/Schema', () => ({
@@ -132,14 +132,14 @@ vi.mock('@/libs/SubscriptionEntitlements', () => ({
   isSubscriptionLimitError: vi.fn(() => false),
 }));
 
-const validAccountSid = `AC${'a'.repeat(32)}`;
-const validAuthToken = 'b'.repeat(32);
+const validPhoneNumberId = '1119417571262523';
+const validAccessToken = `EAA${'b'.repeat(40)}`;
 
-const buildTwilioFormData = () => {
+const buildMetaFormData = () => {
   const formData = new FormData();
-  formData.set('twilioAccountSid', validAccountSid);
-  formData.set('twilioAuthToken', validAuthToken);
-  formData.set('twilioWhatsAppFrom', 'whatsapp:+14155552671');
+  formData.set('metaPhoneNumberId', validPhoneNumberId);
+  formData.set('metaAccessToken', validAccessToken);
+  formData.set('metaDisplayPhoneNumber', '+14155552671');
 
   return formData;
 };
@@ -168,25 +168,25 @@ describe('saveWhatsAppSettings', () => {
     expect(mockDbInsert).not.toHaveBeenCalled();
   });
 
-  it('encrypts per-store Twilio credentials and activates only the authenticated store', async () => {
+  it('encrypts per-store Meta credentials and activates only the authenticated store', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [],
     );
 
-    const result = await saveWhatsApp(buildTwilioFormData());
+    const result = await saveWhatsApp(buildMetaFormData());
 
     expect(result).toEqual({
-      message: 'twilio_settings_saved',
+      message: 'whatsapp_settings_saved',
       status: 'success',
     });
-    expect(mockEncryptSecret).toHaveBeenCalledWith(validAuthToken);
+    expect(mockEncryptSecret).toHaveBeenCalledWith(validAccessToken);
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        encryptedTwilioAuthToken: `encrypted:${validAuthToken}`,
-        hasTwilioAuthToken: true,
-        twilioAccountSid: validAccountSid,
-        twilioWhatsAppFrom: 'whatsapp:+14155552671',
+        displayPhoneNumber: '+14155552671',
+        encryptedAccessToken: `encrypted:${validAccessToken}`,
+        hasAccessToken: true,
+        phoneNumberId: validPhoneNumberId,
       }),
     );
     expect(mockDbInsertValues).toHaveBeenCalledWith(
@@ -196,22 +196,22 @@ describe('saveWhatsAppSettings', () => {
     );
   });
 
-  it('keeps an existing encrypted auth token when the token input is blank', async () => {
+  it('keeps an existing encrypted access token when the token input is blank', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [{
         config: {
-          encryptedTwilioAuthToken: 'encrypted:stored-token',
-          provider: 'twilio',
-          twilioAccountSid: validAccountSid,
-          twilioAuthTokenPreview: 'bbb...bbbb',
-          twilioWhatsAppFrom: 'whatsapp:+14155552671',
+          accessTokenPreview: 'EAA...bbbb',
+          displayPhoneNumber: '+14155552671',
+          encryptedAccessToken: 'encrypted:stored-token',
+          phoneNumberId: validPhoneNumberId,
+          provider: 'meta',
         },
       }],
     );
     const formData = new FormData();
-    formData.set('twilioAccountSid', validAccountSid);
-    formData.set('twilioWhatsAppFrom', 'whatsapp:+14155552671');
+    formData.set('metaPhoneNumberId', validPhoneNumberId);
+    formData.set('metaDisplayPhoneNumber', '+14155552671');
 
     const result = await saveWhatsApp(formData);
 
@@ -219,25 +219,24 @@ describe('saveWhatsAppSettings', () => {
     expect(mockEncryptSecret).not.toHaveBeenCalled();
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        encryptedTwilioAuthToken: 'encrypted:stored-token',
+        encryptedAccessToken: 'encrypted:stored-token',
       }),
     );
   });
 
-  it('does not write an invalid Twilio configuration', async () => {
+  it('does not write an invalid Meta configuration', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [],
     );
     const formData = new FormData();
-    formData.set('twilioAccountSid', 'not-a-valid-account-sid');
-    formData.set('twilioAuthToken', validAuthToken);
-    formData.set('twilioWhatsAppFrom', 'whatsapp:+14155552671');
+    formData.set('metaPhoneNumberId', 'not-a-valid-id');
+    formData.set('metaAccessToken', validAccessToken);
 
     const result = await saveWhatsApp(formData);
 
     expect(result).toEqual({
-      message: 'invalid_twilio_credentials',
+      message: 'invalid_whatsapp_credentials',
       status: 'error',
     });
     expect(mockDbInsert).not.toHaveBeenCalled();
@@ -252,13 +251,13 @@ describe('disconnectWhatsApp', () => {
     mockAuth.mockResolvedValue({ orgId: 'org_1', userId: 'user_1' });
   });
 
-  it('resets the store Twilio channel and clears its metadata', async () => {
+  it('resets the store WhatsApp channel and clears its metadata', async () => {
     selectRows.push([{
       metadata: {
         channelIntegrations: {
           whatsapp: {
-            twilioAccountSid: validAccountSid,
-            twilioWhatsAppFrom: 'whatsapp:+14155552671',
+            displayPhoneNumber: '+14155552671',
+            phoneNumberId: validPhoneNumberId,
           },
         },
       },

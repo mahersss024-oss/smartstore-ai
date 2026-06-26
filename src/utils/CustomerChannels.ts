@@ -99,7 +99,7 @@ export const buildWhatsAppUrl = (target: string, message: string) => {
 };
 
 const normalizeWhatsAppConnectionStatus = (params: {
-  hasTwilioCredentials: boolean;
+  hasCredentials: boolean;
   status?: unknown;
 }): WhatsAppConnectionStatus => {
   const allowedStatuses = new Set<WhatsAppConnectionStatus>([
@@ -108,7 +108,7 @@ const normalizeWhatsAppConnectionStatus = (params: {
     'pending_setup',
   ]);
 
-  if (!params.hasTwilioCredentials) {
+  if (!params.hasCredentials) {
     return 'pending_setup';
   }
 
@@ -126,29 +126,25 @@ const buildWhatsAppDirectMessage = (storeName: string) => {
 };
 
 export const buildWhatsAppChannelConfig = (params: {
-  encryptedTwilioAuthToken?: null | string;
-  hasTwilioAuthToken?: boolean;
+  displayPhoneNumber?: null | string;
+  encryptedAccessToken?: null | string;
+  hasAccessToken?: boolean;
+  phoneNumberId?: null | string;
   status?: unknown;
   storeName: string;
-  twilioAccountSid?: null | string;
-  twilioMessagingServiceSid?: null | string;
-  twilioWhatsAppFrom?: null | string;
+  wabaId?: null | string;
 }) => {
-  const twilioAccountSid = params.twilioAccountSid?.trim() || null;
-  const twilioMessagingServiceSid = params.twilioMessagingServiceSid?.trim() || null;
-  const twilioWhatsAppFrom = params.twilioWhatsAppFrom?.trim() || null;
-  const normalizedTwilioFrom = twilioWhatsAppFrom
-    ? (twilioWhatsAppFrom.startsWith('whatsapp:') ? twilioWhatsAppFrom : `whatsapp:${twilioWhatsAppFrom}`)
-    : null;
-  const whatsappTarget = normalizeWhatsAppTarget(normalizedTwilioFrom);
-  const hasTwilioCredentials = Boolean(
-    /^AC[a-f\d]{32}$/i.test(twilioAccountSid ?? '')
-    && params.hasTwilioAuthToken
-    && /^whatsapp:\+\d{8,15}$/.test(normalizedTwilioFrom ?? '')
-    && (!twilioMessagingServiceSid || /^MG[a-f\d]{32}$/i.test(twilioMessagingServiceSid)),
+  const phoneNumberId = params.phoneNumberId?.trim() || null;
+  const wabaId = params.wabaId?.trim() || null;
+  const displayPhoneNumber = params.displayPhoneNumber?.trim() || null;
+  const whatsappTarget = normalizeWhatsAppTarget(displayPhoneNumber);
+  const hasMetaCredentials = Boolean(
+    phoneNumberId
+    && /^\d{6,20}$/.test(phoneNumberId)
+    && params.hasAccessToken,
   );
   const connectionStatus = normalizeWhatsAppConnectionStatus({
-    hasTwilioCredentials,
+    hasCredentials: hasMetaCredentials,
     status: params.status,
   });
   const whatsappLink = whatsappTarget
@@ -161,29 +157,29 @@ export const buildWhatsAppChannelConfig = (params: {
       customerMapping: 'whatsapp_phone',
       directLinkStatus: whatsappTarget ? 'ready' : 'missing_number',
       eventArchitecture: 'webhook_ready',
-      mode: 'twilio' as const,
+      mode: 'meta' as const,
       notificationRouting: ['web_chat', 'whatsapp'],
       orderMapping: 'source_channel_order',
-      phoneNumber: normalizedTwilioFrom?.replace(/^whatsapp:/, '') ?? null,
-      provider: 'twilio' as const,
+      phoneNumber: displayPhoneNumber,
+      provider: 'meta' as const,
       qrType: 'whatsapp',
-      webhookReady: hasTwilioCredentials,
+      webhookReady: hasMetaCredentials,
       whatsappLink,
       whatsappTarget,
-      ...(normalizedTwilioFrom
+      ...(phoneNumberId
         ? {
-            connectionMethod: 'twilio_direct_setup',
-            encryptedTwilioAuthToken: params.encryptedTwilioAuthToken ?? null,
-            twilioAccountSid,
-            twilioMessagingServiceSid,
-            twilioWhatsAppFrom: normalizedTwilioFrom,
-            webhookProvider: 'twilio',
+            connectionMethod: 'meta_cloud_api',
+            displayPhoneNumber,
+            encryptedAccessToken: params.encryptedAccessToken ?? null,
+            phoneNumberId,
+            wabaId,
+            webhookProvider: 'meta',
           }
         : {}),
     },
     connectionStatus,
-    isActive: hasTwilioCredentials,
-    mode: 'twilio' as const,
+    isActive: hasMetaCredentials,
+    mode: 'meta' as const,
     whatsappLink,
     whatsappTarget,
   };

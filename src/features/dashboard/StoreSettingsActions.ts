@@ -43,13 +43,13 @@ type StoreSettingsMetadata = {
   };
   channelIntegrations?: {
     whatsapp?: {
+      accessTokenPreview?: string | null;
       connectionStatus?: string;
+      displayPhoneNumber?: string | null;
       mode?: string;
       phoneNumber?: string | null;
-      twilioAccountSid?: string | null;
-      twilioAuthTokenPreview?: string | null;
-      twilioMessagingServiceSid?: string | null;
-      twilioWhatsAppFrom?: string | null;
+      phoneNumberId?: string | null;
+      wabaId?: string | null;
       webhookReady?: boolean;
       whatsappLink?: string | null;
       whatsappTarget?: string | null;
@@ -87,15 +87,15 @@ type StoreSettingsMetadata = {
 type CustomerEntryMode = NonNullable<StoreSettingsMetadata['customerEntry']>['mode'];
 type DefaultCustomerEntryChannel = NonNullable<StoreSettingsMetadata['customerEntry']>['defaultChannel'];
 type ExistingWhatsappConfig = {
+  accessTokenPreview?: string | null;
   connectionStatus?: string | null;
-  encryptedTwilioAuthToken?: string | null;
+  displayPhoneNumber?: string | null;
+  encryptedAccessToken?: string | null;
   mode?: string | null;
   phoneNumber?: string | null;
+  phoneNumberId?: string | null;
   provider?: string | null;
-  twilioAccountSid?: string | null;
-  twilioAuthTokenPreview?: string | null;
-  twilioMessagingServiceSid?: string | null;
-  twilioWhatsAppFrom?: string | null;
+  wabaId?: string | null;
 };
 
 type ExistingStoreNameMetadata = {
@@ -110,7 +110,7 @@ type SettingsValidationErrorCode
     | 'invalid_logo_url'
     | 'invalid_map_url'
     | 'invalid_theme_color'
-    | 'invalid_twilio_credentials'
+    | 'invalid_whatsapp_credentials'
     | 'invalid_store_description'
     | 'invalid_store_name';
 
@@ -210,88 +210,51 @@ const getExistingWhatsappConfig = async (organizationId: string) => {
     : {};
 };
 
-const normalizeTwilioWhatsAppFrom = (value?: null | string) => {
-  const trimmed = value?.trim() ?? '';
-
-  if (!trimmed) {
-    return null;
-  }
-
-  return trimmed.startsWith('whatsapp:') ? trimmed : `whatsapp:${trimmed}`;
-};
-
-const resolveTwilioConnectionInput = (
+const resolveMetaConnectionInput = (
   formData: FormData,
   existing: ExistingWhatsappConfig,
 ) => {
-  const submittedAccountSid = String(formData.get('twilioAccountSid') ?? '').trim();
-  const submittedAuthToken = String(formData.get('twilioAuthToken') ?? '').trim();
-  const submittedMessagingServiceSid = String(
-    formData.get('twilioMessagingServiceSid') ?? '',
-  ).trim();
-  const submittedFrom = String(formData.get('twilioWhatsAppFrom') ?? '').trim();
-  const accountSid = submittedAccountSid || existing.twilioAccountSid?.trim() || null;
-  const authToken = submittedAuthToken
-    || (existing.encryptedTwilioAuthToken
-      ? decryptSecret(existing.encryptedTwilioAuthToken)
+  const submittedPhoneNumberId = String(formData.get('metaPhoneNumberId') ?? '').trim();
+  const submittedAccessToken = String(formData.get('metaAccessToken') ?? '').trim();
+  const submittedWabaId = String(formData.get('metaWabaId') ?? '').trim();
+  const submittedDisplayPhone = String(formData.get('metaDisplayPhoneNumber') ?? '').trim();
+  const phoneNumberId = submittedPhoneNumberId || existing.phoneNumberId?.trim() || null;
+  const accessToken = submittedAccessToken
+    || (existing.encryptedAccessToken
+      ? decryptSecret(existing.encryptedAccessToken)
       : undefined);
-  const encryptedAuthToken = submittedAuthToken
-    ? encryptSecret(submittedAuthToken)
-    : existing.encryptedTwilioAuthToken ?? null;
-  const messagingServiceSid = submittedMessagingServiceSid
-    || existing.twilioMessagingServiceSid?.trim()
-    || null;
-  const whatsappFrom = normalizeTwilioWhatsAppFrom(
-    submittedFrom || existing.twilioWhatsAppFrom,
-  );
+  const encryptedAccessToken = submittedAccessToken
+    ? encryptSecret(submittedAccessToken)
+    : existing.encryptedAccessToken ?? null;
+  const wabaId = submittedWabaId || existing.wabaId?.trim() || null;
+  const displayPhoneNumber = submittedDisplayPhone || existing.displayPhoneNumber?.trim() || null;
 
-  logSecretLengthDiagnostics('twilio.auth_token.save_store_settings', {
-    decryptedLength: authToken?.length ?? null,
-    inputLength: submittedAuthToken.length || null,
-    retrievedLength: existing.encryptedTwilioAuthToken?.length ?? null,
-    storedLength: encryptedAuthToken?.length ?? null,
+  logSecretLengthDiagnostics('meta.access_token.save_store_settings', {
+    decryptedLength: accessToken?.length ?? null,
+    inputLength: submittedAccessToken.length || null,
+    retrievedLength: existing.encryptedAccessToken?.length ?? null,
+    storedLength: encryptedAccessToken?.length ?? null,
   });
 
   return {
-    accountSid,
-    authToken,
-    authTokenPreview: submittedAuthToken
-      ? maskApiKey(submittedAuthToken)
-      : existing.twilioAuthTokenPreview ?? null,
-    encryptedAuthToken,
-    hasAuthToken: Boolean(authToken && encryptedAuthToken),
-    messagingServiceSid,
-    submittedCredentials: Boolean(submittedAccountSid || submittedAuthToken),
-    whatsappFrom,
+    accessToken,
+    accessTokenPreview: submittedAccessToken
+      ? maskApiKey(submittedAccessToken)
+      : existing.accessTokenPreview ?? null,
+    displayPhoneNumber,
+    encryptedAccessToken,
+    hasAccessToken: Boolean(accessToken && encryptedAccessToken),
+    phoneNumberId,
+    submittedCredentials: Boolean(submittedPhoneNumberId || submittedAccessToken),
+    wabaId,
   };
 };
 
-const isTwilioConnectionShapeValid = (
-  input: ReturnType<typeof resolveTwilioConnectionInput>,
+const isMetaConnectionShapeValid = (
+  input: ReturnType<typeof resolveMetaConnectionInput>,
 ) => {
-  return /^AC[a-f\d]{32}$/i.test(input.accountSid ?? '')
-    && /^[a-f\d]{32}$/i.test(input.authToken ?? '')
-    && /^whatsapp:\+\d{8,15}$/.test(input.whatsappFrom ?? '')
-    && (
-      !input.messagingServiceSid
-      || /^MG[a-f\d]{32}$/i.test(input.messagingServiceSid)
-    );
-};
-
-const verifySubmittedTwilioCredentials = async (
-  input: ReturnType<typeof resolveTwilioConnectionInput>,
-) => {
-  if (!input.submittedCredentials) {
-    return true;
-  }
-
-  if (!input.accountSid || !input.authToken) {
-    return false;
-  }
-
-  // Legacy WhatsApp connection settings are being migrated to Meta Cloud API
-  // onboarding; validate the submitted account id locally (no provider call).
-  return /^AC[a-f\d]{32}$/i.test(input.accountSid);
+  return /^\d{6,20}$/.test(input.phoneNumberId ?? '')
+    && Boolean(input.accessToken);
 };
 
 const normalizeStoreNameForComparison = (value: string) => {
@@ -571,32 +534,21 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
   }
 
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
-  const twilio = resolveTwilioConnectionInput(formData, existingWhatsappConfig);
-  const hasAnyTwilioSetting = Boolean(
-    twilio.accountSid
-    || twilio.authToken
-    || twilio.messagingServiceSid
-    || twilio.whatsappFrom,
-  );
+  const meta = resolveMetaConnectionInput(formData, existingWhatsappConfig);
+  const hasAnyMetaSetting = Boolean(meta.phoneNumberId || meta.accessToken);
 
-  if (
-    hasAnyTwilioSetting
-    && (
-      !isTwilioConnectionShapeValid(twilio)
-      || !await verifySubmittedTwilioCredentials(twilio)
-    )
-  ) {
-    redirectValidationError(locale, 'invalid_twilio_credentials');
+  if (hasAnyMetaSetting && !isMetaConnectionShapeValid(meta)) {
+    redirectValidationError(locale, 'invalid_whatsapp_credentials');
   }
 
   const whatsappChannel = buildWhatsAppChannelConfig({
-    encryptedTwilioAuthToken: twilio.encryptedAuthToken,
-    hasTwilioAuthToken: twilio.hasAuthToken,
+    displayPhoneNumber: meta.displayPhoneNumber,
+    encryptedAccessToken: meta.encryptedAccessToken,
+    hasAccessToken: meta.hasAccessToken,
+    phoneNumberId: meta.phoneNumberId,
     status: submittedWhatsappStatus,
     storeName,
-    twilioAccountSid: twilio.accountSid,
-    twilioMessagingServiceSid: twilio.messagingServiceSid,
-    twilioWhatsAppFrom: twilio.whatsappFrom,
+    wabaId: meta.wabaId,
   });
 
   // Store settings metadata and the WhatsApp channel connection must move
@@ -619,13 +571,13 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       channelIntegrations: {
         ...(lockedMetadata.channelIntegrations ?? {}),
         whatsapp: {
+          accessTokenPreview: meta.accessTokenPreview,
           connectionStatus: whatsappChannel.connectionStatus,
+          displayPhoneNumber: meta.displayPhoneNumber,
           mode: whatsappChannel.mode,
-          phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
-          twilioAccountSid: twilio.accountSid,
-          twilioAuthTokenPreview: twilio.authTokenPreview,
-          twilioMessagingServiceSid: twilio.messagingServiceSid,
-          twilioWhatsAppFrom: twilio.whatsappFrom,
+          phoneNumber: meta.displayPhoneNumber,
+          phoneNumberId: meta.phoneNumberId,
+          wabaId: meta.wabaId,
           webhookReady: whatsappChannel.connectionStatus === 'connected',
           whatsappLink: whatsappChannel.whatsappLink,
           whatsappTarget: whatsappChannel.whatsappTarget,
@@ -633,7 +585,7 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       },
       contactChannels: {
         ...(lockedMetadata.contactChannels ?? {}),
-        whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
+        whatsapp: meta.displayPhoneNumber || undefined,
         email: email || undefined,
         phone: phone || undefined,
       },
@@ -741,27 +693,24 @@ export const saveWhatsAppSettings = async (
     .limit(1);
 
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
-  const twilio = resolveTwilioConnectionInput(formData, existingWhatsappConfig);
+  const meta = resolveMetaConnectionInput(formData, existingWhatsappConfig);
 
-  if (
-    !isTwilioConnectionShapeValid(twilio)
-    || !await verifySubmittedTwilioCredentials(twilio)
-  ) {
+  if (!isMetaConnectionShapeValid(meta)) {
     return {
-      message: 'invalid_twilio_credentials',
+      message: 'invalid_whatsapp_credentials',
       status: 'error',
     };
   }
 
   const whatsappChannel = buildWhatsAppChannelConfig({
-    encryptedTwilioAuthToken: twilio.encryptedAuthToken,
-    hasTwilioAuthToken: twilio.hasAuthToken,
+    displayPhoneNumber: meta.displayPhoneNumber,
+    encryptedAccessToken: meta.encryptedAccessToken,
+    hasAccessToken: meta.hasAccessToken,
+    phoneNumberId: meta.phoneNumberId,
     storeName: existingSettings?.storeName
       || String(formData.get('storeName') ?? '').trim()
       || 'SmartStore',
-    twilioAccountSid: twilio.accountSid,
-    twilioMessagingServiceSid: twilio.messagingServiceSid,
-    twilioWhatsAppFrom: twilio.whatsappFrom,
+    wabaId: meta.wabaId,
   });
 
   // Keep metadata and the WhatsApp channel connection atomic (see saveStoreSettings).
@@ -783,11 +732,11 @@ export const saveWhatsAppSettings = async (
         whatsapp: {
           connectionStatus: whatsappChannel.connectionStatus,
           mode: whatsappChannel.mode,
-          phoneNumber: twilio.whatsappFrom?.replace(/^whatsapp:/, '') ?? null,
-          twilioAccountSid: twilio.accountSid,
-          twilioAuthTokenPreview: twilio.authTokenPreview,
-          twilioMessagingServiceSid: twilio.messagingServiceSid,
-          twilioWhatsAppFrom: twilio.whatsappFrom,
+          accessTokenPreview: meta.accessTokenPreview,
+          displayPhoneNumber: meta.displayPhoneNumber,
+          phoneNumber: meta.displayPhoneNumber,
+          phoneNumberId: meta.phoneNumberId,
+          wabaId: meta.wabaId,
           webhookReady: whatsappChannel.connectionStatus === 'connected',
           whatsappLink: whatsappChannel.whatsappLink,
           whatsappTarget: whatsappChannel.whatsappTarget,
@@ -795,7 +744,7 @@ export const saveWhatsAppSettings = async (
       },
       contactChannels: {
         ...(lockedMetadata.contactChannels ?? {}),
-        whatsapp: twilio.whatsappFrom?.replace(/^whatsapp:/, '') || undefined,
+        whatsapp: meta.displayPhoneNumber || undefined,
       },
     };
 
@@ -844,7 +793,7 @@ export const saveWhatsAppSettings = async (
   revalidatePath(getI18nPath(`/admin/stores/${organizationId}`, locale));
 
   return {
-    message: 'twilio_settings_saved',
+    message: 'whatsapp_settings_saved',
     status: 'success',
   };
 };

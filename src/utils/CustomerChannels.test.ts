@@ -56,7 +56,7 @@ describe('CustomerChannels', () => {
     );
   });
 
-  it('marks WhatsApp as pending setup when Twilio credentials are missing', () => {
+  it('marks WhatsApp as pending setup when Meta credentials are missing', () => {
     expect(buildWhatsAppChannelConfig({
       storeName: 'SmartStore',
     })).toMatchObject({
@@ -67,47 +67,46 @@ describe('CustomerChannels', () => {
     });
   });
 
-  it('prepares the only supported WhatsApp provider through per-store Twilio credentials', () => {
+  it('prepares the WhatsApp Cloud API (Meta) connection from per-store credentials', () => {
     const config = buildWhatsAppChannelConfig({
-      encryptedTwilioAuthToken: 'encrypted-token',
-      hasTwilioAuthToken: true,
+      displayPhoneNumber: '+14155552671',
+      encryptedAccessToken: 'encrypted-token',
+      hasAccessToken: true,
+      phoneNumberId: '1119417571262523',
       storeName: 'SmartStore',
-      twilioAccountSid: `AC${'a'.repeat(32)}`,
-      twilioMessagingServiceSid: `MG${'b'.repeat(32)}`,
-      twilioWhatsAppFrom: 'whatsapp:+14155552671',
+      wabaId: '2238131017017899',
     });
 
     expect(config).toMatchObject({
       connectionStatus: 'connected',
       isActive: true,
-      mode: 'twilio',
+      mode: 'meta',
       whatsappTarget: 'https://wa.me/14155552671',
     });
     expect(config.config).toMatchObject({
-      connectionMethod: 'twilio_direct_setup',
+      connectionMethod: 'meta_cloud_api',
       customerMapping: 'whatsapp_phone',
       eventArchitecture: 'webhook_ready',
+      encryptedAccessToken: 'encrypted-token',
       orderMapping: 'source_channel_order',
-      provider: 'twilio',
-      twilioAccountSid: `AC${'a'.repeat(32)}`,
-      twilioMessagingServiceSid: `MG${'b'.repeat(32)}`,
-      twilioWhatsAppFrom: 'whatsapp:+14155552671',
+      phoneNumberId: '1119417571262523',
+      provider: 'meta',
+      wabaId: '2238131017017899',
       webhookReady: true,
     });
   });
 
-  it('does not activate a store with an incomplete Twilio configuration', () => {
+  it('does not activate a store with an incomplete Meta configuration', () => {
     const config = buildWhatsAppChannelConfig({
+      phoneNumberId: '1119417571262523',
       status: 'connected',
       storeName: 'SmartStore',
-      twilioAccountSid: `AC${'a'.repeat(32)}`,
-      twilioWhatsAppFrom: 'whatsapp:+14155552671',
     });
 
     expect(config).toMatchObject({
       connectionStatus: 'pending_setup',
       isActive: false,
-      mode: 'twilio',
+      mode: 'meta',
     });
   });
 

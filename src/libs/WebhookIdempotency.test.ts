@@ -204,7 +204,7 @@ describe('WebhookIdempotency', () => {
     const lock = await acquireWebhookProcessingLock({
       eventId: 'whatsapp:phone:customer',
       eventType: 'whatsapp.thread.processing',
-      provider: 'twilio_thread_lock',
+      provider: 'meta_thread_lock',
     });
 
     expect(lock).toMatchObject({
@@ -231,7 +231,7 @@ describe('WebhookIdempotency', () => {
       eventId: 'whatsapp:phone:customer',
       eventType: 'whatsapp.thread.processing',
       now,
-      provider: 'twilio_thread_lock',
+      provider: 'meta_thread_lock',
     });
 
     expect(lock).toMatchObject({
@@ -256,7 +256,7 @@ describe('WebhookIdempotency', () => {
       eventId: 'whatsapp:phone:customer2',
       eventType: 'whatsapp.thread.processing',
       now,
-      provider: 'twilio_thread_lock',
+      provider: 'meta_thread_lock',
     });
 
     expect(lock).toMatchObject({

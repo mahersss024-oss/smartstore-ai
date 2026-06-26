@@ -439,8 +439,8 @@ export default async function PlatformAdminPage(props: AdminPageProps) {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {text(
                     locale,
-                    'أسرار التشغيل الداخلية تحفظ مشفرة هنا. بيانات Twilio تُضبط من متغيرات البيئة في Vercel.',
-                    'Internal runtime secrets are stored encrypted here. Twilio credentials are configured via Vercel environment variables.',
+                    'أسرار التشغيل الداخلية تحفظ مشفرة هنا. بيانات واتساب لكل متجر تحفظ مشفرة في إعدادات المتجر.',
+                    'Internal runtime secrets are stored encrypted here. Per-store WhatsApp credentials are stored encrypted from the store settings page.',
                   )}
                 </p>
               </div>

@@ -110,7 +110,7 @@ export default async function WebOrderPage(props: {
   const [settings] = await db
     .select({
       // Only the public-facing metadata sub-objects are loaded; this deliberately
-      // excludes channelIntegrations (which holds the encrypted Twilio auth token)
+      // excludes channelIntegrations (which holds the encrypted WhatsApp access token)
       // from a public, unauthenticated page query.
       metadata: sql<{
         aiEmployee?: unknown;

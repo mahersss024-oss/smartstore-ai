@@ -215,13 +215,13 @@ export default async function SettingsPage(props: {
     businessType?: string;
     channelIntegrations?: {
       whatsapp?: {
+        accessTokenPreview?: string | null;
         connectionStatus?: string;
+        displayPhoneNumber?: string | null;
         mode?: string;
         phoneNumber?: string | null;
-        twilioAccountSid?: string | null;
-        twilioAuthTokenPreview?: string | null;
-        twilioMessagingServiceSid?: string | null;
-        twilioWhatsAppFrom?: string | null;
+        phoneNumberId?: string | null;
+        wabaId?: string | null;
         whatsappLink?: string | null;
         whatsappTarget?: string | null;
       };
@@ -271,36 +271,36 @@ export default async function SettingsPage(props: {
   };
   const whatsappConnection = channelConnections.find(connection => connection.channel === 'whatsapp');
   const whatsappConfig = (whatsappConnection?.config ?? {}) as {
+    accessTokenPreview?: string | null;
     connectionStatus?: string;
-    encryptedTwilioAuthToken?: string | null;
+    displayPhoneNumber?: string | null;
+    encryptedAccessToken?: string | null;
+    phoneNumberId?: string | null;
     provider?: string | null;
-    twilioAccountSid?: string | null;
-    twilioAuthTokenPreview?: string | null;
-    twilioMessagingServiceSid?: string | null;
-    twilioWhatsAppFrom?: string | null;
+    wabaId?: string | null;
     whatsappLink?: string | null;
     whatsappTarget?: string | null;
   };
-  const twilioWhatsAppFrom = whatsappConfig.twilioWhatsAppFrom
-    ?? metadata?.channelIntegrations?.whatsapp?.twilioWhatsAppFrom
+  const metaPhoneNumberId = whatsappConfig.phoneNumberId
+    ?? metadata?.channelIntegrations?.whatsapp?.phoneNumberId
     ?? '';
-  const twilioAccountSid = whatsappConfig.twilioAccountSid
-    ?? metadata?.channelIntegrations?.whatsapp?.twilioAccountSid
+  const metaDisplayPhoneNumber = whatsappConfig.displayPhoneNumber
+    ?? metadata?.channelIntegrations?.whatsapp?.displayPhoneNumber
     ?? '';
-  const twilioAuthTokenPreview = whatsappConfig.twilioAuthTokenPreview
-    ?? metadata?.channelIntegrations?.whatsapp?.twilioAuthTokenPreview
+  const metaAccessTokenPreview = whatsappConfig.accessTokenPreview
+    ?? metadata?.channelIntegrations?.whatsapp?.accessTokenPreview
     ?? '';
-  const twilioMessagingServiceSid = whatsappConfig.twilioMessagingServiceSid
-    ?? metadata?.channelIntegrations?.whatsapp?.twilioMessagingServiceSid
+  const metaWabaId = whatsappConfig.wabaId
+    ?? metadata?.channelIntegrations?.whatsapp?.wabaId
     ?? '';
   const whatsappChannel = buildWhatsAppChannelConfig({
-    encryptedTwilioAuthToken: whatsappConfig.encryptedTwilioAuthToken,
-    hasTwilioAuthToken: Boolean(whatsappConfig.encryptedTwilioAuthToken),
+    displayPhoneNumber: metaDisplayPhoneNumber,
+    encryptedAccessToken: whatsappConfig.encryptedAccessToken,
+    hasAccessToken: Boolean(whatsappConfig.encryptedAccessToken),
+    phoneNumberId: metaPhoneNumberId,
     status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
     storeName: currentSettings?.storeName ?? 'SmartStore',
-    twilioAccountSid,
-    twilioMessagingServiceSid,
-    twilioWhatsAppFrom,
+    wabaId: metaWabaId,
   });
   const isPaymentActive = (provider: string) => {
     return paymentMethods.find(method => method.provider === provider)?.isActive ?? false;
@@ -328,7 +328,7 @@ export default async function SettingsPage(props: {
     'invalid_logo_url',
     'invalid_map_url',
     'invalid_theme_color',
-    'invalid_twilio_credentials',
+    'invalid_whatsapp_credentials',
     'invalid_store_description',
     'invalid_store_name',
   ] as const;
@@ -347,18 +347,18 @@ export default async function SettingsPage(props: {
   const buildAbsoluteLink = (path: string) => {
     return requestHost ? `${requestProtocol}://${requestHost}${path}` : path;
   };
-  const twilioCredentialChecks = [
+  const metaCredentialChecks = [
     {
-      isReady: /^AC[a-f\d]{32}$/i.test(twilioAccountSid),
-      labelKey: 'whatsapp_check_twilio_account_sid',
+      isReady: /^\d{6,20}$/.test(metaPhoneNumberId),
+      labelKey: 'whatsapp_check_meta_phone_number_id',
     },
     {
-      isReady: Boolean(whatsappConfig.encryptedTwilioAuthToken),
-      labelKey: 'whatsapp_check_twilio_auth_token',
+      isReady: Boolean(whatsappConfig.encryptedAccessToken),
+      labelKey: 'whatsapp_check_meta_access_token',
     },
     {
-      isReady: /^whatsapp:\+\d{8,15}$/.test(twilioWhatsAppFrom),
-      labelKey: 'whatsapp_check_twilio_number',
+      isReady: Boolean(metaDisplayPhoneNumber),
+      labelKey: 'whatsapp_check_meta_display_number',
     },
   ] as const;
   const buildConnectLink = (source: string) => {
@@ -780,35 +780,35 @@ export default async function SettingsPage(props: {
             >
               <div className="grid gap-2">
                 <label
-                  htmlFor="twilioAccountSid"
+                  htmlFor="metaPhoneNumberId"
                   className="text-sm font-medium"
                 >
-                  {t('twilio_account_sid')}
+                  {t('meta_phone_number_id')}
                 </label>
                 <input
-                  id="twilioAccountSid"
-                  name="twilioAccountSid"
+                  id="metaPhoneNumberId"
+                  name="metaPhoneNumberId"
                   autoComplete="off"
-                  defaultValue={twilioAccountSid}
-                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  defaultValue={metaPhoneNumberId}
+                  placeholder="1119417571262523"
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
               </div>
 
               <div className="grid gap-2">
-                <label htmlFor="twilioAuthToken" className="text-sm font-medium">
-                  {t('twilio_auth_token')}
+                <label htmlFor="metaAccessToken" className="text-sm font-medium">
+                  {t('meta_access_token')}
                 </label>
                 <input
-                  id="twilioAuthToken"
-                  name="twilioAuthToken"
+                  id="metaAccessToken"
+                  name="metaAccessToken"
                   type="password"
                   autoComplete="off"
-                  placeholder={twilioAuthTokenPreview || '********************************'}
+                  placeholder={metaAccessTokenPreview || '********************************'}
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('twilio_auth_token_hint')}
+                  {t('meta_access_token_hint')}
                 </p>
               </div>
             </div>
@@ -820,50 +820,50 @@ export default async function SettingsPage(props: {
             >
               <div className="grid gap-2">
                 <label
-                  htmlFor="twilioWhatsAppFrom"
+                  htmlFor="metaDisplayPhoneNumber"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t('twilio_whatsapp_from')}
+                  {t('meta_display_phone_number')}
                 </label>
                 <input
-                  id="twilioWhatsAppFrom"
-                  name="twilioWhatsAppFrom"
+                  id="metaDisplayPhoneNumber"
+                  name="metaDisplayPhoneNumber"
                   autoComplete="off"
-                  defaultValue={twilioWhatsAppFrom}
-                  placeholder="whatsapp:+14155552671"
+                  defaultValue={metaDisplayPhoneNumber}
+                  placeholder="+9665xxxxxxxx"
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
               </div>
 
               <div className="grid gap-2">
                 <label
-                  htmlFor="twilioMessagingServiceSid"
+                  htmlFor="metaWabaId"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t('twilio_messaging_service_sid')}
+                  {t('meta_waba_id')}
                 </label>
                 <input
-                  id="twilioMessagingServiceSid"
-                  name="twilioMessagingServiceSid"
+                  id="metaWabaId"
+                  name="metaWabaId"
                   autoComplete="off"
-                  defaultValue={twilioMessagingServiceSid}
-                  placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  defaultValue={metaWabaId}
+                  placeholder="2238131017017899"
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t('twilio_messaging_service_sid_hint')}
+                  {t('meta_waba_id_hint')}
                 </p>
               </div>
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="twilioWebhookUrl" className="text-sm font-medium">
-                {t('twilio_webhook_url')}
+              <label htmlFor="metaWebhookUrl" className="text-sm font-medium">
+                {t('meta_webhook_url')}
               </label>
               <input
-                id="twilioWebhookUrl"
+                id="metaWebhookUrl"
                 readOnly
-                value={buildAbsoluteLink('/api/twilio/webhook')}
+                value={buildAbsoluteLink('/api/whatsapp/webhook')}
                 className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
               />
             </div>
@@ -874,7 +874,7 @@ export default async function SettingsPage(props: {
                 md:grid-cols-2
               "
               >
-                {twilioCredentialChecks.map(item => (
+                {metaCredentialChecks.map(item => (
                   <div
                     key={item.labelKey}
                     className="
@@ -947,7 +947,7 @@ export default async function SettingsPage(props: {
             >
               <WhatsAppSettingsSubmit
                 action={saveWhatsAppSettings.bind(null, locale)}
-                errorLabel={t('validation_error_invalid_twilio_credentials')}
+                errorLabel={t('validation_error_invalid_whatsapp_credentials')}
                 pendingLabel={t('save_whatsapp_settings')}
                 saveLabel={t('save_whatsapp_settings')}
                 successLabel={t('whatsapp_saved_description')}

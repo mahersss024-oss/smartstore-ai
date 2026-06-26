@@ -22,7 +22,7 @@ describe('SecurityHeaders', () => {
     expect(csp).toContain('frame-ancestors \'self\'');
     expect(csp).toContain('https://clerk.smartstore-ai.com');
     expect(csp).toContain('https://*.sentry.io');
-    expect(csp).toContain('https://api.twilio.com');
+    expect(csp).toContain('https://api.deepseek.com');
   });
 
   it('does not send HSTS outside production builds', () => {
