@@ -1,6 +1,7 @@
 import type { MetaOutboundMessage } from './MetaInteractiveMessage';
 import type { MetaInboundMessage, MetaStoreConnection } from './MetaWhatsApp';
 import { sendTrustedWebhookChatMessage } from '@/features/customer/WebChatActions';
+import { Env } from './Env';
 import { logger } from './Logger';
 import { buildMetaOutboundMessage, resolveMetaInteractiveHints } from './MetaInteractiveMessage';
 import {
@@ -86,6 +87,7 @@ export const sendMetaConversationTextMessage = async (params: {
   try {
     await sendMetaWhatsAppText({
       accessToken: connection.accessToken,
+      appSecret: Env.META_APP_SECRET ?? '',
       body: params.body,
       phoneNumberId: connection.phoneNumberId,
       to: thread.customerPhone,
@@ -112,6 +114,7 @@ const deliverMetaMessage = async (params: {
   if (message.kind === 'buttons') {
     await sendMetaWhatsAppButtons({
       accessToken: connection.accessToken,
+      appSecret: Env.META_APP_SECRET ?? '',
       body: message.body,
       buttons: message.buttons,
       phoneNumberId: connection.phoneNumberId,
@@ -124,6 +127,7 @@ const deliverMetaMessage = async (params: {
   if (message.kind === 'list') {
     await sendMetaWhatsAppList({
       accessToken: connection.accessToken,
+      appSecret: Env.META_APP_SECRET ?? '',
       body: message.body,
       buttonLabel: message.buttonLabel,
       phoneNumberId: connection.phoneNumberId,
@@ -137,6 +141,7 @@ const deliverMetaMessage = async (params: {
 
   await sendMetaWhatsAppText({
     accessToken: connection.accessToken,
+    appSecret: Env.META_APP_SECRET ?? '',
     body: message.body,
     phoneNumberId: connection.phoneNumberId,
     to,

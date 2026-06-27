@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildMetaAppSecretProof,
   MetaWhatsAppSendError,
   parseMetaWebhookPayload,
   sendMetaWhatsAppText,
@@ -104,8 +105,37 @@ describe('MetaWhatsApp', () => {
   });
 
   describe('sendMetaWhatsAppText', () => {
+    it('adds appsecret_proof to Meta Graph send requests', async () => {
+      const accessToken = 'EA_TEST_SECRET_TOKEN';
+      const appSecret = 'meta_app_secret';
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+        messages: [{ id: 'wamid.outbound' }],
+      }), { status: 200 }));
+
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(sendMetaWhatsAppText({
+        accessToken,
+        appSecret,
+        body: 'hello',
+        phoneNumberId: '1173797649153295',
+        to: '966549764152',
+      })).resolves.toBe('wamid.outbound');
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const [requestInput] = fetchMock.mock.calls[0] as unknown as [URL | string, RequestInit?];
+      const requestUrl = new URL(String(requestInput));
+
+      expect(requestUrl.searchParams.get('appsecret_proof')).toBe(buildMetaAppSecretProof({
+        accessToken,
+        appSecret,
+      }));
+    });
+
     it('throws a structured Meta error without leaking the access token', async () => {
       const accessToken = 'EA_TEST_SECRET_TOKEN';
+      const appSecret = 'meta_app_secret';
 
       vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
         error: {
@@ -119,6 +149,7 @@ describe('MetaWhatsApp', () => {
 
       await expect(sendMetaWhatsAppText({
         accessToken,
+        appSecret,
         body: 'hello',
         phoneNumberId: '1173797649153295',
         to: '966549764152',
@@ -132,6 +163,7 @@ describe('MetaWhatsApp', () => {
 
       await sendMetaWhatsAppText({
         accessToken,
+        appSecret,
         body: 'hello',
         phoneNumberId: '1173797649153295',
         to: '966549764152',

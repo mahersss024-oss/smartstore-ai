@@ -24,6 +24,13 @@ const truncate = (value: string, max: number) => {
   return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1).trimEnd()}…`;
 };
 
+export const buildMetaAppSecretProof = (params: {
+  accessToken: string;
+  appSecret: string;
+}) => {
+  return createHmac('sha256', params.appSecret).update(params.accessToken).digest('hex');
+};
+
 export type MetaInboundMessage = {
   body: string;
   from: string;
@@ -206,12 +213,26 @@ export const parseMetaWebhookPayload = (payload: unknown): MetaInboundMessage | 
 
 const sendMetaPayload = async (params: {
   accessToken: string;
+  appSecret: string;
   payload: Record<string, unknown>;
   phoneNumberId: string;
   to: string;
 }): Promise<string | undefined> => {
+  if (!params.appSecret.trim()) {
+    throw new MetaWhatsAppSendError({
+      message: 'meta_app_secret_missing',
+      status: 0,
+    });
+  }
+
+  const url = new URL(`${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${params.phoneNumberId}/messages`);
+  url.searchParams.set('appsecret_proof', buildMetaAppSecretProof({
+    accessToken: params.accessToken,
+    appSecret: params.appSecret,
+  }));
+
   const response = await fetch(
-    `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${params.phoneNumberId}/messages`,
+    url,
     {
       body: JSON.stringify({
         messaging_product: 'whatsapp',
@@ -254,12 +275,14 @@ const sendMetaPayload = async (params: {
 
 export const sendMetaWhatsAppText = async (params: {
   accessToken: string;
+  appSecret: string;
   body: string;
   phoneNumberId: string;
   to: string;
 }) => {
   return sendMetaPayload({
     accessToken: params.accessToken,
+    appSecret: params.appSecret,
     payload: {
       text: { body: params.body, preview_url: false },
       type: 'text',
@@ -271,6 +294,7 @@ export const sendMetaWhatsAppText = async (params: {
 
 export const sendMetaWhatsAppButtons = async (params: {
   accessToken: string;
+  appSecret: string;
   body: string;
   buttons: MetaReplyButton[];
   phoneNumberId: string;
@@ -283,6 +307,7 @@ export const sendMetaWhatsAppButtons = async (params: {
 
   return sendMetaPayload({
     accessToken: params.accessToken,
+    appSecret: params.appSecret,
     payload: {
       interactive: {
         action: { buttons },
@@ -298,6 +323,7 @@ export const sendMetaWhatsAppButtons = async (params: {
 
 export const sendMetaWhatsAppList = async (params: {
   accessToken: string;
+  appSecret: string;
   body: string;
   buttonLabel: string;
   phoneNumberId: string;
@@ -313,6 +339,7 @@ export const sendMetaWhatsAppList = async (params: {
 
   return sendMetaPayload({
     accessToken: params.accessToken,
+    appSecret: params.appSecret,
     payload: {
       interactive: {
         action: {
