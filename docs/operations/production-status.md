@@ -14,7 +14,7 @@ load testing, monitoring, recovery drills, and database-level tenant isolation.
 
 ## Completed
 
-- Cloud deployment is live on Vercel.
+- Cloud deployment is live on Render.
 - Managed PostgreSQL is connected for the cloud demo.
 - Clerk authentication and organization-based dashboard access are in place.
 - Store dashboard, products, orders, customers, settings, subscription, AI

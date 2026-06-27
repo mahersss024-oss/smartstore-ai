@@ -4,7 +4,7 @@ Generated: 2026-06-08
 
 ## Immediate rollback
 
-1. Open Vercel project deployments.
+1. Open Render service deployments.
 2. Select the last known-good deployment.
 3. Promote/redeploy it to production.
 4. Run production smoke test.
@@ -27,4 +27,3 @@ Current recommended flags to keep available in hosting env:
 - `MAINTENANCE_SECRET`
 
 Future hardening should add explicit `DISABLE_AI`, `DISABLE_ORDER_EXECUTION`, `DISABLE_PAYMENTS`, `MAINTENANCE_MODE`, and `READ_ONLY_MODE`.
-

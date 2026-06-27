@@ -67,5 +67,5 @@ export default async function proxy(
 }
 
 export const config = {
-  matcher: '/((?!_next|_vercel|monitoring|.*\\..*).*)',
+  matcher: '/((?!_next|monitoring|.*\\..*).*)',
 };

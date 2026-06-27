@@ -1,6 +1,10 @@
 import { defineConfig } from 'checkly';
 import { EmailAlertChannel, Frequency } from 'checkly/constructs';
 
+const protectedHeaders = process.env.CHECKLY_BYPASS_TOKEN
+  ? { 'x-smartstore-check-bypass': process.env.CHECKLY_BYPASS_TOKEN }
+  : {};
+
 const sendDefaults = {
   sendFailure: true,
   sendRecovery: true,
@@ -27,9 +31,7 @@ export const config = defineConfig({
     playwrightConfig: {
       use: {
         baseURL: process.env.ENVIRONMENT_URL ?? process.env.NEXT_PUBLIC_APP_URL,
-        extraHTTPHeaders: {
-          'x-vercel-protection-bypass': process.env.VERCEL_BYPASS_TOKEN,
-        },
+        extraHTTPHeaders: protectedHeaders,
       },
     },
   },

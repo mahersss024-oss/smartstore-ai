@@ -129,7 +129,8 @@ if (
   );
 }
 
-const isProductionDeployment = process.env.VERCEL_ENV === 'production'
+const isProductionDeployment = process.env.RENDER === 'true'
+  || Boolean(process.env.RENDER_SERVICE_ID)
   || process.env.SMARTSTORE_VALIDATE_PRODUCTION_ENV === 'true';
 
 if (isProductionDeployment) {

@@ -40,7 +40,7 @@ jobs:
         if: env.CHECKLY_API_KEY != '' && env.CHECKLY_ACCOUNT_ID != ''
         run: npx dotenv -c production -- npx checkly test --reporter=github --record
         env:
-          VERCEL_BYPASS_TOKEN: ${{ secrets.VERCEL_BYPASS_TOKEN }}
+          CHECKLY_BYPASS_TOKEN: ${{ secrets.CHECKLY_BYPASS_TOKEN }}
           ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
 
       - name: Create summary # export the markdown report to the job summary.
