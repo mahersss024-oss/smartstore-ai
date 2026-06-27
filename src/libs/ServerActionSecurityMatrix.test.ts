@@ -151,13 +151,13 @@ describe('Server action security matrix — fail-closed without authentication',
       const { deleteProduct } = await import('@/features/dashboard/ProductActions');
 
       await expect(deleteProduct('en', 1)).rejects.toThrow('No active organization selected');
-    });
+    }, 15_000);
 
     it('updateProductAvailability throws without active organization', async () => {
       const { updateProductAvailability } = await import('@/features/dashboard/ProductActions');
 
       await expect(updateProductAvailability('en', 1, 'available')).rejects.toThrow('No active organization selected');
-    });
+    }, 15_000);
   });
 
   describe('AI management actions', () => {

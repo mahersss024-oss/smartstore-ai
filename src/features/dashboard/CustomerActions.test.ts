@@ -132,8 +132,6 @@ describe('CustomerActions', () => {
     mockTxSelectWhere.mockReset();
     mockAuth.mockResolvedValue({ orgId: 'org_1', userId: 'user_1' });
     const selectResults = [
-      [{ email: 'customer@example.com', phone: '0500000000', sourceChannel: 'whatsapp' }],
-      [{ id: 77 }],
       [{ id: 55 }, { id: 56 }],
     ];
 
@@ -200,35 +198,27 @@ describe('CustomerActions', () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/customers/123');
   });
 
-  it('deletes customer conversations, orders, messages, AI logs, events, invoices, and reviews with the customer', async () => {
+  it('deletes customer conversations, messages, AI logs, reviews, and the customer record', async () => {
     const { deleteCustomerRecord } = await import('./CustomerActions');
 
     await expect(deleteCustomerRecord('ar', 123)).rejects.toThrow('redirect:/dashboard/customers');
 
-    expect(mockTxDelete).toHaveBeenCalledTimes(12);
-    expect(mockTxDeleteWhere).toHaveBeenCalledTimes(12);
+    expect(mockTxDelete).toHaveBeenCalledTimes(7);
+    expect(mockTxDeleteWhere).toHaveBeenCalledTimes(7);
     expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/customers');
   });
 
-  it('finds related customer orders by equivalent phone identity variants before deletion', async () => {
-    const { inArray } = await import('drizzle-orm');
+  it('does not hard-delete orders by matching customer phone or email heuristics', async () => {
     const { deleteCustomerRecord } = await import('./CustomerActions');
 
     await expect(deleteCustomerRecord('ar', 123)).rejects.toThrow('redirect:/dashboard/customers');
 
-    expect(inArray).toHaveBeenCalledWith(
-      'customerPhone',
-      expect.arrayContaining(['0500000000', '966500000000']),
-    );
-  });
+    const deletedTables = (mockTxDelete.mock.calls as unknown[][]).map(call => call[0]);
 
-  it('scopes related order deletion to the same source channel as the deleted customer record', async () => {
-    const { eq } = await import('drizzle-orm');
-    const { deleteCustomerRecord } = await import('./CustomerActions');
-
-    await expect(deleteCustomerRecord('ar', 123)).rejects.toThrow('redirect:/dashboard/customers');
-
-    expect(eq).toHaveBeenCalledWith('source', 'whatsapp');
+    expect(deletedTables).not.toContainEqual(expect.objectContaining({
+      customerPhone: 'customerPhone',
+      id: 'orderId',
+    }));
   });
 
   it('allows only the active store to permanently delete one customer conversation', async () => {
