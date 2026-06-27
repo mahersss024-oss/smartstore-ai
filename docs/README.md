@@ -23,7 +23,7 @@ source of truth.
 - `operations/operations.md`
 - `operations/maintenance.md`
 - `operations/production-operations-certification.md`
-- `operations/twilio-whatsapp.md`
+- `operations/whatsapp.md`
 - `operations/production-status.md`
 - `testing/index.md`
 - `planning/technical-debt.md`

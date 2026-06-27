@@ -52,7 +52,7 @@ for certification gates and evidence requirements.
 - Database: Drizzle ORM with PostgreSQL schema in `src/models/Schema.ts`.
 - Auth: Clerk sessions and organizations.
 - Billing: Stripe platform subscriptions and add-ons.
-- Customer channels: public web ordering and Twilio WhatsApp webhook.
+- Customer channels: public web ordering and WhatsApp (Meta) webhook.
 - AI: platform-managed AI provider configuration, AI employee agent, shared
   conversation engine, guardrails, diagnostics, and action logs.
 - Runtime settings: platform-managed production keys through
@@ -111,7 +111,7 @@ for certification gates and evidence requirements.
 ## API Routes
 
 - `src/app/api/ai-employee/messages/route.ts`: AI employee message endpoint.
-- `src/app/api/twilio/webhook/route.ts`: signed Twilio WhatsApp inbound event
+- `src/app/api/whatsapp/webhook/route.ts`: signed WhatsApp (Meta) inbound event
   handling and tenant routing.
 - `src/app/api/clerk/webhooks/route.ts`: Clerk webhook handler.
 - `src/app/api/stripe/webhooks/route.ts`: Stripe webhook handler.
@@ -144,7 +144,7 @@ for certification gates and evidence requirements.
 - Store and catalog: `StoreSettings`, `StoreReadiness`,
   `StoreServiceControls`, `StoreAIContext`, `ProductDuplicateDetection`,
   `ProductCatalogMetadata`, `ProductImageStorage`.
-- Integrations: `Stripe`, `WebhookIdempotency`, `TwilioWhatsApp`,
+- Integrations: `Stripe`, `WebhookIdempotency`, `MetaWhatsApp`,
   `ClerkOrganizationSync`, `OutboundHttp`.
 - Platform controls: `PlatformAdmin`, `PlatformAIClient`,
   `PlatformAIProviderConfig`, `PlatformRuntimeConfig`, `PlatformAIPolicy`.

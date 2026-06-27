@@ -4,7 +4,7 @@ Status: **Implemented behind `AI_PROCESSING_MODE`; default remains `sync`.**
 
 ## Context
 
-The AI customer-service reply path (WhatsApp via Twilio, and web chat) currently
+The AI customer-service reply path (WhatsApp via Meta Cloud API, and web chat) currently
 runs **synchronously inside the inbound HTTP request**: model reply generation →
 deterministic guards → semantic safety review → bounded repair + re-guard → send
 reply. At the current/target volume of **~10,000 messages/day** with realistic
@@ -13,10 +13,10 @@ exactly during peaks — the worst possible time for a store.
 
 Interim hardening already shipped (independent of this plan):
 
-- `maxDuration = 60` on the AI routes (twilio webhook, ai-employee messages) and
+- `maxDuration = 60` on the AI routes (whatsapp webhook, ai-employee messages) and
   the web-order page.
 - Reply is persisted to the DB **before** the request returns; the web client
-  polls every 5s; Twilio retries + webhook idempotency cover redelivery.
+  polls every 5s; Meta retries + webhook idempotency cover redelivery.
 
 These protect the *individual* message but do **not** solve **mass concurrency**
 (no backpressure against the AI provider) or decouple *receipt* from *processing*.
@@ -40,18 +40,18 @@ jobs — see Phase 5.)
 ## Architecture
 
 ```
-WhatsApp → /api/twilio/webhook
+WhatsApp → /api/whatsapp/webhook
    1. verify signature (unchanged)
    2. INSERT ai_inbound_jobs (status=pending)        ~50ms
    3. publish job id to QStash
-   4. return 200 to Twilio immediately               ✅ no timeout pressure
+   4. return 200 to Meta immediately               ✅ no timeout pressure
 
 QStash (managed queue, concurrency cap = 15)
    → POST /api/ai/worker  (signed by QStash)
         1. verify QStash signature
         2. claim job (lease, like webhookEventsTable)
         3. run AIEmployeeAgent + guards (full time budget)
-        4. send reply via Twilio
+        4. send reply via Meta
         5. mark job done
         on failure → DB backoff → sweeper redispatch → dead-letter after 5 attempts
 ```
@@ -70,7 +70,7 @@ id                serial pk
 organization_id   text not null
 channel           varchar(50) not null         -- whatsapp | web_chat
 external_thread_id text
-dedupe_key        text not null                -- e.g. twilio MessageSid / clientSubmissionId
+dedupe_key        text not null                -- e.g. provider message id / clientSubmissionId
 payload           jsonb not null               -- the inbound message + customer
 status            varchar(20) not null default 'pending'  -- pending|processing|done|failed|dead
 attempts          integer not null default 0
@@ -94,9 +94,9 @@ optimistic update guarded by `status` + `locked_until` (same technique as
 ## Implemented components
 
 1. Schema and migrations for durable jobs and tenant-safe deduplication.
-2. Twilio webhook enqueue and immediate QStash dispatch in `outbox` mode.
+2. WhatsApp webhook enqueue and immediate QStash dispatch in `outbox` mode.
 3. Signed worker endpoint at `/api/ai/worker`.
-4. Shared Twilio processor used by synchronous and asynchronous paths.
+4. Shared WhatsApp processor used by synchronous and asynchronous paths.
 5. Lease fencing, renewal before outbound delivery, strict conversation ordering,
    exponential backoff, and dead-lettering after five attempts.
 6. Vercel Cron sweeper at `/api/maintenance/ai-inbound-jobs`.

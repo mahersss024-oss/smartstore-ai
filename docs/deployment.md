@@ -31,7 +31,7 @@ injected by Vercel only and must not be set elsewhere.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 
 ### Critical (not build-required, but data-critical — never lose)
-- `PLATFORM_SECRETS_ENCRYPTION_KEY` — AES-256-GCM key that decrypts stored Twilio
+- `PLATFORM_SECRETS_ENCRYPTION_KEY` — AES-256-GCM key that decrypts stored WhatsApp/AI
   secrets in the DB. Losing it makes those secrets unrecoverable.
 - `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` — if key rotation was used.
 
@@ -41,7 +41,7 @@ injected by Vercel only and must not be set elsewhere.
 
 ### Feature vars (set the ones you use)
 - Clerk: `CLERK_WEBHOOK_SIGNING_SECRET`, `PLATFORM_ADMIN_USER_IDS`
-- WhatsApp (Twilio): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`
+- WhatsApp (Meta Cloud API): `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN` (per-store phone number id + access token are saved encrypted from the dashboard)
 - Billing (Stripe): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
   (⚠️ these were NOT set on Vercel production — add them if billing must work in prod)
 - Online payments: `MOYASAR_SECRET_KEY` (callback is currently feature-flagged off)
@@ -72,7 +72,7 @@ Vars with defaults can be omitted: `DATABASE_POOL_MAX`, `DATABASE_*_TIMEOUT_MS`,
 
 - Clerk: webhook endpoint + allowed origins.
 - Stripe: webhook endpoint (if billing enabled).
-- Twilio WhatsApp: inbound webhook → `https://smartstore-ai.com/api/twilio/webhook`.
+- WhatsApp (Meta): inbound webhook → `https://smartstore-ai.com/api/whatsapp/webhook`.
 
 ## Async outbox sweeper (only if `AI_PROCESSING_MODE=outbox`)
 

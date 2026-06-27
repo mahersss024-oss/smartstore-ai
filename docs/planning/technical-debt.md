@@ -55,8 +55,8 @@ Status markers:
 
 - [x] WhatsApp adapter has implemented channel capabilities with tests.
 
-  Evidence: `src/libs/TwilioWhatsApp.ts` and
-  `src/libs/TwilioWhatsApp.test.ts` cover thread isolation, signature
+  Evidence: `src/libs/MetaWhatsApp.ts` and
+  `src/libs/MetaWhatsApp.test.ts` cover thread isolation, signature
   verification, text/interactive/location parsing, product lists, payment
   buttons, cart controls, cart summaries, review list messages, and normalized
   cart metadata.

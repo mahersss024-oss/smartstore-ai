@@ -228,7 +228,7 @@ Special focus:
 
 - [ ] `AIEmployeeAgent.ts`
 - [ ] `WebOrderChat.tsx`
-- [ ] `TwilioWhatsApp.ts`
+- [ ] `MetaWhatsApp.ts`
 - [ ] `WebChatActions.ts`
 - [ ] `OrderOperations.ts`
 - [ ] `OrderWorkflow.ts`
