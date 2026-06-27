@@ -36,7 +36,14 @@ jobs:
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
 
+      - name: Skip release when tag creation is disabled
+        if: vars.ENABLE_SEMANTIC_RELEASE != 'true'
+        run: |
+          echo "Semantic release is disabled for this repository."
+          echo "Set repository variable ENABLE_SEMANTIC_RELEASE=true and allow this workflow to create tags before enabling automated releases."
+
       - name: Release
+        if: vars.ENABLE_SEMANTIC_RELEASE == 'true'
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
