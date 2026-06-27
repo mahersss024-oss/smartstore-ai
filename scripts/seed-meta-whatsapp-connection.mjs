@@ -1,5 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { createCipheriv, createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import pg from 'pg';
+
 // One-off: create/update a store's WhatsApp Cloud API (Meta) channel connection
 // so the Meta webhook can resolve it. Encrypts the access token in the same
 // AES-256-GCM format the app uses. Run once with the values from the Meta app.
@@ -12,8 +15,6 @@ import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 //   META_SEED_DISPLAY_PHONE=+9665... (optional)
 //   META_SEED_ORG_ID=org_...         (optional — defaults to the existing whatsapp store)
 //   node scripts/seed-meta-whatsapp-connection.mjs
-import { readFileSync } from 'node:fs';
-import pg from 'pg';
 
 const readEnv = (name) => {
   if (process.env[name]) {
@@ -21,10 +22,15 @@ const readEnv = (name) => {
   }
   for (const file of ['.secrets.render.local', '.env.local', '.env']) {
     try {
-      const line = readFileSync(file, 'utf8').split('\n').find(l => l.startsWith(`${name}=`));
+      const line = readFileSync(file, 'utf8').split('\n').find((l) => {
+        return l.startsWith(`${name}=`);
+      });
       if (line) {
         let v = line.slice(name.length + 1).trim();
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith('\'') && v.endsWith('\''))) {
+        if (
+          (v.startsWith('"') && v.endsWith('"'))
+          || (v.startsWith('\'') && v.endsWith('\''))
+        ) {
           v = v.slice(1, -1);
         }
         if (v) {
