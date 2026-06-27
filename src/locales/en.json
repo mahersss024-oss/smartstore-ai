@@ -672,7 +672,7 @@
     "validation_error_invalid_store_description": "One of the text fields is too long. Shorten the store description, welcome message, or knowledge base notes.",
     "validation_error_invalid_store_name": "Enter a clear store name between 3 and 60 characters. Generic names such as Store or Test are not accepted.",
     "whatsapp_readiness_title": "WhatsApp readiness",
-    "whatsapp_readiness_hint": "Enter the store Twilio credentials once. They are encrypted and used only for this store's WhatsApp traffic.",
+    "whatsapp_readiness_hint": "Enter the store Meta WhatsApp Cloud API credentials once. They are encrypted and used only for this store's WhatsApp traffic.",
     "whatsapp_status_pending_setup": "Pending setup",
     "whatsapp_status_connected": "Connected",
     "whatsapp_status_disconnected": "Disconnected",

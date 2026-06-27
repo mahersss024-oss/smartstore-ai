@@ -8,8 +8,8 @@ import {
   verifyMetaSignature,
 } from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
-import { ConversationBusyError, MessageRetryError } from '@/libs/WhatsAppInboundShared';
 import { runWebhookEventOnce } from '@/libs/WebhookIdempotency';
+import { ConversationBusyError, MessageRetryError } from '@/libs/WhatsAppInboundShared';
 
 export const runtime = 'nodejs';
 

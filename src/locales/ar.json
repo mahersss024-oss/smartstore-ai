@@ -672,7 +672,7 @@
     "validation_error_invalid_store_description": "أحد الحقول النصية طويل جدًا. اختصر وصف المتجر أو رسالة الترحيب أو ملاحظات قاعدة المعرفة.",
     "validation_error_invalid_store_name": "أدخل اسم متجر واضحاً من 3 إلى 60 حرفاً. الأسماء العامة مثل متجر أو تجربة غير مقبولة.",
     "whatsapp_readiness_title": "جاهزية واتساب",
-    "whatsapp_readiness_hint": "أدخل بيانات Twilio الخاصة بالمتجر مرة واحدة. تحفظ مشفرة وتستخدم فقط لرسائل واتساب لهذا المتجر.",
+    "whatsapp_readiness_hint": "أدخل بيانات Meta WhatsApp Cloud API الخاصة بالمتجر مرة واحدة. تحفظ مشفرة وتستخدم فقط لرسائل واتساب لهذا المتجر.",
     "whatsapp_status_pending_setup": "بانتظار الإعداد",
     "whatsapp_status_connected": "متصل",
     "whatsapp_status_disconnected": "غير متصل",

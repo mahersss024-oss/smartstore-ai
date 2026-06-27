@@ -4,7 +4,7 @@ Date: 2026-06-13
 
 Scope:
 
-- Vercel production deployment operation.
+- Render production deployment operation.
 - Runtime environment ownership.
 - Secret rotation.
 - Database backup, restore, and migration rollback.
@@ -15,7 +15,7 @@ Scope:
 This document is operational guidance only. It must not contain real secrets,
 access tokens, customer messages, or provider credentials.
 
-## Vercel Production Deployment Checklist
+## Render Production Deployment Checklist
 
 Before deploy:
 
@@ -27,9 +27,9 @@ Before deploy:
 5. Confirm Clerk production keys are configured for production traffic.
 6. Confirm each active WhatsApp store has encrypted WhatsApp (Meta) credentials and a
    unique WhatsApp number in its channel connection.
-7. Confirm `PLATFORM_SECRETS_ENCRYPTION_KEY` is set in Vercel and is not
+7. Confirm `PLATFORM_SECRETS_ENCRYPTION_KEY` is set in Render and is not
    exposed in the admin UI.
-8. Confirm `MAINTENANCE_SECRET` is set in Vercel or platform runtime settings.
+8. Confirm `MAINTENANCE_SECRET` is set in Render or platform runtime settings.
 9. Confirm database backup/PITR status before migrations or write-heavy smoke.
 10. Run the required release checks:
     - `npm run check:types`
@@ -39,7 +39,7 @@ Before deploy:
     - `npm run check:deps`
     - `npm run check:i18n`
     - `npm run check:env:production -- --strict`
-11. Deploy to Vercel.
+11. Deploy to Render.
 12. Inspect the deployment and verify it is `Ready`.
 13. Run safe production smoke checks.
 14. Monitor errors, latency, webhook failures, and DB pool pressure.
@@ -56,30 +56,30 @@ Rollback trigger:
 
 | Variable or setting | Owner | Storage | Rotation source | Notes |
 | --- | --- | --- | --- | --- |
-| `DATABASE_URL` | Platform operator | Vercel | DB provider | Must be managed PostgreSQL in production. Localhost blocks certification. |
-| `DATABASE_POOL_MAX` | Platform operator | Vercel | Internal policy | Keep within `1..50`; update with load evidence. |
-| `DATABASE_CONNECTION_TIMEOUT_MS` | Platform operator | Vercel | Internal policy | Must remain >= 1000. |
-| `DATABASE_IDLE_TIMEOUT_MS` | Platform operator | Vercel | Internal policy | Must remain >= 1000. |
-| `NEXT_PUBLIC_APP_URL` | Platform operator | Vercel | Domain/Vercel | Must be HTTPS production URL. |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Platform operator | Vercel | Clerk dashboard | Use `pk_live_` for production certification. |
-| `CLERK_SECRET_KEY` | Platform operator | Vercel | Clerk dashboard | Use `sk_live_` for production certification. |
-| `CLERK_WEBHOOK_SIGNING_SECRET` | Platform operator | Vercel | Clerk webhook settings | Rotate after webhook endpoint changes or suspected leak. |
-| `PLATFORM_ADMIN_USER_IDS` | Platform operator | Vercel | Clerk user IDs | Keep least privilege. |
-| `PLATFORM_SECRETS_ENCRYPTION_KEY` | Platform operator | Vercel only | Secure random generator | Active encryption root; do not store in DB/admin UI. |
-| `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` | Platform operator | Vercel only | Previous active roots | Temporary comma-separated decrypt-only keyring used during staged rotation. |
+| `DATABASE_URL` | Platform operator | Render | DB provider | Must be managed PostgreSQL in production. Localhost blocks certification. |
+| `DATABASE_POOL_MAX` | Platform operator | Render | Internal policy | Keep within `1..50`; update with load evidence. |
+| `DATABASE_CONNECTION_TIMEOUT_MS` | Platform operator | Render | Internal policy | Must remain >= 1000. |
+| `DATABASE_IDLE_TIMEOUT_MS` | Platform operator | Render | Internal policy | Must remain >= 1000. |
+| `NEXT_PUBLIC_APP_URL` | Platform operator | Render | Domain/Render | Must be HTTPS production URL. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Platform operator | Render | Clerk dashboard | Use `pk_live_` for production certification. |
+| `CLERK_SECRET_KEY` | Platform operator | Render | Clerk dashboard | Use `sk_live_` for production certification. |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Platform operator | Render | Clerk webhook settings | Rotate after webhook endpoint changes or suspected leak. |
+| `PLATFORM_ADMIN_USER_IDS` | Platform operator | Render | Clerk user IDs | Keep least privilege. |
+| `PLATFORM_SECRETS_ENCRYPTION_KEY` | Platform operator | Render only | Secure random generator | Active encryption root; do not store in DB/admin UI. |
+| `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` | Platform operator | Render only | Previous active roots | Temporary comma-separated decrypt-only keyring used during staged rotation. |
 | Store WhatsApp Phone Number ID | Store/platform admin | DB channel connection | Meta WhatsApp setup | Per-store identifier; no redeploy required after save. |
 | Store WhatsApp Access Token | Store/platform admin | Encrypted DB channel connection | Meta WhatsApp setup | Per-store secret used for webhook verification and outbound messages. |
 | Store WhatsApp display number | Store/platform admin | DB channel connection | Meta WhatsApp setup | Must be unique among active stores and use `whatsapp:+number`. |
 | Store WhatsApp Business Account ID | Store/platform admin | DB channel connection | Meta WhatsApp setup | Optional per-store MG SID. |
-| `AI_EMPLOYEE_WEBHOOK_SECRET` | Platform operator | Vercel or platform runtime settings | Secure random generator | Protects public AI employee API. |
+| `AI_EMPLOYEE_WEBHOOK_SECRET` | Platform operator | Render or platform runtime settings | Secure random generator | Protects public AI employee API. |
 | Platform AI provider key | Platform operator | Encrypted DB platform settings | AI provider console | Production key belongs in platform admin runtime settings or provider secret manager. |
-| `MAINTENANCE_SECRET` | Platform operator | Vercel or platform runtime settings | Secure random generator | Protects `/api/maintenance/cleanup`. |
-| `STRIPE_SECRET_KEY` | Platform operator | Vercel | Stripe dashboard | Optional post-launch; required before automated platform billing is enabled. |
-| `STRIPE_WEBHOOK_SECRET` | Platform operator | Vercel | Stripe webhook settings | Optional post-launch; required before the Stripe webhook is enabled. |
-| Stripe price IDs | Platform operator | Vercel | Stripe dashboard | Optional post-launch; configure and verify before plans or add-ons use automated billing. |
-| `MOYASAR_SECRET_KEY` | Platform operator | Vercel | Moyasar dashboard | Optional post-launch; customer online payments are disabled until separately certified. |
-| Better Stack token/host | Platform operator | Vercel | Better Stack | Optional post-launch log forwarding; console/Vercel logging remains active when unset. |
-| Sentry variables | Platform operator | Vercel | Sentry | Optional monitoring/release integration. |
+| `MAINTENANCE_SECRET` | Platform operator | Render or platform runtime settings | Secure random generator | Protects `/api/maintenance/cleanup`. |
+| `STRIPE_SECRET_KEY` | Platform operator | Render | Stripe dashboard | Optional post-launch; required before automated platform billing is enabled. |
+| `STRIPE_WEBHOOK_SECRET` | Platform operator | Render | Stripe webhook settings | Optional post-launch; required before the Stripe webhook is enabled. |
+| Stripe price IDs | Platform operator | Render | Stripe dashboard | Optional post-launch; configure and verify before plans or add-ons use automated billing. |
+| `MOYASAR_SECRET_KEY` | Platform operator | Render | Moyasar dashboard | Optional post-launch; customer online payments are disabled until separately certified. |
+| Better Stack token/host | Platform operator | Render | Better Stack | Optional post-launch log forwarding; console/Render logging remains active when unset. |
+| Sentry variables | Platform operator | Render | Sentry | Optional monitoring/release integration. |
 
 ## Secret Rotation Runbook
 
@@ -88,8 +88,8 @@ General rotation steps:
 1. Identify the secret, owner, storage location, and dependent routes.
 2. Create the new secret in the provider console or with a secure random
    generator.
-3. Add the new value in Vercel or platform runtime settings.
-4. Redeploy only when the secret is Vercel-managed and read at runtime from the
+3. Add the new value in Render or platform runtime settings.
+4. Redeploy only when the secret is Render-managed and read at runtime from the
    environment.
 5. For platform/runtime DB-managed values, save from platform admin and verify
    runtime status without exposing the value.
@@ -175,7 +175,7 @@ If migration fails after partial mutation:
 
 Required dashboards:
 
-- Vercel function error rate, duration, cold starts, and deployment health.
+- Render service error rate, duration, cold starts, and deployment health.
 - Database connections, query latency, locks, storage, CPU, and failed
   connections.
 - Public endpoint 4xx/5xx/429 rates.
@@ -336,7 +336,7 @@ Recovery:
 
 Required before Phase 14 can be certified:
 
-- Vercel production deployment checklist completed with deployment ID.
+- Render Production Deployment Checklist completed with deployment ID.
 - Environment ownership matrix confirmed.
 - Secret rotation dry run completed for at least one non-critical secret.
 - Database backup/PITR evidence recorded.

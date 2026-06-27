@@ -463,7 +463,7 @@ export default async function PlatformAdminPage(props: AdminPageProps) {
           labels={{
             aiEmployeeWebhookSecret: text(locale, 'سر Webhook لموظف الذكاء', 'AI employee webhook secret'),
             clear: text(locale, 'حذف المفتاح المحفوظ داخل المنصة', 'Remove the key saved in platform settings'),
-            configuredFromEnvironment: text(locale, 'من Vercel', 'From Vercel'),
+            configuredFromEnvironment: text(locale, 'من Render', 'From Render'),
             maintenanceSecret: text(locale, 'سر الصيانة المجدولة', 'Scheduled maintenance secret'),
             missing: text(locale, 'ناقص', 'Missing'),
             productionOnlyHint: text(

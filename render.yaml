@@ -27,7 +27,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_APP_URL
-        value: https://smartstore-ai.com # was empty on Vercel — required
+        value: https://smartstore-ai.com # required for absolute URLs and webhooks
 
       # --- required (build fails without them); set values in the dashboard ---
       - key: DATABASE_URL # Neon pooled connection string

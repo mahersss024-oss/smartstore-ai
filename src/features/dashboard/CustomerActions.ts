@@ -1,11 +1,9 @@
 'use server';
 
-import type { SQL } from 'drizzle-orm';
 import { auth } from '@clerk/nextjs/server';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getCustomerPhoneIdentityVariants } from '@/libs/CustomerIdentity';
 import { db } from '@/libs/DB';
 import {
   aiActionLogsTable,
@@ -13,9 +11,6 @@ import {
   conversationsTable,
   customerReviewsTable,
   customersTable,
-  invoicesTable,
-  orderEventsTable,
-  ordersTable,
 } from '@/models/Schema';
 import { getI18nPath } from '@/utils/Helpers';
 
@@ -190,48 +185,6 @@ export const deleteCustomerRecord = async (
   const { organizationId } = await getActiveOrganizationId();
 
   await db.transaction(async (tx) => {
-    const [customer] = await tx
-      .select({
-        email: customersTable.email,
-        phone: customersTable.phone,
-        sourceChannel: customersTable.sourceChannel,
-      })
-      .from(customersTable)
-      .where(
-        and(
-          eq(customersTable.id, customerId),
-          eq(customersTable.organizationId, organizationId),
-        ),
-      )
-      .limit(1);
-
-    const phoneIdentityVariants = customer?.phone?.trim()
-      ? getCustomerPhoneIdentityVariants(customer.phone)
-      : [];
-    const orderIdentityConditions = [
-      phoneIdentityVariants.length > 0
-        ? inArray(ordersTable.customerPhone, phoneIdentityVariants)
-        : undefined,
-      customer?.email?.trim()
-        ? eq(ordersTable.customerEmail, customer.email.trim())
-        : undefined,
-    ].filter((condition): condition is SQL => Boolean(condition));
-    const relatedOrders = orderIdentityConditions.length > 0
-      ? await tx
-          .select({ id: ordersTable.id })
-          .from(ordersTable)
-          .where(
-            and(
-              eq(ordersTable.organizationId, organizationId),
-              customer?.sourceChannel
-                ? eq(ordersTable.source, customer.sourceChannel)
-                : undefined,
-              orderIdentityConditions.length === 1
-                ? orderIdentityConditions[0]
-                : or(...orderIdentityConditions),
-            ),
-          )
-      : [];
     const conversations = await tx
       .select({ id: conversationsTable.id })
       .from(conversationsTable)
@@ -270,53 +223,6 @@ export const deleteCustomerRecord = async (
           eq(customerReviewsTable.customerId, customerId),
         ),
       );
-
-    for (const order of relatedOrders) {
-      await tx
-        .delete(aiActionLogsTable)
-        .where(
-          and(
-            eq(aiActionLogsTable.organizationId, organizationId),
-            eq(aiActionLogsTable.orderId, order.id),
-          ),
-        );
-
-      await tx
-        .delete(customerReviewsTable)
-        .where(
-          and(
-            eq(customerReviewsTable.organizationId, organizationId),
-            eq(customerReviewsTable.orderId, order.id),
-          ),
-        );
-
-      await tx
-        .delete(orderEventsTable)
-        .where(
-          and(
-            eq(orderEventsTable.organizationId, organizationId),
-            eq(orderEventsTable.orderId, order.id),
-          ),
-        );
-
-      await tx
-        .delete(invoicesTable)
-        .where(
-          and(
-            eq(invoicesTable.organizationId, organizationId),
-            eq(invoicesTable.orderId, order.id),
-          ),
-        );
-
-      await tx
-        .delete(ordersTable)
-        .where(
-          and(
-            eq(ordersTable.organizationId, organizationId),
-            eq(ordersTable.id, order.id),
-          ),
-        );
-    }
 
     await tx
       .delete(conversationsTable)

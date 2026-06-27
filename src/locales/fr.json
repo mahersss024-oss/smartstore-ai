@@ -672,7 +672,7 @@
     "validation_error_invalid_store_description": "Un champ texte est trop long. Raccourcissez la description, le message d'accueil ou les notes de connaissance.",
     "validation_error_invalid_store_name": "Saisissez un nom de magasin clair entre 3 et 60 caracteres. Les noms generiques comme Store ou Test ne sont pas acceptes.",
     "whatsapp_readiness_title": "Pr?paration WhatsApp",
-    "whatsapp_readiness_hint": "Saisissez les identifiants Twilio du magasin. Ils sont chiffres et utilises uniquement pour le trafic WhatsApp de ce magasin.",
+    "whatsapp_readiness_hint": "Saisissez les identifiants Meta WhatsApp Cloud API du magasin. Ils sont chiffres et utilises uniquement pour le trafic WhatsApp de ce magasin.",
     "whatsapp_status_pending_setup": "Configuration en attente",
     "whatsapp_status_connected": "Connect?",
     "whatsapp_status_disconnected": "D?connect?",
