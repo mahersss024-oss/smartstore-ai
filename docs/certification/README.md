@@ -19,7 +19,7 @@ Current executable checks:
 - `npm run check:env:production -- --strict`: strict production environment
   gate. It must fail local DB URLs and Clerk development keys.
 - `npm run check:runtime:production`: read-only database/runtime-settings gate.
-  Run through Vercel Production env to prove DB connectivity and platform
+  Run through the Render production environment to prove DB connectivity and platform
   runtime key status without printing secret values.
 
 Active ledgers:
@@ -37,6 +37,7 @@ Active ledgers:
 - `rollback-readiness.md`
 - `gate-status-ledger.md`
 - `owner-confirmations-needed.md`
+- `review-ledger.md`
 
 Rules:
 
