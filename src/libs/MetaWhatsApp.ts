@@ -60,6 +60,50 @@ type MetaConnectionConfig = {
   wabaId?: null | string;
 };
 
+type MetaGraphErrorResponse = {
+  error?: {
+    code?: number;
+    error_subcode?: number;
+    fbtrace_id?: string;
+    message?: string;
+    type?: string;
+  };
+};
+
+export class MetaWhatsAppSendError extends Error {
+  code?: number;
+  fbtraceId?: string;
+  status: number;
+  subcode?: number;
+  type?: string;
+
+  constructor(params: {
+    code?: number;
+    fbtraceId?: string;
+    message?: string;
+    status: number;
+    subcode?: number;
+    type?: string;
+  }) {
+    const details = [
+      `status=${params.status}`,
+      params.code === undefined ? undefined : `code=${params.code}`,
+      params.subcode === undefined ? undefined : `subcode=${params.subcode}`,
+      params.type ? `type=${params.type}` : undefined,
+      params.fbtraceId ? `fbtrace_id=${params.fbtraceId}` : undefined,
+      params.message ? `message="${params.message}"` : undefined,
+    ].filter(Boolean).join(' ');
+
+    super(`Meta WhatsApp send failed: ${details}`);
+    this.name = 'MetaWhatsAppSendError';
+    this.code = params.code;
+    this.fbtraceId = params.fbtraceId;
+    this.status = params.status;
+    this.subcode = params.subcode;
+    this.type = params.type;
+  }
+}
+
 /**
  * Verify the `X-Hub-Signature-256` header Meta sends with every webhook POST.
  * The signature is HMAC-SHA256(rawBody) keyed with the Meta app secret, prefixed
@@ -185,8 +229,22 @@ const sendMetaPayload = async (params: {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
+    let parsedError: MetaGraphErrorResponse['error'];
 
-    throw new Error(`Meta WhatsApp send failed: ${response.status} ${detail}`);
+    try {
+      parsedError = (JSON.parse(detail) as MetaGraphErrorResponse).error;
+    } catch {
+      parsedError = undefined;
+    }
+
+    throw new MetaWhatsAppSendError({
+      code: parsedError?.code,
+      fbtraceId: parsedError?.fbtrace_id,
+      message: parsedError?.message ?? (detail ? 'unparseable_meta_error' : undefined),
+      status: response.status,
+      subcode: parsedError?.error_subcode,
+      type: parsedError?.type,
+    });
   }
 
   const data = (await response.json()) as { messages?: Array<{ id?: string }> };

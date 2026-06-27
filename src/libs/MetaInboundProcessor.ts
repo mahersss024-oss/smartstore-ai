@@ -5,6 +5,7 @@ import { logger } from './Logger';
 import { buildMetaOutboundMessage, resolveMetaInteractiveHints } from './MetaInteractiveMessage';
 import {
   findMetaStoreConnection,
+  MetaWhatsAppSendError,
   sendMetaWhatsAppButtons,
   sendMetaWhatsAppList,
   sendMetaWhatsAppText,
@@ -21,6 +22,27 @@ const META_THREAD_PREFIX = 'mwa';
 const META_CHANNEL = 'whatsapp';
 
 const digitsOnly = (value: string) => value.replace(/\D/g, '');
+
+const toSafeMetaSendErrorLog = (error: unknown) => {
+  if (error instanceof MetaWhatsAppSendError) {
+    return {
+      code: error.code,
+      fbtraceId: error.fbtraceId,
+      message: error.message,
+      status: error.status,
+      subcode: error.subcode,
+      type: error.type,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      message: error.message.replace(/Bearer\s+[\w.-]+/gi, 'Bearer [redacted]'),
+    };
+  }
+
+  return { message: 'unknown_error' };
+};
 
 const buildMetaExternalThreadId = (params: {
   customerFrom: string;
@@ -72,7 +94,7 @@ export const sendMetaConversationTextMessage = async (params: {
     return { status: 'sent' as const };
   } catch (error) {
     logger.warn('Meta WhatsApp order notification send failed', {
-      error: error instanceof Error ? error.message : 'unknown_error',
+      error: toSafeMetaSendErrorLog(error),
       organizationId: params.organizationId,
     });
 
@@ -199,7 +221,14 @@ export const processMetaInboundMessage = async (params: {
         });
 
         return { aiResponseSent: true, error: aiResult.error, fallbackResponseSent: true };
-      } catch {
+      } catch (error) {
+        logger.warn('Meta WhatsApp fallback reply send failed', {
+          error: toSafeMetaSendErrorLog(error),
+          messageId: message.messageId,
+          organizationId: connection.organizationId,
+          phoneNumberId: connection.phoneNumberId,
+        });
+
         throw new MessageRetryError('meta_error_fallback_send_failed');
       }
     }
@@ -224,7 +253,16 @@ export const processMetaInboundMessage = async (params: {
         kind: outbound.kind,
         organizationId: connection.organizationId,
       });
-    } catch {
+    } catch (error) {
+      logger.warn('Meta WhatsApp reply send failed', {
+        conversationId: aiResult.data.conversationId,
+        error: toSafeMetaSendErrorLog(error),
+        kind: outbound.kind,
+        messageId: message.messageId,
+        organizationId: connection.organizationId,
+        phoneNumberId: connection.phoneNumberId,
+      });
+
       throw new MessageRetryError('meta_reply_send_failed');
     }
 

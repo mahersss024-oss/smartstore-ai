@@ -1,8 +1,17 @@
 import { createHmac } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
-import { parseMetaWebhookPayload, verifyMetaSignature } from './MetaWhatsApp';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  MetaWhatsAppSendError,
+  parseMetaWebhookPayload,
+  sendMetaWhatsAppText,
+  verifyMetaSignature,
+} from './MetaWhatsApp';
 
 describe('MetaWhatsApp', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   describe('verifyMetaSignature', () => {
     const secret = 'meta_app_secret';
     const body = JSON.stringify({ hello: 'world' });
@@ -91,6 +100,45 @@ describe('MetaWhatsApp', () => {
       }))).toBeNull();
       expect(parseMetaWebhookPayload(null)).toBeNull();
       expect(parseMetaWebhookPayload({})).toBeNull();
+    });
+  });
+
+  describe('sendMetaWhatsAppText', () => {
+    it('throws a structured Meta error without leaking the access token', async () => {
+      const accessToken = 'EA_TEST_SECRET_TOKEN';
+
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+        error: {
+          code: 190,
+          error_subcode: 463,
+          fbtrace_id: 'trace123',
+          message: 'Invalid OAuth access token.',
+          type: 'OAuthException',
+        },
+      }), { status: 401 })));
+
+      await expect(sendMetaWhatsAppText({
+        accessToken,
+        body: 'hello',
+        phoneNumberId: '1173797649153295',
+        to: '966549764152',
+      })).rejects.toMatchObject({
+        code: 190,
+        fbtraceId: 'trace123',
+        status: 401,
+        subcode: 463,
+        type: 'OAuthException',
+      });
+
+      await sendMetaWhatsAppText({
+        accessToken,
+        body: 'hello',
+        phoneNumberId: '1173797649153295',
+        to: '966549764152',
+      }).catch((error) => {
+        expect(error).toBeInstanceOf(MetaWhatsAppSendError);
+        expect(error.message).not.toContain(accessToken);
+      });
     });
   });
 });
