@@ -23,10 +23,11 @@ const webServerCommand
  */
 export default defineConfig<ChromaticConfig>({
   testDir: './tests',
-  // Browser projects share the same seeded database and platform AI provider.
-  // Keep CI execution sequential so one project cannot replace another
-  // project's mock provider configuration while tests are still running.
-  workers: process.env.CI ? 1 : undefined,
+  // Browser tests share the same seeded database and platform AI provider.
+  // Keep execution sequential so one test cannot replace another test's
+  // seeded organization or mock provider configuration while it is still
+  // running.
+  workers: 1,
   // Look for files with the .integ.js or .e2e.js extension
   testMatch: '*.@(integ|e2e).?(c|m)[jt]s?(x)',
   // Timeout per test, test running locally are slower due to database connections with PGLite
