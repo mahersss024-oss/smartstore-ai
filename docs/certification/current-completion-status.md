@@ -1,6 +1,6 @@
 # Current Completion Status
 
-Date saved: 2026-06-21
+Date saved: 2026-06-28
 
 This file is the short handoff record for the latest certification work. It
 does not store secrets, tokens, database URLs, customer private data, or
@@ -17,35 +17,41 @@ coverage.
 There is no hidden untracked programming blocker in the latest pass. Remaining
 items are tracked explicitly in the ledgers.
 
+## Current Runtime Decisions
+
+- Deployment provider: Render.
+- WhatsApp provider: Meta WhatsApp Cloud API.
+- Historical notes that mention Vercel or Twilio describe earlier
+  implementation/certification periods and are not the active runtime contract.
+
 ## Completed Programming Evidence
 
 - TypeScript gate passed.
-- Lint gate passed with zero warnings.
+- Lint gate passed. The current local pass still reports non-fatal Tailwind
+  line-wrapping warnings in one page; they do not fail the gate.
 - Dependency/dead-code scan passed.
 - i18n check passed.
-- Full unit/UI test suite passed: 103 test files and 941 tests.
+- Full unit/UI test suite passed: 106 test files and 980 tests.
 - Production build passed and generated 89 pages/routes.
-- Playwright E2E passed: 27 Chromium tests.
+- Focused Meta WhatsApp webhook/store settings tests passed.
 - Coverage gate passed with permanent floors in place.
 - Production dependency audit passed with 0 vulnerabilities.
 - Full npm audit passed in the latest recorded pass.
 - Production smoke passed for the current organization.
-- Vercel production deployment is Ready and aliased to
-  `https://www.smartstore-ai.com`.
-- Vercel production error-log samples returned no error logs.
+- Render is the active deployment target for the application.
 - Sentry production source-map upload and event ingestion were verified without
   storing the Sentry token in documentation.
 - Clerk API reachability for users and organizations was verified with a
   temporary owner-supplied key.
-- WhatsApp now uses Twilio as its only provider in source code.
-- Twilio webhook signature verification uses the matched store's encrypted
-  Auth Token.
-- Per-store Twilio outbound sending and recipient-to-store isolation are covered
-  by focused tests.
+- WhatsApp uses Meta WhatsApp Cloud API in source code.
+- Meta webhook verification uses the configured verify token and request
+  signature validation uses the Meta app secret.
+- Per-store Meta outbound sending uses encrypted store access tokens and
+  recipient-to-store isolation is covered by focused tests.
 - Durable WhatsApp AI processing is implemented behind `AI_PROCESSING_MODE` with
   a tenant-scoped outbox, signed QStash worker, lease fencing, strict
   per-conversation ordering, database-owned retry/backoff, dead-lettering, and a
-  Vercel Cron recovery sweeper.
+  scheduled recovery sweeper.
 - PostgreSQL runtime verification proved tenant-safe duplicate keys, one-winner
   concurrent claims, stale-lease rejection, and backoff enforcement.
 - Production DB-backed public connect and web-order routes returned HTTP 200 for
@@ -54,7 +60,7 @@ items are tracked explicitly in the ledgers.
 ## Completed Code Fix Areas
 
 - Clerk production key configuration was corrected and evidenced.
-- Twilio WhatsApp credentials are encrypted per store and do not require a
+- Meta WhatsApp credentials are encrypted per store and do not require a
   redeploy when updated.
 - Managed Neon production DB configuration was evidenced through DB-backed
   production smoke.
@@ -62,9 +68,9 @@ items are tracked explicitly in the ledgers.
   legacy payloads from becoming operational credentials.
 - Secret rotation supports decrypt-only previous platform keys.
 - Provider error logging redacts exact runtime credentials before logging.
-- Twilio provider failures return safe retry responses without exposing
+- Meta provider failures return safe retry responses without exposing
   credentials.
-- Twilio non-retryable AI failures return readable Arabic fallback replies and
+- Meta non-retryable AI failures return readable Arabic fallback replies and
   are covered by a regression test.
 - WhatsApp webhook delivery no longer acknowledges incomplete customer-facing
   processing as success.
@@ -101,7 +107,7 @@ The only current programming debt explicitly left open in the defect ledger is:
 These items are outside pure source-code correctness and remain required for
 maximum production certification:
 
-- Full live Twilio WhatsApp end-to-end certification script for inbound message,
+- Full live Meta WhatsApp end-to-end certification script for inbound message,
   AI response, cart update, service/payment selection, order creation, review,
   and complaint/note capture.
 - Large-scale concurrent write/AI load proof beyond the current read-only
@@ -118,7 +124,7 @@ maximum production certification:
 Several credentials were supplied by the owner during the certification session
 for temporary verification. They are intentionally not copied into this file.
 Before real public launch, rotate any temporary or chat-shared keys and keep the
-new values only in the approved provider dashboards and Vercel environment
+new values only in the approved provider dashboards and Render environment
 variables.
 
 ## Pointers

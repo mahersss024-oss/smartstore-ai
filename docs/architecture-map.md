@@ -1,6 +1,6 @@
 # Architecture Map
 
-Generated: 2026-06-08
+Generated: 2026-06-28
 
 ## Layer responsibilities
 
@@ -8,7 +8,8 @@ Generated: 2026-06-08
 - Server actions/API layer: validates input, resolves tenant scope, calls services, mutates database, revalidates paths.
 - Service/domain layer: AI orchestration, product resolution, order lifecycle, checkout, rate limiting, billing sync, webhook idempotency.
 - Database layer: Drizzle schema and migrations.
-- External services: Clerk, Stripe, AI provider, Vercel, PostgreSQL hosting.
+- External services: Clerk, Stripe, AI provider, Render, Meta WhatsApp Cloud
+  API, PostgreSQL hosting.
 
 ## Decision boundaries
 
@@ -22,4 +23,3 @@ Generated: 2026-06-08
 
 - `AIEmployeeAgent.ts` is still large and should continue being split into context loading, persistence, decision, response, and diagnostics modules.
 - Some operational reports are documentation-level today; external observability, load testing, and disaster recovery drills still need provider setup.
-

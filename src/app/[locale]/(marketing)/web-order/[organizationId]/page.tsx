@@ -49,7 +49,9 @@ const deliveryLabelKeys = [
   'scheduled_delivery',
 ] as const;
 
-const getFulfillmentChoiceFromDeliveryType = (type: string): FulfillmentChoice | null => {
+const getFulfillmentChoiceFromDeliveryType = (
+  type: string,
+): FulfillmentChoice | null => {
   if (type === 'dine_in') {
     return 'dine_in';
   }
@@ -82,7 +84,9 @@ const getPaymentChoiceKind = (provider: string): PaymentChoiceKind | null => {
   return null;
 };
 
-const getSupportedDeliveryPreferences = (value: unknown): Array<'delivery' | 'pickup'> => {
+const getSupportedDeliveryPreferences = (
+  value: unknown,
+): Array<'delivery' | 'pickup'> => {
   return Array.isArray(value)
     ? value.filter((item): item is 'delivery' | 'pickup' => {
         return item === 'delivery' || item === 'pickup';
@@ -133,23 +137,30 @@ export default async function WebOrderPage(props: {
   const paymentMethods = await db
     .select()
     .from(paymentMethodsTable)
-    .where(and(
-      eq(paymentMethodsTable.organizationId, organizationId),
-      eq(paymentMethodsTable.isActive, true),
-      eq(paymentMethodsTable.requiresOnlinePayment, false),
-      ne(paymentMethodsTable.provider, 'bank_transfer'),
-    ))
+    .where(
+      and(
+        eq(paymentMethodsTable.organizationId, organizationId),
+        eq(paymentMethodsTable.isActive, true),
+        eq(paymentMethodsTable.requiresOnlinePayment, false),
+        ne(paymentMethodsTable.provider, 'bank_transfer'),
+      ),
+    )
     .orderBy(asc(paymentMethodsTable.id));
   const deliveryMethods = await db
     .select()
     .from(deliveryMethodsTable)
-    .where(and(
-      eq(deliveryMethodsTable.organizationId, organizationId),
-      eq(deliveryMethodsTable.isActive, true),
-    ))
+    .where(
+      and(
+        eq(deliveryMethodsTable.organizationId, organizationId),
+        eq(deliveryMethodsTable.isActive, true),
+      ),
+    )
     .orderBy(asc(deliveryMethodsTable.id));
   const storeName = settings?.storeName?.trim() || t('fallback_store_name');
-  const webOrdersEnabled = await isStoreFeatureEnabled(organizationId, 'webOrders');
+  const webOrdersEnabled = await isStoreFeatureEnabled(
+    organizationId,
+    'webOrders',
+  );
   const aiEnabled = await isStoreFeatureEnabled(organizationId, 'ai');
   const chatEnabled = webOrdersEnabled && aiEnabled;
   const metadata = settings?.metadata as {
@@ -158,13 +169,17 @@ export default async function WebOrderPage(props: {
     location?: StoreLocation;
   } | null;
   const aiSettings = normalizeAIEmployeeSettings(metadata?.aiEmployee);
-  const themeStyle = getStoreBrandThemeCssVariables(metadata?.brandTheme) as CSSProperties | undefined;
+  const themeStyle = getStoreBrandThemeCssVariables(metadata?.brandTheme) as
+    | CSSProperties
+    | undefined;
   const location = metadata?.location ?? {};
   const timeZone = settings?.timezone ?? 'Asia/Riyadh';
   const hasLocation = Object.values(location).some(Boolean);
   const getDeliveryLabel = (type: string, fallback: string) => {
-    return deliveryLabelKeys.includes(type as typeof deliveryLabelKeys[number])
-      ? paymentsT(type as typeof deliveryLabelKeys[number])
+    return deliveryLabelKeys.includes(
+      type as (typeof deliveryLabelKeys)[number],
+    )
+      ? paymentsT(type as (typeof deliveryLabelKeys)[number])
       : fallback;
   };
   const configuredFulfillmentTypes = Array.from(
@@ -177,26 +192,33 @@ export default async function WebOrderPage(props: {
   const availablePaymentKinds = paymentMethods.reduce<{
     delivery: PaymentChoiceKind[];
     pickup: PaymentChoiceKind[];
-  }>((choices, method) => {
-    const kind = getPaymentChoiceKind(method.provider);
+  }>(
+    (choices, method) => {
+      const kind = getPaymentChoiceKind(method.provider);
 
-    if (!kind) {
-      return choices;
-    }
-
-    for (const deliveryPreference of getSupportedDeliveryPreferences(method.supportedDeliveryMethods)) {
-      if (!choices[deliveryPreference].includes(kind)) {
-        choices[deliveryPreference].push(kind);
+      if (!kind) {
+        return choices;
       }
-    }
 
-    return choices;
-  }, { delivery: [], pickup: [] });
-  const availableFulfillmentTypes = configuredFulfillmentTypes.filter((choice) => {
-    return choice === 'delivery'
-      ? availablePaymentKinds.delivery.length > 0
-      : availablePaymentKinds.pickup.length > 0;
-  });
+      for (const deliveryPreference of getSupportedDeliveryPreferences(
+        method.supportedDeliveryMethods,
+      )) {
+        if (!choices[deliveryPreference].includes(kind)) {
+          choices[deliveryPreference].push(kind);
+        }
+      }
+
+      return choices;
+    },
+    { delivery: [], pickup: [] },
+  );
+  const availableFulfillmentTypes = configuredFulfillmentTypes.filter(
+    (choice) => {
+      return choice === 'delivery'
+        ? availablePaymentKinds.delivery.length > 0
+        : availablePaymentKinds.pickup.length > 0;
+    },
+  );
   const orderChatEnabled = chatEnabled && availableFulfillmentTypes.length > 0;
 
   return (
@@ -206,24 +228,28 @@ export default async function WebOrderPage(props: {
       description={settings?.storeDescription?.trim() || t('description')}
     >
       {sent === '1' && (
-        <div className="
-          mx-auto mb-6 flex max-w-3xl items-start gap-3 rounded-xl border
-          border-emerald-200 bg-emerald-50 p-4 text-emerald-950
-        "
+        <div
+          className="
+            mx-auto mb-6 flex max-w-3xl items-start gap-3 rounded-xl border
+            border-emerald-200 bg-emerald-50 p-4 text-emerald-950
+          "
         >
           <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" />
           <div>
             <div className="font-semibold">{t('sent_title')}</div>
-            <p className="mt-1 text-sm/6 text-emerald-900">{t('sent_description')}</p>
+            <p className="mt-1 text-sm/6 text-emerald-900">
+              {t('sent_description')}
+            </p>
           </div>
         </div>
       )}
 
       {!orderChatEnabled && (
-        <div className="
-          mx-auto max-w-3xl rounded-xl border border-amber-200 bg-amber-50 p-5
-          text-center text-amber-950
-        "
+        <div
+          className="
+            mx-auto max-w-3xl rounded-xl border border-amber-200 bg-amber-50 p-5
+            text-center text-amber-950
+          "
         >
           <div className="font-semibold">{t('disabled_title')}</div>
           <p className="mt-2 text-sm/6">{t('disabled_description')}</p>
@@ -277,31 +303,35 @@ export default async function WebOrderPage(props: {
             storeLogoUrl={settings?.logo?.trim() || null}
             storeName={storeName}
             timeZone={timeZone}
-            welcomeMessage={aiSettings.welcomeMessage
+            welcomeMessage={
+              aiSettings.welcomeMessage
               || settings?.welcomeMessage?.trim()
-              || t('chat_welcome', { storeName })}
+              || t('chat_welcome', { storeName })
+            }
           />
 
-          <aside className="
-            min-h-0 space-y-4 text-start
-            lg:h-[min(720px,calc(100vh-180px))] lg:min-h-[520px]
-            lg:overflow-y-auto lg:overscroll-contain lg:pe-1
-          "
+          <aside
+            className="
+              min-h-0 space-y-4 text-start
+              lg:h-[min(720px,calc(100vh-180px))] lg:min-h-[520px]
+              lg:overflow-y-auto lg:overscroll-contain lg:pe-1
+            "
           >
             {hasLocation && (
-              <section className="
-                rounded-2xl border border-primary/15 bg-background/80 p-5
-                shadow-sm shadow-primary/10
-              "
+              <section
+                className="
+                  rounded-2xl border border-primary/15 bg-background/80 p-5
+                  shadow-sm shadow-primary/10
+                "
               >
                 <h2 className="text-sm font-bold text-slate-950">
                   {t('store_location')}
                 </h2>
                 <div className="mt-3 space-y-2 text-sm text-slate-700">
                   {location.branchName && <p>{location.branchName}</p>}
-                  {[location.city, location.district, location.address]
-                    .filter(Boolean)
-                    .length > 0 && (
+                  {[location.city, location.district, location.address].filter(
+                    Boolean,
+                  ).length > 0 && (
                     <p>
                       {[location.city, location.district, location.address]
                         .filter(Boolean)
@@ -309,7 +339,9 @@ export default async function WebOrderPage(props: {
                     </p>
                   )}
                   {location.phone && <p>{location.phone}</p>}
-                  {location.pickupInstructions && <p>{location.pickupInstructions}</p>}
+                  {location.pickupInstructions && (
+                    <p>{location.pickupInstructions}</p>
+                  )}
                   {location.deliveryNotes && <p>{location.deliveryNotes}</p>}
                   {location.mapsUrl && (
                     <a
@@ -344,10 +376,11 @@ export default async function WebOrderPage(props: {
             />
 
             {deliveryMethods.length > 0 && (
-              <section className="
-                rounded-2xl border border-primary/15 bg-background/80 p-5
-                shadow-sm shadow-primary/10
-              "
+              <section
+                className="
+                  rounded-2xl border border-primary/15 bg-background/80 p-5
+                  shadow-sm shadow-primary/10
+                "
               >
                 <h2 className="text-sm font-bold text-slate-950">
                   {t('available_delivery_methods')}
@@ -369,7 +402,11 @@ export default async function WebOrderPage(props: {
                         </p>
                         <p>{t('delivery_fee', { fee: method.fee })}</p>
                         {method.estimatedTime && (
-                          <p>{t('estimated_time', { time: method.estimatedTime })}</p>
+                          <p>
+                            {t('estimated_time', {
+                              time: method.estimatedTime,
+                            })}
+                          </p>
                         )}
                         {config.instructions && <p>{config.instructions}</p>}
                       </div>
