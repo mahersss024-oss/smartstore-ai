@@ -5,6 +5,7 @@ import { processMetaInboundMessage } from '@/libs/MetaInboundProcessor';
 import {
   findMetaStoreConnection,
   parseMetaWebhookPayload,
+  parseMetaWebhookStatusUpdates,
   verifyMetaSignature,
 } from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
@@ -74,8 +75,27 @@ export const POST = async (request: Request) => {
   const message = parseMetaWebhookPayload(payload);
 
   if (!message) {
+    const statusUpdates = parseMetaWebhookStatusUpdates(payload);
+
+    for (const statusUpdate of statusUpdates) {
+      const logPayload = {
+        errors: statusUpdate.errors,
+        messageId: statusUpdate.messageId,
+        phoneNumberId: statusUpdate.phoneNumberId,
+        recipientId: statusUpdate.recipientId,
+        status: statusUpdate.status,
+        timestamp: statusUpdate.timestamp,
+      };
+
+      if (statusUpdate.status === 'failed') {
+        logger.warn('Meta WhatsApp delivery status failed', logPayload);
+      } else {
+        logger.info('Meta WhatsApp delivery status received', logPayload);
+      }
+    }
+
     // Status updates and unsupported message types are acknowledged, not processed.
-    return NextResponse.json({ ok: true, skipped: true });
+    return NextResponse.json({ ok: true, skipped: true, statusUpdates: statusUpdates.length });
   }
 
   const connection = await findMetaStoreConnection(message.phoneNumberId);

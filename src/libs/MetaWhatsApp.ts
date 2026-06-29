@@ -41,6 +41,22 @@ export type MetaInboundMessage = {
   profileName?: string;
 };
 
+export type MetaWebhookStatusError = {
+  code?: number;
+  details?: string;
+  message?: string;
+  title?: string;
+};
+
+export type MetaWebhookStatusUpdate = {
+  errors?: MetaWebhookStatusError[];
+  messageId: string;
+  phoneNumberId: string;
+  recipientId?: string;
+  status: string;
+  timestamp?: string;
+};
+
 export type MetaReplyButton = {
   id: string;
   title: string;
@@ -209,6 +225,75 @@ export const parseMetaWebhookPayload = (payload: unknown): MetaInboundMessage | 
     phoneNumberId,
     profileName,
   };
+};
+
+export const parseMetaWebhookStatusUpdates = (payload: unknown): MetaWebhookStatusUpdate[] => {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const entry = (payload as { entry?: unknown[] }).entry?.[0] as
+    | { changes?: unknown[] }
+    | undefined;
+  const change = entry?.changes?.[0] as
+    | { value?: Record<string, unknown> }
+    | undefined;
+  const value = change?.value;
+
+  if (!value) {
+    return [];
+  }
+
+  const metadata = value.metadata as { phone_number_id?: string } | undefined;
+  const phoneNumberId = metadata?.phone_number_id;
+  const statuses = value.statuses as unknown[] | undefined;
+
+  if (!phoneNumberId || !Array.isArray(statuses)) {
+    return [];
+  }
+
+  return statuses
+    .flatMap((statusUpdate): MetaWebhookStatusUpdate[] => {
+      if (!statusUpdate || typeof statusUpdate !== 'object') {
+        return [];
+      }
+
+      const status = statusUpdate as Record<string, unknown>;
+      const messageId = typeof status.id === 'string' ? status.id : '';
+      const deliveryStatus = typeof status.status === 'string' ? status.status : '';
+
+      if (!messageId || !deliveryStatus) {
+        return [];
+      }
+
+      const errors = Array.isArray(status.errors)
+        ? status.errors
+            .flatMap((error): MetaWebhookStatusError[] => {
+              if (!error || typeof error !== 'object') {
+                return [];
+              }
+
+              const record = error as Record<string, unknown>;
+              const errorData = record.error_data as Record<string, unknown> | undefined;
+
+              return [{
+                code: typeof record.code === 'number' ? record.code : undefined,
+                details: typeof errorData?.details === 'string' ? errorData.details : undefined,
+                message: typeof record.message === 'string' ? record.message : undefined,
+                title: typeof record.title === 'string' ? record.title : undefined,
+              }];
+            })
+        : undefined;
+
+      return [{
+        errors,
+        messageId,
+        phoneNumberId,
+        recipientId: typeof status.recipient_id === 'string' ? status.recipient_id : undefined,
+        status: deliveryStatus,
+        timestamp: typeof status.timestamp === 'string' ? status.timestamp : undefined,
+      }];
+    });
 };
 
 const sendMetaPayload = async (params: {

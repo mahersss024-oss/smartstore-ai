@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   findMetaStoreConnection: vi.fn(),
   parseMetaWebhookPayload: vi.fn(),
+  parseMetaWebhookStatusUpdates: vi.fn(),
   processMetaInboundMessage: vi.fn(),
   runWebhookEventOnce: vi.fn(async (params: { handler: () => Promise<unknown> }) => ({
     duplicate: false,
     result: await params.handler(),
     status: 'processed',
   })),
+  info: vi.fn(),
   verifyMetaSignature: vi.fn(),
   warn: vi.fn(),
 }));
@@ -22,7 +24,7 @@ vi.mock('@/libs/Env', () => ({
 
 vi.mock('@/libs/Logger', () => ({
   logger: {
-    info: vi.fn(),
+    info: mocks.info,
     warn: mocks.warn,
   },
 }));
@@ -34,6 +36,7 @@ vi.mock('@/libs/MetaInboundProcessor', () => ({
 vi.mock('@/libs/MetaWhatsApp', () => ({
   findMetaStoreConnection: mocks.findMetaStoreConnection,
   parseMetaWebhookPayload: mocks.parseMetaWebhookPayload,
+  parseMetaWebhookStatusUpdates: mocks.parseMetaWebhookStatusUpdates,
   verifyMetaSignature: mocks.verifyMetaSignature,
 }));
 
@@ -68,6 +71,7 @@ describe('Meta WhatsApp webhook route', () => {
       phoneNumberId: '123456',
       profileName: 'Maher',
     });
+    mocks.parseMetaWebhookStatusUpdates.mockReturnValue([]);
     mocks.processMetaInboundMessage.mockResolvedValue({ aiResponseSent: true });
     mocks.runWebhookEventOnce.mockImplementation(async (params: { handler: () => Promise<unknown> }) => ({
       duplicate: false,
@@ -159,6 +163,38 @@ describe('Meta WhatsApp webhook route', () => {
       ok: true,
       skipped: true,
     });
+    expect(mocks.processMetaInboundMessage).not.toHaveBeenCalled();
+  });
+
+  it('logs Meta delivery status updates without invoking the AI pipeline', async () => {
+    mocks.parseMetaWebhookPayload.mockReturnValueOnce(null);
+    mocks.parseMetaWebhookStatusUpdates.mockReturnValueOnce([{
+      errors: [{ code: 131026, message: 'Message undeliverable' }],
+      messageId: 'wamid.outbound',
+      phoneNumberId: '123456',
+      recipientId: '966500000001',
+      status: 'failed',
+      timestamp: '1780000000',
+    }]);
+
+    const { POST } = await import('./route');
+    const response = await POST(buildPostRequest());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      ok: true,
+      skipped: true,
+      statusUpdates: 1,
+    });
+    expect(mocks.warn).toHaveBeenCalledWith('Meta WhatsApp delivery status failed', {
+      errors: [{ code: 131026, message: 'Message undeliverable' }],
+      messageId: 'wamid.outbound',
+      phoneNumberId: '123456',
+      recipientId: '966500000001',
+      status: 'failed',
+      timestamp: '1780000000',
+    });
+    expect(mocks.findMetaStoreConnection).not.toHaveBeenCalled();
     expect(mocks.processMetaInboundMessage).not.toHaveBeenCalled();
   });
 });

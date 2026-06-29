@@ -4,6 +4,7 @@ import {
   buildMetaAppSecretProof,
   MetaWhatsAppSendError,
   parseMetaWebhookPayload,
+  parseMetaWebhookStatusUpdates,
   sendMetaWhatsAppText,
   verifyMetaSignature,
 } from './MetaWhatsApp';
@@ -101,6 +102,54 @@ describe('MetaWhatsApp', () => {
       }))).toBeNull();
       expect(parseMetaWebhookPayload(null)).toBeNull();
       expect(parseMetaWebhookPayload({})).toBeNull();
+    });
+  });
+
+  describe('parseMetaWebhookStatusUpdates', () => {
+    it('parses delivery failures without requiring message payloads', () => {
+      const result = parseMetaWebhookStatusUpdates({
+        entry: [{
+          changes: [{
+            value: {
+              metadata: { phone_number_id: '1173797649153295' },
+              statuses: [{
+                errors: [{
+                  code: 131026,
+                  error_data: { details: 'Message undeliverable.' },
+                  message: 'Message undeliverable',
+                  title: 'Message undeliverable',
+                }],
+                id: 'wamid.outbound',
+                recipient_id: '966549764152',
+                status: 'failed',
+                timestamp: '1780000000',
+              }],
+            },
+          }],
+        }],
+      });
+
+      expect(result).toEqual([{
+        errors: [{
+          code: 131026,
+          details: 'Message undeliverable.',
+          message: 'Message undeliverable',
+          title: 'Message undeliverable',
+        }],
+        messageId: 'wamid.outbound',
+        phoneNumberId: '1173797649153295',
+        recipientId: '966549764152',
+        status: 'failed',
+        timestamp: '1780000000',
+      }]);
+    });
+
+    it('ignores malformed status payloads', () => {
+      expect(parseMetaWebhookStatusUpdates(null)).toEqual([]);
+      expect(parseMetaWebhookStatusUpdates({})).toEqual([]);
+      expect(parseMetaWebhookStatusUpdates({
+        entry: [{ changes: [{ value: { statuses: [{ id: 'wamid' }] } }] }],
+      })).toEqual([]);
     });
   });
 

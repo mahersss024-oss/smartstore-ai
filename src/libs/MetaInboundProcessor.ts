@@ -108,11 +108,11 @@ const deliverMetaMessage = async (params: {
   connection: MetaStoreConnection;
   message: MetaOutboundMessage;
   to: string;
-}) => {
+}): Promise<string | undefined> => {
   const { connection, message, to } = params;
 
   if (message.kind === 'buttons') {
-    await sendMetaWhatsAppButtons({
+    return await sendMetaWhatsAppButtons({
       accessToken: connection.accessToken,
       appSecret: Env.META_APP_SECRET ?? '',
       body: message.body,
@@ -120,12 +120,10 @@ const deliverMetaMessage = async (params: {
       phoneNumberId: connection.phoneNumberId,
       to,
     });
-
-    return;
   }
 
   if (message.kind === 'list') {
-    await sendMetaWhatsAppList({
+    return await sendMetaWhatsAppList({
       accessToken: connection.accessToken,
       appSecret: Env.META_APP_SECRET ?? '',
       body: message.body,
@@ -135,11 +133,9 @@ const deliverMetaMessage = async (params: {
       sectionTitle: message.sectionTitle,
       to,
     });
-
-    return;
   }
 
-  await sendMetaWhatsAppText({
+  return await sendMetaWhatsAppText({
     accessToken: connection.accessToken,
     appSecret: Env.META_APP_SECRET ?? '',
     body: message.body,
@@ -251,12 +247,13 @@ export const processMetaInboundMessage = async (params: {
 
     try {
       await params.beforeSend?.();
-      await deliverMetaMessage({ connection, message: outbound, to: message.from });
+      const outboundMessageId = await deliverMetaMessage({ connection, message: outbound, to: message.from });
 
       logger.info('Meta outbound reply sent', {
         conversationId: aiResult.data.conversationId,
         kind: outbound.kind,
         organizationId: connection.organizationId,
+        outboundMessageId,
       });
     } catch (error) {
       logger.warn('Meta WhatsApp reply send failed', {
