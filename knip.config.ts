@@ -14,6 +14,7 @@ const config: KnipConfig = {
   // Dependencies to ignore during analysis
   ignoreDependencies: [
     '@clerk/shared',
+    '@solana/web3.js', // Runtime peer imported by Clerk UI Web3 auth modules during production builds.
     '@swc/helpers', // Avoid error in CI: "`npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync."
   ],
   // Include custom Playwright test file suffixes
