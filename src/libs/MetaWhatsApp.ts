@@ -41,7 +41,7 @@ export type MetaInboundMessage = {
   profileName?: string;
 };
 
-export type MetaWebhookStatusError = {
+type MetaWebhookStatusError = {
   code?: number;
   details?: string;
   message?: string;
