@@ -216,12 +216,16 @@ export default async function SettingsPage(props: {
     channelIntegrations?: {
       whatsapp?: {
         accessTokenPreview?: string | null;
+        apiTokenPreview?: string | null;
+        channelId?: string | null;
         connectionStatus?: string;
         displayPhoneNumber?: string | null;
         mode?: string;
         phoneNumber?: string | null;
         phoneNumberId?: string | null;
+        provider?: string | null;
         wabaId?: string | null;
+        webhookSecret?: string | null;
         whatsappLink?: string | null;
         whatsappTarget?: string | null;
       };
@@ -272,15 +276,23 @@ export default async function SettingsPage(props: {
   const whatsappConnection = channelConnections.find(connection => connection.channel === 'whatsapp');
   const whatsappConfig = (whatsappConnection?.config ?? {}) as {
     accessTokenPreview?: string | null;
+    apiTokenPreview?: string | null;
+    channelId?: string | null;
     connectionStatus?: string;
     displayPhoneNumber?: string | null;
     encryptedAccessToken?: string | null;
+    encryptedApiToken?: string | null;
     phoneNumberId?: string | null;
     provider?: string | null;
     wabaId?: string | null;
+    webhookSecret?: string | null;
     whatsappLink?: string | null;
     whatsappTarget?: string | null;
   };
+  const whatsappProvider = whatsappConfig.provider === 'whapi'
+    || metadata?.channelIntegrations?.whatsapp?.provider === 'whapi'
+    ? 'whapi'
+    : 'meta';
   const metaPhoneNumberId = whatsappConfig.phoneNumberId
     ?? metadata?.channelIntegrations?.whatsapp?.phoneNumberId
     ?? '';
@@ -293,15 +305,42 @@ export default async function SettingsPage(props: {
   const metaWabaId = whatsappConfig.wabaId
     ?? metadata?.channelIntegrations?.whatsapp?.wabaId
     ?? '';
-  const whatsappChannel = buildWhatsAppChannelConfig({
-    displayPhoneNumber: metaDisplayPhoneNumber,
-    encryptedAccessToken: whatsappConfig.encryptedAccessToken,
-    hasAccessToken: Boolean(whatsappConfig.encryptedAccessToken),
-    phoneNumberId: metaPhoneNumberId,
-    status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
-    storeName: currentSettings?.storeName ?? 'SmartStore',
-    wabaId: metaWabaId,
-  });
+  const whapiChannelId = whatsappConfig.channelId
+    ?? metadata?.channelIntegrations?.whatsapp?.channelId
+    ?? '';
+  const whapiDisplayPhoneNumber = whatsappProvider === 'whapi'
+    ? whatsappConfig.displayPhoneNumber
+    ?? metadata?.channelIntegrations?.whatsapp?.displayPhoneNumber
+    ?? ''
+    : '';
+  const whapiApiTokenPreview = whatsappConfig.apiTokenPreview
+    ?? metadata?.channelIntegrations?.whatsapp?.apiTokenPreview
+    ?? '';
+  const whapiWebhookSecret = whatsappConfig.webhookSecret
+    ?? metadata?.channelIntegrations?.whatsapp?.webhookSecret
+    ?? '';
+  const whatsappChannel = whatsappProvider === 'whapi'
+    ? buildWhatsAppChannelConfig({
+        apiTokenPreview: whapiApiTokenPreview,
+        channelId: whapiChannelId,
+        displayPhoneNumber: whapiDisplayPhoneNumber,
+        encryptedApiToken: whatsappConfig.encryptedApiToken,
+        hasApiToken: Boolean(whatsappConfig.encryptedApiToken),
+        provider: 'whapi',
+        status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
+        storeName: currentSettings?.storeName ?? 'SmartStore',
+        webhookSecret: whapiWebhookSecret,
+      })
+    : buildWhatsAppChannelConfig({
+        displayPhoneNumber: metaDisplayPhoneNumber,
+        encryptedAccessToken: whatsappConfig.encryptedAccessToken,
+        hasAccessToken: Boolean(whatsappConfig.encryptedAccessToken),
+        phoneNumberId: metaPhoneNumberId,
+        provider: 'meta',
+        status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
+        storeName: currentSettings?.storeName ?? 'SmartStore',
+        wabaId: metaWabaId,
+      });
   const isPaymentActive = (provider: string) => {
     return paymentMethods.find(method => method.provider === provider)?.isActive ?? false;
   };
@@ -361,6 +400,26 @@ export default async function SettingsPage(props: {
       labelKey: 'whatsapp_check_meta_display_number',
     },
   ] as const;
+  const whapiWebhookPath = whapiChannelId && whapiWebhookSecret
+    ? `/api/whatsapp/webhook?provider=whapi&channelId=${encodeURIComponent(whapiChannelId)}&secret=${encodeURIComponent(whapiWebhookSecret)}`
+    : '/api/whatsapp/webhook?provider=whapi';
+  const whapiCredentialChecks = [
+    {
+      isReady: /^[\w.:-]{3,128}$/.test(whapiChannelId),
+      labelKey: 'whatsapp_check_whapi_channel_id',
+    },
+    {
+      isReady: Boolean(whatsappConfig.encryptedApiToken),
+      labelKey: 'whatsapp_check_whapi_api_token',
+    },
+    {
+      isReady: Boolean(whapiWebhookSecret),
+      labelKey: 'whatsapp_check_whapi_webhook_secret',
+    },
+  ] as const;
+  const whatsappCredentialChecks = whatsappProvider === 'whapi'
+    ? whapiCredentialChecks
+    : metaCredentialChecks;
   const buildConnectLink = (source: string) => {
     return buildAbsoluteLink(`/${locale}/connect/${orgId}?source=${source}`);
   };
@@ -773,6 +832,24 @@ export default async function SettingsPage(props: {
               value={whatsappChannel.connectionStatus}
             />
 
+            <div className="grid gap-2">
+              <label htmlFor="whatsappProvider" className="text-sm font-medium">
+                {t('whatsapp_provider')}
+              </label>
+              <select
+                id="whatsappProvider"
+                name="whatsappProvider"
+                defaultValue={whatsappProvider}
+                className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="meta">{t('whatsapp_provider_meta')}</option>
+                <option value="whapi">{t('whatsapp_provider_whapi')}</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {t('whatsapp_provider_hint')}
+              </p>
+            </div>
+
             <div className="
               grid gap-4
               md:grid-cols-2
@@ -856,14 +933,94 @@ export default async function SettingsPage(props: {
               </div>
             </div>
 
+            <div className="
+              grid gap-4 rounded-xl border bg-white/70 p-4
+              md:grid-cols-2
+            "
+            >
+              <div className="grid gap-2">
+                <label
+                  htmlFor="whapiChannelId"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('whapi_channel_id')}
+                </label>
+                <input
+                  id="whapiChannelId"
+                  name="whapiChannelId"
+                  autoComplete="off"
+                  defaultValue={whapiChannelId}
+                  placeholder="channel_xxxxxxxxx"
+                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor="whapiApiToken"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('whapi_api_token')}
+                </label>
+                <input
+                  id="whapiApiToken"
+                  name="whapiApiToken"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={whapiApiTokenPreview || '********************************'}
+                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('whapi_api_token_hint')}
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor="whapiDisplayPhoneNumber"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('whapi_display_phone_number')}
+                </label>
+                <input
+                  id="whapiDisplayPhoneNumber"
+                  name="whapiDisplayPhoneNumber"
+                  autoComplete="off"
+                  defaultValue={whapiDisplayPhoneNumber}
+                  placeholder="+9665xxxxxxxx"
+                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor="whapiWebhookSecret"
+                  className="text-sm font-medium text-foreground"
+                >
+                  {t('whapi_webhook_secret')}
+                </label>
+                <input
+                  id="whapiWebhookSecret"
+                  name="whapiWebhookSecret"
+                  autoComplete="off"
+                  defaultValue={whapiWebhookSecret}
+                  placeholder={t('whapi_webhook_secret_placeholder')}
+                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('whapi_webhook_secret_hint')}
+                </p>
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <label htmlFor="metaWebhookUrl" className="text-sm font-medium">
-                {t('meta_webhook_url')}
+                {whatsappProvider === 'whapi' ? t('whapi_webhook_url') : t('meta_webhook_url')}
               </label>
               <input
                 id="metaWebhookUrl"
                 readOnly
-                value={buildAbsoluteLink('/api/whatsapp/webhook')}
+                value={buildAbsoluteLink(whatsappProvider === 'whapi' ? whapiWebhookPath : '/api/whatsapp/webhook')}
                 className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
               />
             </div>
@@ -874,7 +1031,7 @@ export default async function SettingsPage(props: {
                 md:grid-cols-2
               "
               >
-                {metaCredentialChecks.map(item => (
+                {whatsappCredentialChecks.map(item => (
                   <div
                     key={item.labelKey}
                     className="

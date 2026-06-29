@@ -20,6 +20,7 @@ export type WhatsAppConnectionStatus
   = | 'connected'
     | 'disconnected'
     | 'pending_setup';
+export type WhatsAppProvider = 'meta' | 'whapi';
 
 const validEntryModes = new Set<CustomerEntryMode>([
   'web_only',
@@ -126,30 +127,58 @@ const buildWhatsAppDirectMessage = (storeName: string) => {
 };
 
 export const buildWhatsAppChannelConfig = (params: {
+  apiTokenPreview?: null | string;
+  channelId?: null | string;
   displayPhoneNumber?: null | string;
   encryptedAccessToken?: null | string;
+  encryptedApiToken?: null | string;
   hasAccessToken?: boolean;
+  hasApiToken?: boolean;
   phoneNumberId?: null | string;
+  provider?: WhatsAppProvider;
   status?: unknown;
   storeName: string;
   wabaId?: null | string;
+  webhookSecret?: null | string;
 }) => {
+  const provider = params.provider ?? 'meta';
   const phoneNumberId = params.phoneNumberId?.trim() || null;
   const wabaId = params.wabaId?.trim() || null;
+  const channelId = params.channelId?.trim() || null;
   const displayPhoneNumber = params.displayPhoneNumber?.trim() || null;
   const whatsappTarget = normalizeWhatsAppTarget(displayPhoneNumber);
-  const hasMetaCredentials = Boolean(
-    phoneNumberId
-    && /^\d{6,20}$/.test(phoneNumberId)
-    && params.hasAccessToken,
-  );
+  const hasProviderCredentials = provider === 'whapi'
+    ? Boolean(channelId && params.hasApiToken)
+    : Boolean(
+        phoneNumberId
+        && /^\d{6,20}$/.test(phoneNumberId)
+        && params.hasAccessToken,
+      );
   const connectionStatus = normalizeWhatsAppConnectionStatus({
-    hasCredentials: hasMetaCredentials,
+    hasCredentials: hasProviderCredentials,
     status: params.status,
   });
   const whatsappLink = whatsappTarget
     ? buildWhatsAppUrl(whatsappTarget, buildWhatsAppDirectMessage(params.storeName))
     : null;
+  const providerConfig = provider === 'whapi'
+    ? {
+        apiTokenPreview: params.apiTokenPreview ?? null,
+        channelId,
+        connectionMethod: 'whapi_cloud_api',
+        displayPhoneNumber,
+        encryptedApiToken: params.encryptedApiToken ?? null,
+        webhookProvider: 'whapi',
+        webhookSecret: params.webhookSecret ?? null,
+      }
+    : {
+        connectionMethod: 'meta_cloud_api',
+        displayPhoneNumber,
+        encryptedAccessToken: params.encryptedAccessToken ?? null,
+        phoneNumberId,
+        wabaId,
+        webhookProvider: 'meta',
+      };
 
   return {
     config: {
@@ -157,29 +186,20 @@ export const buildWhatsAppChannelConfig = (params: {
       customerMapping: 'whatsapp_phone',
       directLinkStatus: whatsappTarget ? 'ready' : 'missing_number',
       eventArchitecture: 'webhook_ready',
-      mode: 'meta' as const,
+      mode: provider,
       notificationRouting: ['web_chat', 'whatsapp'],
       orderMapping: 'source_channel_order',
       phoneNumber: displayPhoneNumber,
-      provider: 'meta' as const,
+      provider,
       qrType: 'whatsapp',
-      webhookReady: hasMetaCredentials,
+      webhookReady: hasProviderCredentials,
       whatsappLink,
       whatsappTarget,
-      ...(phoneNumberId
-        ? {
-            connectionMethod: 'meta_cloud_api',
-            displayPhoneNumber,
-            encryptedAccessToken: params.encryptedAccessToken ?? null,
-            phoneNumberId,
-            wabaId,
-            webhookProvider: 'meta',
-          }
-        : {}),
+      ...(hasProviderCredentials || provider === 'whapi' || phoneNumberId ? providerConfig : {}),
     },
     connectionStatus,
-    isActive: hasMetaCredentials,
-    mode: 'meta' as const,
+    isActive: hasProviderCredentials,
+    mode: provider,
     whatsappLink,
     whatsappTarget,
   };

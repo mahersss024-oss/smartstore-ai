@@ -51,29 +51,46 @@ Optional variables:
 - `BETTER_STACK_INGESTING_HOST`
 - `NEXT_IMAGE_REMOTE_HOSTS`
 
-## WhatsApp Provider
+## WhatsApp Providers
 
-WhatsApp is served through **Meta WhatsApp Cloud API** only.
+WhatsApp supports two store-level providers:
 
-Platform-level required values:
+- **Meta WhatsApp Cloud API**
+- **Whapi.cloud**
+
+Platform-level values for Meta:
 
 - `META_APP_SECRET`
 - `META_WEBHOOK_VERIFY_TOKEN`
 
-Per-store values are saved encrypted from the store dashboard:
+Per-store Meta values are saved encrypted from the store dashboard:
 
 - Phone Number ID
 - Access Token
 - Display phone number
 - Optional WhatsApp Business Account ID
 
-The inbound webhook URL is:
+The Meta inbound webhook URL is:
 
 ```text
 https://smartstore-ai.com/api/whatsapp/webhook
 ```
 
 Subscribe the Meta app to the `messages` webhook field.
+
+Per-store Whapi values are also saved encrypted from the store dashboard:
+
+- Whapi Channel ID
+- Whapi API Token
+- Display phone number
+- Whapi webhook secret
+
+Whapi does not require global Render environment variables. Configure Whapi with
+the store-specific webhook URL shown in the dashboard:
+
+```text
+https://smartstore-ai.com/api/whatsapp/webhook?provider=whapi&channelId=<channelId>&secret=<webhookSecret>
+```
 
 ## DNS
 
@@ -100,5 +117,5 @@ Use Render Cron Jobs or QStash Schedules.
 1. Open `/robots.txt` and confirm a 200 response.
 2. Open `/sign-in` and confirm Clerk renders.
 3. Open a public web-order link and confirm the page renders.
-4. Send a Meta WhatsApp test message to `/api/whatsapp/webhook`.
+4. Send a WhatsApp test message through the provider configured for the store.
 5. Confirm the message maps to the correct store and an AI reply is sent.
