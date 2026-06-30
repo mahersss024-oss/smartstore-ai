@@ -39,4 +39,4 @@ runs:
           .next
           next-env.d.ts
         key: nextjs-build-${{ inputs.node-version }}-${{ github.sha }}
-        fail-on-cache-miss: true
+        fail-on-cache-miss: false
