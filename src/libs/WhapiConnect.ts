@@ -87,17 +87,24 @@ const sanitizeErrorDetail = (responseText: string) => {
     ? responseText.replaceAll(token, '[redacted]')
     : responseText;
 
-  return redacted.slice(0, 500);
+  return redacted.slice(0, 1200);
 };
 
 type WhapiCreateChannelAuthMode = 'bearer' | 'query';
 type WhapiCreateChannelPath = '/channel' | '/channels';
+type WhapiProjectProbePath = `/projects/${string}`;
 
 type WhapiCreateChannelAttemptResult = {
   authMode: WhapiCreateChannelAuthMode;
-  path: WhapiCreateChannelPath;
+  path: WhapiCreateChannelPath | WhapiProjectProbePath;
   response: Response;
   responseText: string;
+};
+
+const buildWhapiManagerUrl = (path: string) => {
+  const base = Env.WHAPI_PARTNER_API_BASE.replace(/\/+$/, '');
+
+  return new URL(`${base}${path.startsWith('/') ? path : `/${path}`}`);
 };
 
 const createWhapiChannelRequest = async (params: {
@@ -105,7 +112,7 @@ const createWhapiChannelRequest = async (params: {
   name: string;
   path: WhapiCreateChannelPath;
 }): Promise<WhapiCreateChannelAttemptResult> => {
-  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}${params.path}`);
+  const url = buildWhapiManagerUrl(params.path);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -134,6 +141,31 @@ const createWhapiChannelRequest = async (params: {
   };
 };
 
+const probeWhapiProjectRequest = async (authMode: WhapiCreateChannelAuthMode) => {
+  const path = `/projects/${encodeURIComponent(Env.WHAPI_PROJECT_ID ?? '')}` as WhapiProjectProbePath;
+  const url = buildWhapiManagerUrl(path);
+  const headers: Record<string, string> = {};
+
+  if (authMode === 'query') {
+    url.searchParams.set('token', Env.WHAPI_PARTNER_API_TOKEN ?? '');
+  } else {
+    headers.Authorization = `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`;
+  }
+
+  const response = await fetch(url.toString(), {
+    headers,
+    method: 'GET',
+  });
+  const responseText = await response.text().catch(() => '');
+
+  return {
+    authMode,
+    path,
+    response,
+    responseText,
+  };
+};
+
 const summarizeWhapiCreateChannelAttempt = (result: WhapiCreateChannelAttemptResult) => {
   return [
     result.path,
@@ -141,6 +173,28 @@ const summarizeWhapiCreateChannelAttempt = (result: WhapiCreateChannelAttemptRes
     result.response.status,
     result.responseText || 'empty_response',
   ].join(':');
+};
+
+const probeWhapiProject = async () => {
+  const results: WhapiCreateChannelAttemptResult[] = [];
+
+  for (const authMode of ['query', 'bearer'] as const) {
+    const result = await probeWhapiProjectRequest(authMode);
+
+    results.push(result);
+
+    if (result.response.ok) {
+      return {
+        ok: true,
+        summary: results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    summary: results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
+  };
 };
 
 export const createWhapiManagedChannel = async (params: {
@@ -185,9 +239,17 @@ export const createWhapiManagedChannel = async (params: {
   }
 
   if (results.length > 0) {
+    const projectProbe = await probeWhapiProject().catch((error: unknown) => ({
+      ok: false,
+      summary: error instanceof Error ? error.message : 'project_probe_failed',
+    }));
+
     throw new WhapiConnectError('whapi_channel_create_failed', {
       detail: sanitizeErrorDetail(
-        results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
+        [
+          `create=${results.map(summarizeWhapiCreateChannelAttempt).join(' | ')}`,
+          `projectProbe=${projectProbe.ok ? 'ok' : 'failed'}:${projectProbe.summary}`,
+        ].join(' :: '),
       ),
       status: results.at(-1)?.response.status,
     });

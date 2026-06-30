@@ -122,4 +122,47 @@ describe('WhapiConnect', () => {
       'https://manager.whapi.test/channels?token=partner_token',
     );
   });
+
+  it('normalizes a trailing partner API base slash', async () => {
+    Object.assign(Env, {
+      WHAPI_PARTNER_API_BASE: 'https://manager.whapi.test/',
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        channel: {
+          id: 'channel_123',
+          token: 'channel_token',
+        },
+      }), { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createWhapiManagedChannel({ name: 'Store Channel' }))
+      .resolves
+      .toMatchObject({
+        channelId: 'channel_123',
+      });
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe(
+      'https://manager.whapi.test/channel?token=partner_token',
+    );
+  });
+
+  it('adds a safe project probe summary when channel creation fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'project_123' }), { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createWhapiManagedChannel({ name: 'Store Channel' }))
+      .rejects
+      .toMatchObject({
+        detail: expect.stringContaining('projectProbe=ok'),
+        message: 'whapi_channel_create_failed',
+      });
+  });
 });
