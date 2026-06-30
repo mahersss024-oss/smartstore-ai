@@ -90,11 +90,22 @@ const sanitizeErrorDetail = (responseText: string) => {
   return redacted.slice(0, 500);
 };
 
+type WhapiCreateChannelAuthMode = 'bearer' | 'query';
+type WhapiCreateChannelPath = '/channel' | '/channels';
+
+type WhapiCreateChannelAttemptResult = {
+  authMode: WhapiCreateChannelAuthMode;
+  path: WhapiCreateChannelPath;
+  response: Response;
+  responseText: string;
+};
+
 const createWhapiChannelRequest = async (params: {
-  authMode: 'bearer' | 'query';
+  authMode: WhapiCreateChannelAuthMode;
   name: string;
-}) => {
-  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}/channel`);
+  path: WhapiCreateChannelPath;
+}): Promise<WhapiCreateChannelAttemptResult> => {
+  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}${params.path}`);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -117,9 +128,19 @@ const createWhapiChannelRequest = async (params: {
 
   return {
     authMode: params.authMode,
+    path: params.path,
     response,
     responseText,
   };
+};
+
+const summarizeWhapiCreateChannelAttempt = (result: WhapiCreateChannelAttemptResult) => {
+  return [
+    result.path,
+    result.authMode,
+    result.response.status,
+    result.responseText || 'empty_response',
+  ].join(':');
 };
 
 export const createWhapiManagedChannel = async (params: {
@@ -129,35 +150,50 @@ export const createWhapiManagedChannel = async (params: {
     throw new WhapiConnectError('whapi_partner_credentials_missing');
   }
 
-  const queryAttempt = await createWhapiChannelRequest({
-    authMode: 'query',
-    name: params.name,
-  });
-  const finalAttempt = [401, 403].includes(queryAttempt.response.status)
-    ? await createWhapiChannelRequest({
-        authMode: 'bearer',
-        name: params.name,
-      })
-    : queryAttempt;
+  const attempts = [
+    { authMode: 'query', path: '/channel' },
+    { authMode: 'query', path: '/channels' },
+    { authMode: 'bearer', path: '/channel' },
+    { authMode: 'bearer', path: '/channels' },
+  ] as const;
+  const results: WhapiCreateChannelAttemptResult[] = [];
 
-  if (!finalAttempt.response.ok) {
+  for (const attempt of attempts) {
+    const result = await createWhapiChannelRequest({
+      authMode: attempt.authMode,
+      name: params.name,
+      path: attempt.path,
+    });
+
+    results.push(result);
+
+    if (result.response.ok) {
+      try {
+        return parseWhapiManagedChannel(result.responseText ? JSON.parse(result.responseText) : {});
+      } catch (error) {
+        if (error instanceof WhapiConnectError) {
+          throw error;
+        }
+
+        throw new WhapiConnectError('whapi_channel_response_invalid');
+      }
+    }
+
+    if (![401, 403, 404, 405].includes(result.response.status)) {
+      break;
+    }
+  }
+
+  if (results.length > 0) {
     throw new WhapiConnectError('whapi_channel_create_failed', {
       detail: sanitizeErrorDetail(
-        `auth=${finalAttempt.authMode} body=${finalAttempt.responseText || 'empty_response'}`,
+        results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
       ),
-      status: finalAttempt.response.status,
+      status: results.at(-1)?.response.status,
     });
   }
 
-  try {
-    return parseWhapiManagedChannel(finalAttempt.responseText ? JSON.parse(finalAttempt.responseText) : {});
-  } catch (error) {
-    if (error instanceof WhapiConnectError) {
-      throw error;
-    }
-
-    throw new WhapiConnectError('whapi_channel_response_invalid');
-  }
+  throw new WhapiConnectError('whapi_channel_create_failed');
 };
 
 export const configureWhapiChannelWebhook = async (params: {
