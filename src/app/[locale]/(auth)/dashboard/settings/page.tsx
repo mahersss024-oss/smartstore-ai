@@ -10,6 +10,7 @@ import { GoogleMapsLocationPicker } from '@/features/dashboard/GoogleMapsLocatio
 import { savePaymentAndDeliverySettings } from '@/features/dashboard/PaymentDeliveryActions';
 import { disconnectWhatsApp, saveStoreSettings, saveWhatsAppSettings } from '@/features/dashboard/StoreSettingsActions';
 import { TitleBar } from '@/features/dashboard/TitleBar';
+import { WhapiQrConnectButton } from '@/features/dashboard/WhapiQrConnectButton';
 import { WhatsAppSettingsSubmit } from '@/features/dashboard/WhatsAppSettingsSubmit';
 import { db } from '@/libs/DB';
 import { normalizeStoreBrandTheme } from '@/libs/StoreBrandTheme';
@@ -938,6 +939,16 @@ export default async function SettingsPage(props: {
               md:grid-cols-2
             "
             >
+              <div className="md:col-span-2">
+                <WhapiQrConnectButton
+                  title={t('whapi_qr_connect_title')}
+                  description={t('whapi_qr_connect_description')}
+                  buttonLabel={t('whapi_qr_connect_button')}
+                  errorLabel={t('whapi_qr_connect_error')}
+                  refreshLabel={t('whapi_qr_connect_refresh')}
+                />
+              </div>
+
               <div className="grid gap-2">
                 <label
                   htmlFor="whapiChannelId"

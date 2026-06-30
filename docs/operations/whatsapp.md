@@ -33,6 +33,17 @@ Subscribe to the `messages` field. The platform must already be deployed with
 
 ### Option B: Whapi.cloud
 
+Preferred merchant flow:
+
+1. In Render, configure platform Whapi managed-connect variables:
+   - `WHAPI_PARTNER_API_TOKEN`
+   - `WHAPI_PROJECT_ID`
+2. In the store dashboard, select **Whapi.cloud** and click **Show QR**.
+3. The platform creates/reuses the Whapi channel, configures the webhook,
+   encrypts the channel token, and shows the QR for the merchant to scan.
+
+Manual fallback:
+
 From the store's Whapi account/channel, collect:
 
 - **Channel ID**: the Whapi channel identifier.
@@ -66,8 +77,10 @@ Platform-level WhatsApp environment values:
 - `META_WEBHOOK_VERIFY_TOKEN`: required only for Meta webhook verification.
 - `NEXT_PUBLIC_APP_URL`: stable absolute webhook/customer links.
 
-Whapi does not require global Render environment variables. Its API token and
-webhook secret are stored per store in `channel_connections.config`.
+Whapi manual credential entry does not require global Render environment
+variables. The direct QR flow requires `WHAPI_PARTNER_API_TOKEN` and
+`WHAPI_PROJECT_ID`. Store channel tokens and webhook secrets are stored per store
+in `channel_connections.config`.
 
 Optional, for durable async AI worker mode:
 
@@ -99,7 +112,8 @@ Apply all migrations before production traffic. WhatsApp activation depends on:
 
 ### Whapi
 
-1. Configure the Whapi webhook URL copied from the store dashboard.
+1. Use the store dashboard QR flow, or configure the Whapi webhook URL copied
+   from the store dashboard.
 2. Send a WhatsApp message from the customer phone to the Whapi channel number.
 3. Confirm `/api/whatsapp/webhook?provider=whapi...` logs
    `Whapi WhatsApp webhook received`.

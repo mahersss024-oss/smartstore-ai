@@ -92,6 +92,21 @@ the store-specific webhook URL shown in the dashboard:
 https://smartstore-ai.com/api/whatsapp/webhook?provider=whapi&channelId=<channelId>&secret=<webhookSecret>
 ```
 
+For one-click QR connection, set these platform-level Render variables:
+
+- `WHAPI_PARTNER_API_TOKEN`
+- `WHAPI_PROJECT_ID`
+
+Optional overrides:
+
+- `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
+- `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
+
+When these are present, the store can click "Show QR" in the dashboard. The
+platform creates/reuses the Whapi channel, configures the webhook, encrypts the
+channel token in the database, and displays the QR without merchant-side manual
+credential entry.
+
 ## DNS
 
 In the DNS provider:
