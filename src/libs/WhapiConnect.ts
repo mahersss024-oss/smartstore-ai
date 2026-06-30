@@ -129,16 +129,16 @@ export const createWhapiManagedChannel = async (params: {
     throw new WhapiConnectError('whapi_partner_credentials_missing');
   }
 
-  const bearerAttempt = await createWhapiChannelRequest({
-    authMode: 'bearer',
+  const queryAttempt = await createWhapiChannelRequest({
+    authMode: 'query',
     name: params.name,
   });
-  const finalAttempt = [401, 403].includes(bearerAttempt.response.status)
+  const finalAttempt = [401, 403].includes(queryAttempt.response.status)
     ? await createWhapiChannelRequest({
-        authMode: 'query',
+        authMode: 'bearer',
         name: params.name,
       })
-    : bearerAttempt;
+    : queryAttempt;
 
   if (!finalAttempt.response.ok) {
     throw new WhapiConnectError('whapi_channel_create_failed', {
