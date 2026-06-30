@@ -2,11 +2,13 @@ import { Buffer } from 'node:buffer';
 import { Env } from './Env';
 
 export class WhapiConnectError extends Error {
+  detail?: string;
   status?: number;
 
-  constructor(message: string, params?: { status?: number }) {
+  constructor(message: string, params?: { detail?: string; status?: number }) {
     super(message);
     this.name = 'WhapiConnectError';
+    this.detail = params?.detail;
     this.status = params?.status;
   }
 }
@@ -79,6 +81,47 @@ export const parseWhapiManagedChannel = (payload: unknown): WhapiManagedChannel 
   };
 };
 
+const sanitizeErrorDetail = (responseText: string) => {
+  const token = Env.WHAPI_PARTNER_API_TOKEN;
+  const redacted = token
+    ? responseText.replaceAll(token, '[redacted]')
+    : responseText;
+
+  return redacted.slice(0, 500);
+};
+
+const createWhapiChannelRequest = async (params: {
+  authMode: 'bearer' | 'query';
+  name: string;
+}) => {
+  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}/channels`);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (params.authMode === 'query') {
+    url.searchParams.set('token', Env.WHAPI_PARTNER_API_TOKEN ?? '');
+  } else {
+    headers.Authorization = `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`;
+  }
+
+  const response = await fetch(url.toString(), {
+    body: JSON.stringify({
+      name: params.name,
+      projectId: Env.WHAPI_PROJECT_ID,
+    }),
+    headers,
+    method: 'PUT',
+  });
+  const responseText = await response.text().catch(() => '');
+
+  return {
+    authMode: params.authMode,
+    response,
+    responseText,
+  };
+};
+
 export const createWhapiManagedChannel = async (params: {
   name: string;
 }) => {
@@ -86,25 +129,28 @@ export const createWhapiManagedChannel = async (params: {
     throw new WhapiConnectError('whapi_partner_credentials_missing');
   }
 
-  const response = await fetch(`${Env.WHAPI_PARTNER_API_BASE}/channels`, {
-    body: JSON.stringify({
-      name: params.name,
-      projectId: Env.WHAPI_PROJECT_ID,
-    }),
-    headers: {
-      'Authorization': `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'PUT',
+  const bearerAttempt = await createWhapiChannelRequest({
+    authMode: 'bearer',
+    name: params.name,
   });
-  const responseText = await response.text().catch(() => '');
+  const finalAttempt = [401, 403].includes(bearerAttempt.response.status)
+    ? await createWhapiChannelRequest({
+        authMode: 'query',
+        name: params.name,
+      })
+    : bearerAttempt;
 
-  if (!response.ok) {
-    throw new WhapiConnectError('whapi_channel_create_failed', { status: response.status });
+  if (!finalAttempt.response.ok) {
+    throw new WhapiConnectError('whapi_channel_create_failed', {
+      detail: sanitizeErrorDetail(
+        `auth=${finalAttempt.authMode} body=${finalAttempt.responseText || 'empty_response'}`,
+      ),
+      status: finalAttempt.response.status,
+    });
   }
 
   try {
-    return parseWhapiManagedChannel(responseText ? JSON.parse(responseText) : {});
+    return parseWhapiManagedChannel(finalAttempt.responseText ? JSON.parse(finalAttempt.responseText) : {});
   } catch (error) {
     if (error instanceof WhapiConnectError) {
       throw error;

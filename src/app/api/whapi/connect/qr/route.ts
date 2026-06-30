@@ -236,8 +236,10 @@ export const POST = async () => {
     });
   } catch (error) {
     logger.warn('Whapi QR connect failed', {
+      detail: error instanceof WhapiConnectError ? error.detail : undefined,
       error: error instanceof Error ? error.message : 'unknown_error',
       organizationId: orgId,
+      status: error instanceof WhapiConnectError ? error.status : undefined,
     });
 
     return getSafeErrorResponse(error);
