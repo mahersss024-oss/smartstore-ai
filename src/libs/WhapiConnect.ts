@@ -94,7 +94,7 @@ const createWhapiChannelRequest = async (params: {
   authMode: 'bearer' | 'query';
   name: string;
 }) => {
-  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}/channels`);
+  const url = new URL(`${Env.WHAPI_PARTNER_API_BASE}/channel`);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

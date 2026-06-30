@@ -61,7 +61,7 @@ describe('WhapiConnect', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe(
-      'https://manager.whapi.test/channels?token=partner_token',
+      'https://manager.whapi.test/channel?token=partner_token',
     );
   });
 
@@ -86,8 +86,8 @@ describe('WhapiConnect', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe(
-      'https://manager.whapi.test/channels?token=partner_token',
+      'https://manager.whapi.test/channel?token=partner_token',
     );
-    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://manager.whapi.test/channels');
+    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://manager.whapi.test/channel');
   });
 });
