@@ -251,13 +251,26 @@ describe('disconnectWhatsApp', () => {
     mockAuth.mockResolvedValue({ orgId: 'org_1', userId: 'user_1' });
   });
 
-  it('resets the store WhatsApp channel and clears its metadata', async () => {
+  it('disconnects Whapi without deleting the managed channel credentials', async () => {
+    selectRows.push([{
+      config: {
+        apiTokenPreview: 'whp...token',
+        channelId: 'CATWMN-B42ST',
+        displayPhoneNumber: '+966500000000',
+        encryptedApiToken: 'encrypted_whapi_token',
+        managedByPlatform: true,
+        managedChannelActivatedAt: '2026-07-01T15:00:00.000Z',
+        provider: 'whapi',
+        webhookSecret: 'a'.repeat(48),
+      },
+    }]);
     selectRows.push([{
       metadata: {
         channelIntegrations: {
           whatsapp: {
-            displayPhoneNumber: '+14155552671',
-            phoneNumberId: validPhoneNumberId,
+            channelId: 'CATWMN-B42ST',
+            displayPhoneNumber: '+966500000000',
+            provider: 'whapi',
           },
         },
       },
@@ -268,8 +281,13 @@ describe('disconnectWhatsApp', () => {
 
     expect(mockDbInsertValues).toHaveBeenCalledWith(expect.objectContaining({
       channel: 'whatsapp',
-      config: {},
-      connectionStatus: 'not_connected',
+      config: expect.objectContaining({
+        channelId: 'CATWMN-B42ST',
+        encryptedApiToken: 'encrypted_whapi_token',
+        provider: 'whapi',
+        webhookReady: false,
+      }),
+      connectionStatus: 'disconnected',
       isActive: false,
       organizationId: 'org_1',
     }));

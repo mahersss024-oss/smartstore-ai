@@ -49,6 +49,8 @@ type StoreSettingsMetadata = {
       channelId?: string | null;
       connectionStatus?: string;
       displayPhoneNumber?: string | null;
+      managedByPlatform?: boolean;
+      managedChannelActivatedAt?: string | null;
       mode?: string;
       phoneNumber?: string | null;
       phoneNumberId?: string | null;
@@ -99,6 +101,8 @@ type ExistingWhatsappConfig = {
   displayPhoneNumber?: string | null;
   encryptedAccessToken?: string | null;
   encryptedApiToken?: string | null;
+  managedByPlatform?: boolean | null;
+  managedChannelActivatedAt?: string | null;
   mode?: string | null;
   phoneNumber?: string | null;
   phoneNumberId?: string | null;
@@ -317,6 +321,8 @@ const resolveWhapiConnectionInput = (
     displayPhoneNumber,
     encryptedApiToken,
     hasApiToken: Boolean(apiToken && encryptedApiToken),
+    managedByPlatform: existing.managedByPlatform ?? null,
+    managedChannelActivatedAt: existing.managedChannelActivatedAt ?? null,
     submittedCredentials: Boolean(submittedChannelId || submittedApiToken),
     webhookSecret,
   };
@@ -328,6 +334,57 @@ const isWhapiConnectionShapeValid = (
   return /^[\w.:-]{3,128}$/.test(input.channelId ?? '')
     && Boolean(input.apiToken)
     && /^[a-f0-9]{48}$/i.test(input.webhookSecret ?? '');
+};
+
+const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
+  return (config.provider === 'whapi' || config.mode === 'whapi')
+    && Boolean(config.channelId && config.encryptedApiToken);
+};
+
+const buildDisconnectedWhatsAppConnection = (config: ExistingWhatsappConfig) => {
+  if (!shouldPreserveWhapiConnectionOnDisconnect(config)) {
+    return {};
+  }
+
+  return {
+    ...config,
+    connectionStatus: 'disconnected',
+    webhookReady: false,
+  };
+};
+
+const buildDisconnectedWhatsAppMetadata = (config: ExistingWhatsappConfig) => {
+  if (!shouldPreserveWhapiConnectionOnDisconnect(config)) {
+    return {};
+  }
+
+  const channel = buildWhatsAppChannelConfig({
+    apiTokenPreview: config.apiTokenPreview ?? null,
+    channelId: config.channelId ?? null,
+    displayPhoneNumber: config.displayPhoneNumber ?? null,
+    encryptedApiToken: config.encryptedApiToken ?? null,
+    hasApiToken: Boolean(config.encryptedApiToken),
+    provider: 'whapi',
+    status: 'disconnected',
+    storeName: 'SmartStore',
+    webhookSecret: config.webhookSecret ?? null,
+  });
+
+  return {
+    apiTokenPreview: config.apiTokenPreview ?? null,
+    channelId: config.channelId ?? null,
+    connectionStatus: 'disconnected',
+    displayPhoneNumber: config.displayPhoneNumber ?? null,
+    managedByPlatform: config.managedByPlatform ?? undefined,
+    managedChannelActivatedAt: config.managedChannelActivatedAt ?? null,
+    mode: 'whapi',
+    phoneNumber: config.displayPhoneNumber ?? null,
+    provider: 'whapi',
+    webhookSecret: config.webhookSecret ?? null,
+    webhookReady: false,
+    whatsappLink: channel.whatsappLink,
+    whatsappTarget: channel.whatsappTarget,
+  };
 };
 
 const normalizeStoreNameForComparison = (value: string) => {
@@ -673,6 +730,8 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
           channelId: whatsappProvider === 'whapi' ? whapi.channelId : null,
           connectionStatus: whatsappChannel.connectionStatus,
           displayPhoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
+          managedByPlatform: whatsappProvider === 'whapi' ? whapi.managedByPlatform ?? undefined : undefined,
+          managedChannelActivatedAt: whatsappProvider === 'whapi' ? whapi.managedChannelActivatedAt : undefined,
           mode: whatsappChannel.mode,
           phoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
           phoneNumberId: whatsappProvider === 'meta' ? meta.phoneNumberId : null,
@@ -744,7 +803,13 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       .values({
         aiMode: 'assist',
         channel: 'whatsapp',
-        config: whatsappChannel.config,
+        config: whatsappProvider === 'whapi'
+          ? {
+              ...whatsappChannel.config,
+              managedByPlatform: whapi.managedByPlatform ?? undefined,
+              managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+            }
+          : whatsappChannel.config,
         connectionStatus: whatsappChannel.connectionStatus,
         displayName: 'WhatsApp',
         isActive: whatsappChannel.isActive,
@@ -753,7 +818,13 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       .onConflictDoUpdate({
         set: {
           aiMode: 'assist',
-          config: whatsappChannel.config,
+          config: whatsappProvider === 'whapi'
+            ? {
+                ...whatsappChannel.config,
+                managedByPlatform: whapi.managedByPlatform ?? undefined,
+                managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+              }
+            : whatsappChannel.config,
           connectionStatus: whatsappChannel.connectionStatus,
           displayName: 'WhatsApp',
           isActive: whatsappChannel.isActive,
@@ -924,6 +995,9 @@ export const saveWhatsAppSettings = async (
 
 export const disconnectWhatsApp = async (locale: string) => {
   const organizationId = await getActiveOrganizationId();
+  const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
+  const disconnectedConfig = buildDisconnectedWhatsAppConnection(existingWhatsappConfig);
+  const disconnectedMetadata = buildDisconnectedWhatsAppMetadata(existingWhatsappConfig);
 
   // Channel disconnect + metadata clearing must be atomic; the metadata row is
   // locked FOR UPDATE so a concurrent settings save cannot clobber the change.
@@ -933,16 +1007,16 @@ export const disconnectWhatsApp = async (locale: string) => {
       .values({
         aiMode: 'assist',
         channel: 'whatsapp',
-        config: {},
-        connectionStatus: 'not_connected',
+        config: disconnectedConfig,
+        connectionStatus: 'disconnected',
         displayName: 'WhatsApp',
         isActive: false,
         organizationId,
       })
       .onConflictDoUpdate({
         set: {
-          config: {},
-          connectionStatus: 'not_connected',
+          config: disconnectedConfig,
+          connectionStatus: 'disconnected',
           isActive: false,
         },
         target: [
@@ -967,7 +1041,7 @@ export const disconnectWhatsApp = async (locale: string) => {
             ...existingMetadata,
             channelIntegrations: {
               ...(existingMetadata.channelIntegrations ?? {}),
-              whatsapp: {},
+              whatsapp: disconnectedMetadata,
             },
           },
         })
