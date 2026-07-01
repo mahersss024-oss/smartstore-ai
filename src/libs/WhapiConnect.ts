@@ -340,7 +340,7 @@ export const configureWhapiChannelWebhook = async (params: {
   apiToken: string;
   webhookUrl: string;
 }) => {
-  const response = await fetch(`${Env.WHAPI_GATE_API_BASE}/settings`, {
+  const response = await fetch(`${Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '')}/settings`, {
     body: JSON.stringify({
       webhooks: [{
         events: [
@@ -359,16 +359,20 @@ export const configureWhapiChannelWebhook = async (params: {
     },
     method: 'PATCH',
   });
+  const responseText = await response.text().catch(() => '');
 
   if (!response.ok) {
-    throw new WhapiConnectError('whapi_webhook_configure_failed', { status: response.status });
+    throw new WhapiConnectError('whapi_webhook_configure_failed', {
+      detail: sanitizeErrorDetail(responseText || 'empty_response'),
+      status: response.status,
+    });
   }
 };
 
 export const fetchWhapiQrCodeDataUrl = async (params: {
   apiToken: string;
 }) => {
-  const response = await fetch(`${Env.WHAPI_GATE_API_BASE}/users/login/image`, {
+  const response = await fetch(`${Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '')}/users/login/image`, {
     headers: {
       Authorization: `Bearer ${params.apiToken}`,
     },

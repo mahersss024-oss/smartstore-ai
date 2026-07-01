@@ -127,10 +127,23 @@ export const POST = async () => {
       encodeURIComponent(managedChannel.channelId)
     }&secret=${encodeURIComponent(webhookSecret)}`;
 
-    await configureWhapiChannelWebhook({
-      apiToken: managedChannel.apiToken,
-      webhookUrl,
-    });
+    let webhookReady = false;
+
+    try {
+      await configureWhapiChannelWebhook({
+        apiToken: managedChannel.apiToken,
+        webhookUrl,
+      });
+      webhookReady = true;
+    } catch (error) {
+      logger.warn('Whapi webhook configure deferred', {
+        channelId: managedChannel.channelId,
+        detail: error instanceof WhapiConnectError ? error.detail : undefined,
+        error: error instanceof Error ? error.message : 'unknown_error',
+        organizationId: orgId,
+        status: error instanceof WhapiConnectError ? error.status : undefined,
+      });
+    }
 
     const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
       ? existingConfig.encryptedApiToken
@@ -146,6 +159,7 @@ export const POST = async () => {
       provider: 'whapi',
       status: 'connected',
       storeName: settings?.storeName ?? 'SmartStore',
+      webhookReady,
       webhookSecret,
     });
     const qrDataUrl = await fetchWhapiQrCodeDataUrl({
@@ -173,7 +187,7 @@ export const POST = async () => {
             mode: whatsappChannel.mode,
             phoneNumber: displayPhoneNumber,
             provider: 'whapi',
-            webhookReady: true,
+            webhookReady,
             webhookSecret,
             whatsappLink: whatsappChannel.whatsappLink,
             whatsappTarget: whatsappChannel.whatsappTarget,
@@ -232,6 +246,7 @@ export const POST = async () => {
     return NextResponse.json({
       channelId: managedChannel.channelId,
       qrDataUrl,
+      webhookReady,
       webhookUrl,
     });
   } catch (error) {

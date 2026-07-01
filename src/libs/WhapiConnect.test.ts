@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Env } from './Env';
-import { createWhapiManagedChannel, parseWhapiManagedChannel, WhapiConnectError } from './WhapiConnect';
+import {
+  configureWhapiChannelWebhook,
+  createWhapiManagedChannel,
+  parseWhapiManagedChannel,
+  WhapiConnectError,
+} from './WhapiConnect';
 
 describe('WhapiConnect', () => {
   beforeEach(() => {
@@ -8,6 +13,7 @@ describe('WhapiConnect', () => {
       WHAPI_PARTNER_API_BASE: 'https://manager.whapi.test',
       WHAPI_PARTNER_API_TOKEN: 'partner_token',
       WHAPI_PROJECT_ID: 'project_123',
+      WHAPI_GATE_API_BASE: 'https://gate.whapi.test',
     });
     vi.restoreAllMocks();
   });
@@ -189,5 +195,25 @@ describe('WhapiConnect', () => {
         detail: expect.stringContaining('availableProjectIds=project_123'),
         message: 'whapi_channel_create_failed',
       });
+  });
+
+  it('reports safe details when webhook configuration fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('not found', { status: 404 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(configureWhapiChannelWebhook({
+      apiToken: 'channel_token',
+      webhookUrl: 'https://smartstore.test/api/whatsapp/webhook?secret=secret_123',
+    }))
+      .rejects
+      .toMatchObject({
+        detail: 'not found',
+        message: 'whapi_webhook_configure_failed',
+        status: 404,
+      });
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/settings');
   });
 });

@@ -139,6 +139,7 @@ export const buildWhatsAppChannelConfig = (params: {
   status?: unknown;
   storeName: string;
   wabaId?: null | string;
+  webhookReady?: boolean;
   webhookSecret?: null | string;
 }) => {
   const provider = params.provider ?? 'meta';
@@ -192,7 +193,7 @@ export const buildWhatsAppChannelConfig = (params: {
       phoneNumber: displayPhoneNumber,
       provider,
       qrType: 'whatsapp',
-      webhookReady: hasProviderCredentials,
+      webhookReady: hasProviderCredentials && params.webhookReady !== false,
       whatsappLink,
       whatsappTarget,
       ...(hasProviderCredentials || provider === 'whapi' || phoneNumberId ? providerConfig : {}),
