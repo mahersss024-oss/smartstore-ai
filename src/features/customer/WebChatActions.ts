@@ -114,6 +114,9 @@ const sendCustomerChatMessage = async (
 
     await assertStoreFeatureEnabled(payload.organizationId, 'webOrders');
     await assertStoreFeatureEnabled(payload.organizationId, 'ai');
+    if (payload.source === 'whatsapp') {
+      await assertStoreFeatureEnabled(payload.organizationId, 'whatsapp');
+    }
 
     const result = await handleCustomerMessageWithAIEmployee({
       body: payload.body,

@@ -4,6 +4,7 @@ const mockRequirePlatformAdmin = vi.fn();
 const mockRequirePlatformPermission = vi.fn();
 const mockRevalidatePath = vi.fn();
 const mockRedirect = vi.fn();
+const mockDisableOrganizationWhatsAppConnection = vi.fn();
 const mockDbSelect = vi.fn();
 const mockDbUpdateSet = vi.fn();
 const mockDbUpdateWhere = vi.fn();
@@ -80,6 +81,10 @@ vi.mock('@/libs/PlatformRuntimeConfig', () => ({
     ...(value && typeof value === 'object' ? value as Record<string, unknown> : {}),
   })),
   PLATFORM_RUNTIME_CONFIG_SETTING_KEY: 'runtime_config',
+}));
+
+vi.mock('@/libs/WhatsAppConnectionLifecycle', () => ({
+  disableOrganizationWhatsAppConnection: mockDisableOrganizationWhatsAppConnection,
 }));
 
 vi.mock('@/libs/DB', () => ({
@@ -266,6 +271,29 @@ describe('PlatformAdminActions', () => {
     expect(mockRevalidatePath).toHaveBeenNthCalledWith(4, '/dashboard/settings');
   });
 
+  it('disables WhatsApp when store controls suspend the store', async () => {
+    const { updatePlatformStoreControls } = await import('./PlatformAdminActions');
+
+    mockRequirePlatformAdmin.mockResolvedValue({
+      platformAccess: {
+        permissions: ['platform:service:manage'],
+        userId: 'admin_1',
+      },
+      userId: 'admin_1',
+    });
+
+    mockDbSelect.mockReturnValue({ from: mockDbSelectFrom });
+    mockDbSelectLimit.mockResolvedValue([{ metadata: {} }]);
+
+    const formData = new FormData();
+    formData.set('organizationId', 'org_1');
+    formData.set('status', 'suspended');
+
+    await updatePlatformStoreControls('ar', formData);
+
+    expect(mockDisableOrganizationWhatsAppConnection).toHaveBeenCalledWith('org_1');
+  });
+
   it('archives the selected store organization', async () => {
     const { archivePlatformStore } = await import('./PlatformAdminActions');
 
@@ -298,6 +326,7 @@ describe('PlatformAdminActions', () => {
       action: 'store_archived',
       organizationId: 'org_selected',
     }));
+    expect(mockDisableOrganizationWhatsAppConnection).toHaveBeenCalledWith('org_selected');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/admin/stores/org_selected');
   });
 
@@ -337,6 +366,7 @@ describe('PlatformAdminActions', () => {
       action: 'store_subscription_cancelled',
       organizationId: 'org_selected',
     }));
+    expect(mockDisableOrganizationWhatsAppConnection).toHaveBeenCalledWith('org_selected');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/admin/stores/org_selected');
   });
 

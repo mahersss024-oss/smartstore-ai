@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
+  const disableOrganizationWhatsAppConnection = vi.fn();
   const selectRows: unknown[][] = [];
   const selectLimit = vi.fn(async () => selectRows.shift() ?? []);
   const selectWhere = vi.fn(() => ({ limit: selectLimit }));
@@ -31,6 +32,7 @@ const mocks = vi.hoisted(() => {
     select,
     selectRows,
     transaction,
+    disableOrganizationWhatsAppConnection,
     txInsertValues,
     txUpdateSet,
   };
@@ -45,6 +47,10 @@ vi.mock('./DB', () => ({
     transaction: mocks.transaction,
     update: vi.fn(),
   },
+}));
+
+vi.mock('@/libs/WhatsAppConnectionLifecycle', () => ({
+  disableOrganizationWhatsAppConnection: mocks.disableOrganizationWhatsAppConnection,
 }));
 
 vi.mock('@/models/Schema', () => ({
@@ -97,6 +103,7 @@ describe('ClerkOrganizationSync', () => {
       action: 'clerk_organization_deleted',
       organizationId: 'org_1',
     }));
+    expect(mocks.disableOrganizationWhatsAppConnection).toHaveBeenCalledWith('org_1');
   });
 
   it('recovers from concurrent store settings creation without duplicating rows', async () => {

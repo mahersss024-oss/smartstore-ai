@@ -19,6 +19,7 @@ import {
   PLATFORM_RUNTIME_CONFIG_SETTING_KEY,
 } from '@/libs/PlatformRuntimeConfig';
 import { getStripe } from '@/libs/Stripe';
+import { disableOrganizationWhatsAppConnection } from '@/libs/WhatsAppConnectionLifecycle';
 import {
   aiActionLogsTable,
   channelConnectionsTable,
@@ -436,6 +437,15 @@ export const updatePlatformStoreControls = async (
     .set({ metadata })
     .where(eq(storeSettingsTable.organizationId, organizationId));
 
+  if (
+    status === 'paused'
+    || status === 'suspended'
+    || (canManageService && formData.get('pauseWhatsapp') === 'on')
+    || (canManageBilling && plan === PLAN_NAME.FREE)
+  ) {
+    await disableOrganizationWhatsAppConnection(organizationId);
+  }
+
   await logPlatformAdminAction({
     action: 'store_controls_updated',
     actorUserId: admin.platformAccess.userId,
@@ -498,6 +508,8 @@ export const archivePlatformStore = async (
     .update(storeSettingsTable)
     .set({ metadata })
     .where(eq(storeSettingsTable.organizationId, normalizedOrganizationId));
+
+  await disableOrganizationWhatsAppConnection(normalizedOrganizationId);
 
   await logPlatformAdminAction({
     action: 'store_archived',
@@ -588,6 +600,10 @@ export const cancelPlatformStoreSubscription = async (
       },
     })
     .where(eq(storeSettingsTable.organizationId, normalizedOrganizationId));
+
+  if (cancelNow) {
+    await disableOrganizationWhatsAppConnection(normalizedOrganizationId);
+  }
 
   await logPlatformAdminAction({
     action: 'store_subscription_cancelled',

@@ -1,6 +1,7 @@
 import type { OrganizationWebhookEvent } from '@clerk/nextjs/webhooks';
 import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
+import { disableOrganizationWhatsAppConnection } from '@/libs/WhatsAppConnectionLifecycle';
 import {
   platformAdminAuditLogsTable,
   storeSettingsTable,
@@ -127,6 +128,8 @@ export const syncOrganizationFromClerk = async (event: OrganizationWebhookEvent)
         summary: 'Store was suspended after its Clerk organization was deleted',
       });
     });
+
+    await disableOrganizationWhatsAppConnection(organizationId);
 
     return;
   }

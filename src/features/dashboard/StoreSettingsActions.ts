@@ -24,6 +24,10 @@ import {
   isSubscriptionLimitError,
 } from '@/libs/SubscriptionEntitlements';
 import {
+  buildDisconnectedWhatsAppConnection,
+  buildDisconnectedWhatsAppMetadata,
+} from '@/libs/WhatsAppConnectionLifecycle';
+import {
   channelConnectionsTable,
   storeSettingsTable,
 } from '@/models/Schema';
@@ -334,57 +338,6 @@ const isWhapiConnectionShapeValid = (
   return /^[\w.:-]{3,128}$/.test(input.channelId ?? '')
     && Boolean(input.apiToken)
     && /^[a-f0-9]{48}$/i.test(input.webhookSecret ?? '');
-};
-
-const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
-  return (config.provider === 'whapi' || config.mode === 'whapi')
-    && Boolean(config.channelId && config.encryptedApiToken);
-};
-
-const buildDisconnectedWhatsAppConnection = (config: ExistingWhatsappConfig) => {
-  if (!shouldPreserveWhapiConnectionOnDisconnect(config)) {
-    return {};
-  }
-
-  return {
-    ...config,
-    connectionStatus: 'disconnected',
-    webhookReady: false,
-  };
-};
-
-const buildDisconnectedWhatsAppMetadata = (config: ExistingWhatsappConfig) => {
-  if (!shouldPreserveWhapiConnectionOnDisconnect(config)) {
-    return {};
-  }
-
-  const channel = buildWhatsAppChannelConfig({
-    apiTokenPreview: config.apiTokenPreview ?? null,
-    channelId: config.channelId ?? null,
-    displayPhoneNumber: config.displayPhoneNumber ?? null,
-    encryptedApiToken: config.encryptedApiToken ?? null,
-    hasApiToken: Boolean(config.encryptedApiToken),
-    provider: 'whapi',
-    status: 'disconnected',
-    storeName: 'SmartStore',
-    webhookSecret: config.webhookSecret ?? null,
-  });
-
-  return {
-    apiTokenPreview: config.apiTokenPreview ?? null,
-    channelId: config.channelId ?? null,
-    connectionStatus: 'disconnected',
-    displayPhoneNumber: config.displayPhoneNumber ?? null,
-    managedByPlatform: config.managedByPlatform ?? undefined,
-    managedChannelActivatedAt: config.managedChannelActivatedAt ?? null,
-    mode: 'whapi',
-    phoneNumber: config.displayPhoneNumber ?? null,
-    provider: 'whapi',
-    webhookSecret: config.webhookSecret ?? null,
-    webhookReady: false,
-    whatsappLink: channel.whatsappLink,
-    whatsappTarget: channel.whatsappTarget,
-  };
 };
 
 const normalizeStoreNameForComparison = (value: string) => {
