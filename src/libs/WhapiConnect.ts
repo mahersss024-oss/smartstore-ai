@@ -336,6 +336,85 @@ export const createWhapiManagedChannel = async (params: {
   throw new WhapiConnectError('whapi_channel_create_failed');
 };
 
+const callWhapiPartnerChannelAction = async (params: {
+  body: Record<string, unknown>;
+  channelId: string;
+  errorMessage: string;
+  method: 'PATCH' | 'POST';
+  pathSuffix: 'extend' | 'mode';
+}) => {
+  if (!Env.WHAPI_PARTNER_API_TOKEN) {
+    throw new WhapiConnectError('whapi_partner_credentials_missing');
+  }
+
+  const url = buildWhapiManagerUrl(`/channels/${encodeURIComponent(params.channelId)}/${params.pathSuffix}`);
+  const response = await fetch(url.toString(), {
+    body: JSON.stringify(params.body),
+    headers: {
+      'Authorization': `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`,
+      'Content-Type': 'application/json',
+      'accept': 'application/json',
+    },
+    method: params.method,
+  });
+  const responseText = await response.text().catch(() => '');
+
+  if (!response.ok) {
+    throw new WhapiConnectError(params.errorMessage, {
+      detail: sanitizeErrorDetail(responseText || 'empty_response'),
+      status: response.status,
+    });
+  }
+};
+
+export const changeWhapiManagedChannelMode = async (params: {
+  channelId: string;
+  mode: 'live' | 'sandbox' | 'trial';
+}) => {
+  await callWhapiPartnerChannelAction({
+    body: { mode: params.mode },
+    channelId: params.channelId,
+    errorMessage: 'whapi_channel_mode_change_failed',
+    method: 'PATCH',
+    pathSuffix: 'mode',
+  });
+};
+
+export const extendWhapiManagedChannel = async (params: {
+  channelId: string;
+  comment?: string;
+  days: number;
+}) => {
+  if (params.days <= 0) {
+    return;
+  }
+
+  await callWhapiPartnerChannelAction({
+    body: {
+      comment: params.comment ?? '[SmartStore AI] Managed channel activation',
+      days: params.days,
+    },
+    channelId: params.channelId,
+    errorMessage: 'whapi_channel_extend_failed',
+    method: 'POST',
+    pathSuffix: 'extend',
+  });
+};
+
+export const activateWhapiManagedChannel = async (params: {
+  channelId: string;
+}) => {
+  await changeWhapiManagedChannelMode({
+    channelId: params.channelId,
+    mode: 'live',
+  });
+
+  await extendWhapiManagedChannel({
+    channelId: params.channelId,
+    days: Env.WHAPI_MANAGED_CHANNEL_EXTEND_DAYS,
+  });
+};
+
 export const configureWhapiChannelWebhook = async (params: {
   apiToken: string;
   webhookUrl: string;

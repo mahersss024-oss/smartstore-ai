@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Env } from './Env';
 import {
+  activateWhapiManagedChannel,
+  changeWhapiManagedChannelMode,
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
+  extendWhapiManagedChannel,
   fetchWhapiQrCodeDataUrl,
   parseWhapiManagedChannel,
   WhapiConnectError,
@@ -233,5 +236,61 @@ describe('WhapiConnect', () => {
       });
 
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/users/login/image');
+  });
+
+  it('changes a managed channel to live mode through the partner API', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(changeWhapiManagedChannelMode({
+      channelId: 'GAMORA-8BDZS',
+      mode: 'live',
+    }))
+      .resolves
+      .toBeUndefined();
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/mode');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({ mode: 'live' }),
+      method: 'PATCH',
+    });
+  });
+
+  it('extends a managed channel through the partner API', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(extendWhapiManagedChannel({
+      channelId: 'GAMORA-8BDZS',
+      comment: '[test]',
+      days: 30,
+    }))
+      .resolves
+      .toBeUndefined();
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/extend');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({ comment: '[test]', days: 30 }),
+      method: 'POST',
+    });
+  });
+
+  it('activates a managed channel by switching to live mode before extending days', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(activateWhapiManagedChannel({ channelId: 'GAMORA-8BDZS' }))
+      .resolves
+      .toBeUndefined();
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/mode');
+    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/extend');
   });
 });

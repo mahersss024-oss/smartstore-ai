@@ -101,10 +101,12 @@ Optional overrides:
 
 - `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
 - `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
+- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=30`
 
 When these are present, the store can click "Show QR" in the dashboard. The
-platform creates/reuses the Whapi channel, configures the webhook, encrypts the
-channel token in the database, and displays the QR without merchant-side manual
+platform creates/reuses the Whapi channel, switches it to live mode, extends it
+from the partner day balance once, configures the webhook, encrypts the channel
+token in the database, and displays the QR without merchant-side manual
 credential entry.
 
 ## DNS

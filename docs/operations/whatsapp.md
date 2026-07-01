@@ -38,8 +38,10 @@ Preferred merchant flow:
 1. In Render, configure platform Whapi managed-connect variables:
    - `WHAPI_PARTNER_API_TOKEN`
    - `WHAPI_PROJECT_ID`
+   - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS` (defaults to `30`)
 2. In the store dashboard, select **Whapi.cloud** and click **Show QR**.
-3. The platform creates/reuses the Whapi channel, configures the webhook,
+3. The platform creates/reuses the Whapi channel, switches it to live mode,
+   extends it once from the partner day balance, configures the webhook,
    encrypts the channel token, and shows the QR for the merchant to scan.
 
 Manual fallback:

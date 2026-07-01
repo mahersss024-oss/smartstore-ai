@@ -12,6 +12,7 @@ import {
   maskApiKey,
 } from '@/libs/PlatformAIProviderConfig';
 import {
+  activateWhapiManagedChannel,
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
   fetchWhapiQrCodeDataUrl,
@@ -36,6 +37,7 @@ type WhapiConnectionConfig = {
   channelId?: null | string;
   displayPhoneNumber?: null | string;
   encryptedApiToken?: null | string;
+  managedChannelActivatedAt?: null | string;
   provider?: null | string;
   webhookSecret?: null | string;
 };
@@ -121,6 +123,20 @@ export const POST = async () => {
       : await createWhapiManagedChannel({
           name: `${settings?.storeName ?? 'SmartStore'} - ${orgId}`,
         });
+    const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
+      && existingConfig.managedChannelActivatedAt.trim()
+      ? existingConfig.managedChannelActivatedAt
+      : null;
+
+    let nextManagedChannelActivatedAt = managedChannelActivatedAt;
+
+    if (!nextManagedChannelActivatedAt) {
+      await activateWhapiManagedChannel({
+        channelId: managedChannel.channelId,
+      });
+      nextManagedChannelActivatedAt = new Date().toISOString();
+    }
+
     const webhookSecret = existingConfig.webhookSecret?.trim() || generateWebhookSecret();
     const origin = await getOrigin();
     const webhookUrl = `${origin}/api/whatsapp/webhook?provider=whapi&channelId=${
@@ -162,6 +178,11 @@ export const POST = async () => {
       webhookReady,
       webhookSecret,
     });
+    const whatsappChannelConfig = {
+      ...whatsappChannel.config,
+      managedByPlatform: true,
+      managedChannelActivatedAt: nextManagedChannelActivatedAt,
+    };
 
     await db.transaction(async (tx) => {
       const [lockedSettings] = await tx
@@ -181,6 +202,8 @@ export const POST = async () => {
             channelId: managedChannel.channelId,
             connectionStatus: whatsappChannel.connectionStatus,
             displayPhoneNumber,
+            managedByPlatform: true,
+            managedChannelActivatedAt: nextManagedChannelActivatedAt,
             mode: whatsappChannel.mode,
             phoneNumber: displayPhoneNumber,
             provider: 'whapi',
@@ -214,7 +237,7 @@ export const POST = async () => {
         .values({
           aiMode: 'assist',
           channel: 'whatsapp',
-          config: whatsappChannel.config,
+          config: whatsappChannelConfig,
           connectionStatus: whatsappChannel.connectionStatus,
           displayName: 'WhatsApp',
           isActive: whatsappChannel.isActive,
@@ -223,7 +246,7 @@ export const POST = async () => {
         .onConflictDoUpdate({
           set: {
             aiMode: 'assist',
-            config: whatsappChannel.config,
+            config: whatsappChannelConfig,
             connectionStatus: whatsappChannel.connectionStatus,
             displayName: 'WhatsApp',
             isActive: whatsappChannel.isActive,
