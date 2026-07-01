@@ -699,6 +699,7 @@
     "whapi_qr_connect_description": "Create or reuse this store's Whapi channel, configure the webhook automatically, then scan the QR code. No token or channel setup is required from the merchant.",
     "whapi_qr_connect_button": "Show QR",
     "whapi_qr_connect_error": "Could not prepare the Whapi QR connection. Check the platform Whapi keys and try again.",
+    "whapi_qr_connect_pending": "The Whapi channel was created and is still initializing. Wait about one minute, then click Show QR again.",
     "whapi_qr_connect_refresh": "Refresh after scanning",
     "whatsapp_prepared_mappings": "Prepared mappings: customer phone, conversation thread, order source, notification route.",
     "whatsapp_webhook_ready": "Webhook architecture: ready for provider activation without changing order logic.",

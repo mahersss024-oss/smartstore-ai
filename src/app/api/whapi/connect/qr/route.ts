@@ -162,9 +162,6 @@ export const POST = async () => {
       webhookReady,
       webhookSecret,
     });
-    const qrDataUrl = await fetchWhapiQrCodeDataUrl({
-      apiToken: managedChannel.apiToken,
-    });
 
     await db.transaction(async (tx) => {
       const [lockedSettings] = await tx
@@ -238,10 +235,47 @@ export const POST = async () => {
         });
     });
 
+    let qrDataUrl = '';
+    let qrPending = false;
+
+    try {
+      qrDataUrl = await fetchWhapiQrCodeDataUrl({
+        apiToken: managedChannel.apiToken,
+      });
+    } catch (error) {
+      if (error instanceof WhapiConnectError && error.status === 404) {
+        qrPending = true;
+        logger.warn('Whapi QR fetch deferred', {
+          channelId: managedChannel.channelId,
+          detail: error.detail,
+          error: error.message,
+          organizationId: orgId,
+          status: error.status,
+        });
+      } else {
+        throw error;
+      }
+    }
+
     logger.info('Whapi QR connect prepared', {
       channelId: managedChannel.channelId,
       organizationId: orgId,
+      qrPending,
     });
+
+    if (qrPending) {
+      return NextResponse.json(
+        {
+          channelId: managedChannel.channelId,
+          error: 'whapi_channel_initializing',
+          pending: true,
+          retryAfterSeconds: 90,
+          webhookReady,
+          webhookUrl,
+        },
+        { status: 202 },
+      );
+    }
 
     return NextResponse.json({
       channelId: managedChannel.channelId,

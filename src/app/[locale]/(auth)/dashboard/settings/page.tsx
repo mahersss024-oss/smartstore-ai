@@ -945,6 +945,7 @@ export default async function SettingsPage(props: {
                   description={t('whapi_qr_connect_description')}
                   buttonLabel={t('whapi_qr_connect_button')}
                   errorLabel={t('whapi_qr_connect_error')}
+                  pendingLabel={t('whapi_qr_connect_pending')}
                   refreshLabel={t('whapi_qr_connect_refresh')}
                 />
               </div>

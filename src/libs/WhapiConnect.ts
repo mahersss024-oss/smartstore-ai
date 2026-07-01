@@ -382,7 +382,10 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
   const buffer = Buffer.from(await response.arrayBuffer());
 
   if (!response.ok) {
-    throw new WhapiConnectError('whapi_qr_fetch_failed', { status: response.status });
+    throw new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: sanitizeErrorDetail(buffer.toString('utf8') || 'empty_response'),
+      status: response.status,
+    });
   }
 
   if (contentType.startsWith('image/')) {

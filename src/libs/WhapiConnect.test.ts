@@ -3,6 +3,7 @@ import { Env } from './Env';
 import {
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
+  fetchWhapiQrCodeDataUrl,
   parseWhapiManagedChannel,
   WhapiConnectError,
 } from './WhapiConnect';
@@ -215,5 +216,22 @@ describe('WhapiConnect', () => {
       });
 
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/settings');
+  });
+
+  it('reports safe details when QR image is not ready yet', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{"error":"Channel not found"}', { status: 404 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchWhapiQrCodeDataUrl({ apiToken: 'channel_token' }))
+      .rejects
+      .toMatchObject({
+        detail: '{"error":"Channel not found"}',
+        message: 'whapi_qr_fetch_failed',
+        status: 404,
+      });
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/users/login/image');
   });
 });

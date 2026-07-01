@@ -8,7 +8,9 @@ import { useState } from 'react';
 type WhapiQrResponse = {
   channelId?: string;
   error?: string;
+  pending?: boolean;
   qrDataUrl?: string;
+  retryAfterSeconds?: number;
   webhookUrl?: string;
 };
 
@@ -16,17 +18,20 @@ export const WhapiQrConnectButton = (props: {
   buttonLabel: string;
   description: string;
   errorLabel: string;
+  pendingLabel: string;
   refreshLabel: string;
   title: string;
 }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingMessage, setPendingMessage] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
 
   const handleStart = async () => {
     setIsLoading(true);
     setError('');
+    setPendingMessage('');
 
     try {
       const response = await fetch('/api/whapi/connect/qr', {
@@ -34,6 +39,13 @@ export const WhapiQrConnectButton = (props: {
         method: 'POST',
       });
       const data = await response.json() as WhapiQrResponse;
+
+      if (response.status === 202 || data.pending) {
+        setQrDataUrl('');
+        setPendingMessage(props.pendingLabel);
+        router.refresh();
+        return;
+      }
 
       if (!response.ok || !data.qrDataUrl) {
         setError(data.error || props.errorLabel);
@@ -92,6 +104,16 @@ export const WhapiQrConnectButton = (props: {
         "
         >
           {error}
+        </div>
+      )}
+
+      {pendingMessage && (
+        <div className="
+          mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs
+          text-amber-800
+        "
+        >
+          {pendingMessage}
         </div>
       )}
 
