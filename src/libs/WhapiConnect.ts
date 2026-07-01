@@ -208,13 +208,34 @@ const responseContainsConfiguredProjectId = (responseText: string) => {
   return Boolean(Env.WHAPI_PROJECT_ID && responseText.includes(Env.WHAPI_PROJECT_ID));
 };
 
+const extractAvailableProjectIds = (responseText: string) => {
+  try {
+    const payload = JSON.parse(responseText) as unknown;
+    const root = getRecord(payload);
+    const projects = Array.isArray(root?.projects)
+      ? root.projects
+      : Array.isArray(root?.data)
+        ? root.data
+        : [];
+
+    return projects
+      .map(project => getString(getRecord(project), ['id', 'projectId', 'project_id']))
+      .filter(Boolean)
+      .slice(0, 10);
+  } catch {
+    return [];
+  }
+};
+
 const probeWhapiProject = async () => {
   const results: WhapiCreateChannelAttemptResult[] = [];
+  const availableProjectIds = new Set<string>();
 
-  for (const authMode of ['query', 'bearer'] as const) {
+  for (const authMode of ['bearer', 'query'] as const) {
     const result = await probeWhapiProjectRequest(authMode);
 
     results.push(result);
+    extractAvailableProjectIds(result.responseText).forEach(id => availableProjectIds.add(id));
 
     if (result.response.ok && responseContainsConfiguredProjectId(result.responseText)) {
       return {
@@ -224,7 +245,7 @@ const probeWhapiProject = async () => {
     }
   }
 
-  for (const authMode of ['query', 'bearer'] as const) {
+  for (const authMode of ['bearer', 'query'] as const) {
     const result = await probeWhapiProjectByIdRequest(authMode);
 
     results.push(result);
@@ -235,6 +256,17 @@ const probeWhapiProject = async () => {
         summary: results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
       };
     }
+  }
+
+  if (availableProjectIds.size > 0) {
+    return {
+      ok: false,
+      summary: [
+        results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
+        `availableProjectIds=${[...availableProjectIds].join(',')}`,
+        `configuredProjectId=${Env.WHAPI_PROJECT_ID ?? ''}`,
+      ].join(' | '),
+    };
   }
 
   return {
@@ -251,10 +283,10 @@ export const createWhapiManagedChannel = async (params: {
   }
 
   const attempts = [
-    { authMode: 'query', path: '/channel' },
-    { authMode: 'query', path: '/channels' },
-    { authMode: 'bearer', path: '/channel' },
     { authMode: 'bearer', path: '/channels' },
+    { authMode: 'bearer', path: '/channel' },
+    { authMode: 'query', path: '/channels' },
+    { authMode: 'query', path: '/channel' },
   ] as const;
   const results: WhapiCreateChannelAttemptResult[] = [];
 
