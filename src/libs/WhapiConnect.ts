@@ -92,7 +92,7 @@ const sanitizeErrorDetail = (responseText: string) => {
 
 type WhapiCreateChannelAuthMode = 'bearer' | 'query';
 type WhapiCreateChannelPath = '/channel' | '/channels';
-type WhapiProjectProbePath = `/projects/${string}`;
+type WhapiProjectProbePath = '/projects' | `/projects/${string}`;
 
 type WhapiCreateChannelAttemptResult = {
   authMode: WhapiCreateChannelAuthMode;
@@ -141,7 +141,36 @@ const createWhapiChannelRequest = async (params: {
   };
 };
 
-const probeWhapiProjectRequest = async (authMode: WhapiCreateChannelAuthMode) => {
+const probeWhapiProjectRequest = async (
+  authMode: WhapiCreateChannelAuthMode,
+): Promise<WhapiCreateChannelAttemptResult> => {
+  const path = '/projects' as const;
+  const url = buildWhapiManagerUrl(path);
+  const headers: Record<string, string> = {};
+
+  if (authMode === 'query') {
+    url.searchParams.set('token', Env.WHAPI_PARTNER_API_TOKEN ?? '');
+  } else {
+    headers.Authorization = `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`;
+  }
+
+  const response = await fetch(url.toString(), {
+    headers,
+    method: 'GET',
+  });
+  const responseText = await response.text().catch(() => '');
+
+  return {
+    authMode,
+    path,
+    response,
+    responseText,
+  };
+};
+
+const probeWhapiProjectByIdRequest = async (
+  authMode: WhapiCreateChannelAuthMode,
+): Promise<WhapiCreateChannelAttemptResult> => {
   const path = `/projects/${encodeURIComponent(Env.WHAPI_PROJECT_ID ?? '')}` as WhapiProjectProbePath;
   const url = buildWhapiManagerUrl(path);
   const headers: Record<string, string> = {};
@@ -175,11 +204,28 @@ const summarizeWhapiCreateChannelAttempt = (result: WhapiCreateChannelAttemptRes
   ].join(':');
 };
 
+const responseContainsConfiguredProjectId = (responseText: string) => {
+  return Boolean(Env.WHAPI_PROJECT_ID && responseText.includes(Env.WHAPI_PROJECT_ID));
+};
+
 const probeWhapiProject = async () => {
   const results: WhapiCreateChannelAttemptResult[] = [];
 
   for (const authMode of ['query', 'bearer'] as const) {
     const result = await probeWhapiProjectRequest(authMode);
+
+    results.push(result);
+
+    if (result.response.ok && responseContainsConfiguredProjectId(result.responseText)) {
+      return {
+        ok: true,
+        summary: results.map(summarizeWhapiCreateChannelAttempt).join(' | '),
+      };
+    }
+  }
+
+  for (const authMode of ['query', 'bearer'] as const) {
+    const result = await probeWhapiProjectByIdRequest(authMode);
 
     results.push(result);
 

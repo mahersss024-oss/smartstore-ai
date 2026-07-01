@@ -154,7 +154,9 @@ describe('WhapiConnect', () => {
       .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
       .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
       .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'project_123' }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        projects: [{ id: 'project_123' }],
+      }), { status: 200 }));
 
     vi.stubGlobal('fetch', fetchMock);
 
