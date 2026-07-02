@@ -5,6 +5,7 @@ import {
   buildAIEmployeeOrchestrationTrace,
   getAIEmployeeReplyGuardDecisionSummary,
   getAIEmployeeReplyGuardOrchestrationIssues,
+  getFirstAIEmployeeBasicCheckoutNeed,
   getNextAIEmployeeCustomerNeed,
   getPendingAIEmployeeProductSelectionNeed,
   getRestorableAIEmployeeCancelledCartSnapshot,
@@ -459,6 +460,18 @@ describe('AIEmployeeOrchestration', () => {
       requiresCustomerConfirmation: true,
       shouldCreateDraftOrder: false,
     })).toBe('order_confirmation');
+  });
+
+  it('prioritizes basic checkout details before pending product selection', () => {
+    expect(getFirstAIEmployeeBasicCheckoutNeed([
+      'requested_product',
+      'customer_phone',
+      'fulfillment_method',
+      'payment_method',
+    ])).toBe('customer_phone');
+    expect(getFirstAIEmployeeBasicCheckoutNeed([
+      'requested_product',
+    ])).toBeNull();
   });
 
   it('summarizes reply guard outcomes and orchestration issues', () => {

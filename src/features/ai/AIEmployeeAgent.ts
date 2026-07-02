@@ -47,6 +47,7 @@ import {
   buildAIEmployeeOrchestrationTrace,
   getAIEmployeeReplyGuardDecisionSummary,
   getAIEmployeeReplyGuardOrchestrationIssues,
+  getFirstAIEmployeeBasicCheckoutNeed,
   getNextAIEmployeeCustomerNeed,
   getPendingAIEmployeeProductSelectionNeed,
   getRestorableAIEmployeeCancelledCartSnapshot,
@@ -954,7 +955,11 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     requestedCustomerNeed: effectiveSemanticUnderstanding.requestedCustomerNeed,
     systemSemanticAction: isSystemSemanticAction,
   });
-  let requestedCustomerNeedFromModel = pendingProductSelectionNeed
+  const basicCheckoutNeedBeforeProductSelection = pendingProductSelectionNeed
+    ? getFirstAIEmployeeBasicCheckoutNeed(decision.missingDetails)
+    : null;
+  let requestedCustomerNeedFromModel = basicCheckoutNeedBeforeProductSelection
+    ?? pendingProductSelectionNeed
     ?? validateAIEmployeeRequestedCustomerNeed({
       cart: currentCartForConversation,
       customerDetails,
@@ -966,7 +971,10 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
     });
   let systemNextCustomerNeed = pendingOrderModificationNeedsConfirmation
     ? 'order_confirmation'
-    : pendingProductSelectionNeed ?? requestedCustomerNeedFromModel ?? nextCustomerNeed;
+    : basicCheckoutNeedBeforeProductSelection
+      ?? pendingProductSelectionNeed
+      ?? requestedCustomerNeedFromModel
+      ?? nextCustomerNeed;
   let customerFacingMissingDetails = systemNextCustomerNeed
     ? [systemNextCustomerNeed]
     : decision.missingDetails;
@@ -2022,7 +2030,8 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
   }
   const latestCustomerTurnForGuards = systemEvent?.customerMeaning ?? message.body;
 
-  const requestedNeedFromModelReply = pendingProductSelectionNeed
+  const requestedNeedFromModelReply = basicCheckoutNeedBeforeProductSelection
+    ?? pendingProductSelectionNeed
     ?? await analyzeAIEmployeeModelReplySystemNeed({
       cart: modelCart,
       currentVisibleSystemActions: visibleSystemActions,

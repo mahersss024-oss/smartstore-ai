@@ -303,6 +303,21 @@ export const getVisibleAIEmployeeSystemActions = (params: {
   return Array.from(actions);
 };
 
+const AI_EMPLOYEE_BASIC_CHECKOUT_NEEDS = new Set<AIOrchestrationCustomerNeed>([
+  'customer_phone',
+  'delivery_address',
+  'fulfillment_method',
+  'payment_method',
+]);
+
+export const getFirstAIEmployeeBasicCheckoutNeed = (
+  missingDetails: string[],
+): AIOrchestrationCustomerNeed | null => {
+  return missingDetails.find((need): need is AIOrchestrationCustomerNeed => {
+    return AI_EMPLOYEE_BASIC_CHECKOUT_NEEDS.has(need as AIOrchestrationCustomerNeed);
+  }) ?? null;
+};
+
 export const getPendingAIEmployeeProductSelectionNeed = (params: {
   cartMutation: AIEmployeeCartMutationContext;
   requestedItems: ConversationOrderItem[];
