@@ -436,6 +436,70 @@ describe('Whapi QR connect route', () => {
     }));
   });
 
+  it('replaces a saved managed Whapi channel when QR fetch reports it missing', async () => {
+    const { insertChains } = await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'deleted_channel',
+          encryptedApiToken: 'encrypted_deleted_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.fetchWhapiQrCodeDataUrl
+      .mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+        detail: '{"error":"Channel not found"}',
+        status: 404,
+      }))
+      .mockResolvedValueOnce('data:image/png;base64,NEW_QR');
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      qrDataUrl: 'data:image/png;base64,NEW_QR',
+      webhookReady: true,
+    });
+    expect(mocks.createWhapiManagedChannel).toHaveBeenCalledWith({
+      name: 'Golden Chicken - org_1',
+    });
+    expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenNthCalledWith(1, {
+      apiToken: 'deleted_token',
+    });
+    expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenNthCalledWith(2, {
+      apiToken: 'channel_token',
+    });
+    expect(insertChains[1]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'whatsapp',
+      config: expect.objectContaining({
+        channelId: 'channel_123',
+        encryptedApiToken: 'encrypted_channel_token',
+        provider: 'whapi',
+      }),
+      organizationId: 'org_1',
+    }));
+    expect(mocks.warn).toHaveBeenCalledWith(
+      'Whapi saved channel missing during QR fetch; creating replacement channel',
+      expect.objectContaining({
+        channelId: 'deleted_channel',
+        status: 404,
+      }),
+    );
+  });
+
   it('returns a pending QR response when Whapi is still initializing the channel', async () => {
     await prepareDb({
       existingConnection: null,

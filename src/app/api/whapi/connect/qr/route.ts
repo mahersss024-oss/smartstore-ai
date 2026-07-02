@@ -213,102 +213,106 @@ export const POST = async () => {
       }
     }
 
-    const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
-      ? existingConfig.encryptedApiToken
-      : encryptSecret(managedChannel.apiToken);
-    const apiTokenPreview = maskApiKey(managedChannel.apiToken);
-    const displayPhoneNumber = managedChannel.displayPhoneNumber ?? existingConfig.displayPhoneNumber ?? '';
-    const whatsappChannel = buildWhatsAppChannelConfig({
-      apiTokenPreview,
-      channelId: managedChannel.channelId,
-      displayPhoneNumber,
-      encryptedApiToken,
-      hasApiToken: true,
-      provider: 'whapi',
-      status: 'connected',
-      storeName: settings?.storeName ?? 'SmartStore',
-      webhookReady,
-      webhookSecret,
-    });
-    const whatsappChannelConfig = {
-      ...whatsappChannel.config,
-      managedByPlatform: true,
-      managedChannelActivatedAt: nextManagedChannelActivatedAt,
-    };
-
-    await db.transaction(async (tx) => {
-      const [lockedSettings] = await tx
-        .select({ metadata: storeSettingsTable.metadata })
-        .from(storeSettingsTable)
-        .where(eq(storeSettingsTable.organizationId, orgId))
-        .limit(1)
-        .for('update');
-      const metadata = (lockedSettings?.metadata ?? settings?.metadata ?? {}) as StoreSettingsMetadata;
-      const nextMetadata: StoreSettingsMetadata = {
-        ...metadata,
-        channelIntegrations: {
-          ...(metadata.channelIntegrations ?? {}),
-          whatsapp: {
-            ...(metadata.channelIntegrations?.whatsapp ?? {}),
-            apiTokenPreview,
-            channelId: managedChannel.channelId,
-            connectionStatus: whatsappChannel.connectionStatus,
-            displayPhoneNumber,
-            managedByPlatform: true,
-            managedChannelActivatedAt: nextManagedChannelActivatedAt,
-            mode: whatsappChannel.mode,
-            phoneNumber: displayPhoneNumber,
-            provider: 'whapi',
-            webhookReady,
-            webhookSecret,
-            whatsappLink: whatsappChannel.whatsappLink,
-            whatsappTarget: whatsappChannel.whatsappTarget,
-          },
-        },
-        contactChannels: {
-          ...(metadata.contactChannels ?? {}),
-          ...(displayPhoneNumber ? { whatsapp: displayPhoneNumber } : {}),
-        },
+    const persistManagedChannel = async () => {
+      const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
+        ? existingConfig.encryptedApiToken
+        : encryptSecret(managedChannel.apiToken);
+      const apiTokenPreview = maskApiKey(managedChannel.apiToken);
+      const displayPhoneNumber = managedChannel.displayPhoneNumber ?? existingConfig.displayPhoneNumber ?? '';
+      const whatsappChannel = buildWhatsAppChannelConfig({
+        apiTokenPreview,
+        channelId: managedChannel.channelId,
+        displayPhoneNumber,
+        encryptedApiToken,
+        hasApiToken: true,
+        provider: 'whapi',
+        status: 'connected',
+        storeName,
+        webhookReady,
+        webhookSecret,
+      });
+      const whatsappChannelConfig = {
+        ...whatsappChannel.config,
+        managedByPlatform: true,
+        managedChannelActivatedAt: nextManagedChannelActivatedAt,
       };
 
-      if (lockedSettings || settings) {
-        await tx
-          .update(storeSettingsTable)
-          .set({ metadata: nextMetadata })
-          .where(eq(storeSettingsTable.organizationId, orgId));
-      } else {
-        await tx.insert(storeSettingsTable).values({
-          metadata: nextMetadata,
-          organizationId: orgId,
-          storeName: 'SmartStore',
-        });
-      }
+      await db.transaction(async (tx) => {
+        const [lockedSettings] = await tx
+          .select({ metadata: storeSettingsTable.metadata })
+          .from(storeSettingsTable)
+          .where(eq(storeSettingsTable.organizationId, orgId))
+          .limit(1)
+          .for('update');
+        const metadata = (lockedSettings?.metadata ?? settings?.metadata ?? {}) as StoreSettingsMetadata;
+        const nextMetadata: StoreSettingsMetadata = {
+          ...metadata,
+          channelIntegrations: {
+            ...(metadata.channelIntegrations ?? {}),
+            whatsapp: {
+              ...(metadata.channelIntegrations?.whatsapp ?? {}),
+              apiTokenPreview,
+              channelId: managedChannel.channelId,
+              connectionStatus: whatsappChannel.connectionStatus,
+              displayPhoneNumber,
+              managedByPlatform: true,
+              managedChannelActivatedAt: nextManagedChannelActivatedAt,
+              mode: whatsappChannel.mode,
+              phoneNumber: displayPhoneNumber,
+              provider: 'whapi',
+              webhookReady,
+              webhookSecret,
+              whatsappLink: whatsappChannel.whatsappLink,
+              whatsappTarget: whatsappChannel.whatsappTarget,
+            },
+          },
+          contactChannels: {
+            ...(metadata.contactChannels ?? {}),
+            ...(displayPhoneNumber ? { whatsapp: displayPhoneNumber } : {}),
+          },
+        };
 
-      await tx
-        .insert(channelConnectionsTable)
-        .values({
-          aiMode: 'assist',
-          channel: 'whatsapp',
-          config: whatsappChannelConfig,
-          connectionStatus: whatsappChannel.connectionStatus,
-          displayName: 'WhatsApp',
-          isActive: whatsappChannel.isActive,
-          organizationId: orgId,
-        })
-        .onConflictDoUpdate({
-          set: {
+        if (lockedSettings || settings) {
+          await tx
+            .update(storeSettingsTable)
+            .set({ metadata: nextMetadata })
+            .where(eq(storeSettingsTable.organizationId, orgId));
+        } else {
+          await tx.insert(storeSettingsTable).values({
+            metadata: nextMetadata,
+            organizationId: orgId,
+            storeName: 'SmartStore',
+          });
+        }
+
+        await tx
+          .insert(channelConnectionsTable)
+          .values({
             aiMode: 'assist',
+            channel: 'whatsapp',
             config: whatsappChannelConfig,
             connectionStatus: whatsappChannel.connectionStatus,
             displayName: 'WhatsApp',
             isActive: whatsappChannel.isActive,
-          },
-          target: [
-            channelConnectionsTable.organizationId,
-            channelConnectionsTable.channel,
-          ],
-        });
-    });
+            organizationId: orgId,
+          })
+          .onConflictDoUpdate({
+            set: {
+              aiMode: 'assist',
+              config: whatsappChannelConfig,
+              connectionStatus: whatsappChannel.connectionStatus,
+              displayName: 'WhatsApp',
+              isActive: whatsappChannel.isActive,
+            },
+            target: [
+              channelConnectionsTable.organizationId,
+              channelConnectionsTable.channel,
+            ],
+          });
+      });
+    };
+
+    await persistManagedChannel();
 
     let qrDataUrl = '';
     let qrPending = false;
@@ -319,14 +323,46 @@ export const POST = async () => {
       });
     } catch (error) {
       if (error instanceof WhapiConnectError && error.status === 404) {
-        qrPending = true;
-        logger.warn('Whapi QR fetch deferred', {
-          channelId: managedChannel.channelId,
-          detail: error.detail,
-          error: error.message,
-          organizationId: orgId,
-          status: error.status,
-        });
+        if (isUsingExistingChannel) {
+          logger.warn('Whapi saved channel missing during QR fetch; creating replacement channel', {
+            channelId: managedChannel.channelId,
+            detail: error.detail,
+            error: error.message,
+            organizationId: orgId,
+            status: error.status,
+          });
+          managedChannel = await createManagedChannel();
+          await activateChannelForQr(managedChannel.channelId);
+          nextManagedChannelActivatedAt = new Date().toISOString();
+          webhookReady = false;
+          webhookUrl = buildWebhookUrl(managedChannel.channelId);
+
+          try {
+            await configureWebhook();
+          } catch (replacementError) {
+            logger.warn('Whapi webhook configure deferred', {
+              channelId: managedChannel.channelId,
+              detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
+              error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+              organizationId: orgId,
+              status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+            });
+          }
+
+          await persistManagedChannel();
+          qrDataUrl = await fetchWhapiQrCodeDataUrl({
+            apiToken: managedChannel.apiToken,
+          });
+        } else {
+          qrPending = true;
+          logger.warn('Whapi QR fetch deferred', {
+            channelId: managedChannel.channelId,
+            detail: error.detail,
+            error: error.message,
+            organizationId: orgId,
+            status: error.status,
+          });
+        }
       } else {
         throw error;
       }
