@@ -350,9 +350,24 @@ export const POST = async () => {
           }
 
           await persistManagedChannel();
-          qrDataUrl = await fetchWhapiQrCodeDataUrl({
-            apiToken: managedChannel.apiToken,
-          });
+          try {
+            qrDataUrl = await fetchWhapiQrCodeDataUrl({
+              apiToken: managedChannel.apiToken,
+            });
+          } catch (replacementQrError) {
+            if (replacementQrError instanceof WhapiConnectError && replacementQrError.status === 404) {
+              qrPending = true;
+              logger.warn('Whapi replacement QR fetch deferred', {
+                channelId: managedChannel.channelId,
+                detail: replacementQrError.detail,
+                error: replacementQrError.message,
+                organizationId: orgId,
+                status: replacementQrError.status,
+              });
+            } else {
+              throw replacementQrError;
+            }
+          }
         } else {
           qrPending = true;
           logger.warn('Whapi QR fetch deferred', {
