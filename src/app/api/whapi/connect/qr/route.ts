@@ -133,11 +133,27 @@ export const POST = async () => {
       : null;
 
     let nextManagedChannelActivatedAt = managedChannelActivatedAt;
+    const activateChannelForQr = async (channelId: string) => {
+      try {
+        await activateWhapiManagedChannel({ channelId });
+      } catch (error) {
+        if (error instanceof WhapiConnectError && error.message === 'whapi_channel_extend_failed') {
+          logger.warn('Whapi channel extension deferred', {
+            channelId,
+            detail: error.detail,
+            error: error.message,
+            organizationId: orgId,
+            status: error.status,
+          });
+          return;
+        }
+
+        throw error;
+      }
+    };
 
     if (!nextManagedChannelActivatedAt) {
-      await activateWhapiManagedChannel({
-        channelId: managedChannel.channelId,
-      });
+      await activateChannelForQr(managedChannel.channelId);
       nextManagedChannelActivatedAt = new Date().toISOString();
     }
 
@@ -172,9 +188,7 @@ export const POST = async () => {
           status: error.status,
         });
         managedChannel = await createManagedChannel();
-        await activateWhapiManagedChannel({
-          channelId: managedChannel.channelId,
-        });
+        await activateChannelForQr(managedChannel.channelId);
         nextManagedChannelActivatedAt = new Date().toISOString();
         webhookUrl = buildWebhookUrl(managedChannel.channelId);
         await configureWebhook();

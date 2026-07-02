@@ -235,6 +235,45 @@ describe('Whapi QR connect route', () => {
     });
   });
 
+  it('continues to QR when Whapi channel day extension is temporarily unavailable', async () => {
+    await prepareDb({
+      existingConnection: null,
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.activateWhapiManagedChannel.mockRejectedValueOnce(new WhapiConnectError('whapi_channel_extend_failed', {
+      detail: '{"error":{"code":402,"message":"days limit exceeded"}}',
+      status: 402,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      qrDataUrl: 'data:image/png;base64,QR',
+      webhookReady: true,
+    });
+    expect(mocks.warn).toHaveBeenCalledWith('Whapi channel extension deferred', expect.objectContaining({
+      channelId: 'channel_123',
+      status: 402,
+    }));
+    expect(mocks.configureWhapiChannelWebhook).toHaveBeenCalledWith({
+      apiToken: 'channel_token',
+      webhookUrl: expect.stringContaining('channelId=channel_123'),
+    });
+    expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenCalledWith({
+      apiToken: 'channel_token',
+    });
+  });
+
   it('reuses an existing managed Whapi channel without creating a replacement channel', async () => {
     await prepareDb({
       existingConnection: {
