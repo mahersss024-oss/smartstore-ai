@@ -386,6 +386,73 @@ describe('Whapi QR connect route', () => {
     );
   });
 
+  it('does not carry a stale phone number when replacing a deleted managed Whapi channel', async () => {
+    const { insertChains, updateChain } = await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'deleted_channel',
+          displayPhoneNumber: '+966500000002',
+          encryptedApiToken: 'encrypted_deleted_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {
+          contactChannels: {
+            whatsapp: '+966500000002',
+          },
+        },
+      },
+      settings: {
+        metadata: {
+          contactChannels: {
+            whatsapp: '+966500000002',
+          },
+        },
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.createWhapiManagedChannel.mockResolvedValueOnce({
+      apiToken: 'replacement_token',
+      channelId: 'replacement_channel',
+    });
+    mocks.encryptSecret.mockReturnValueOnce('encrypted_replacement_token');
+    mocks.configureWhapiChannelWebhook
+      .mockRejectedValueOnce(new WhapiConnectError('whapi_webhook_configure_failed', {
+        detail: '{"error":"Channel not found"}',
+        status: 404,
+      }))
+      .mockResolvedValueOnce(undefined);
+    const { POST } = await import('./route');
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(updateChain.set).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        channelIntegrations: expect.objectContaining({
+          whatsapp: expect.objectContaining({
+            channelId: 'replacement_channel',
+            displayPhoneNumber: '',
+            phoneNumber: '',
+          }),
+        }),
+        contactChannels: {},
+      }),
+    });
+    expect(insertChains[0]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      config: expect.objectContaining({
+        channelId: 'replacement_channel',
+        displayPhoneNumber: null,
+        encryptedApiToken: 'encrypted_replacement_token',
+        phoneNumber: null,
+      }),
+    }));
+  });
+
   it('still returns QR when replacement channel webhook configuration is deferred', async () => {
     await prepareDb({
       existingConnection: {
@@ -575,6 +642,55 @@ describe('Whapi QR connect route', () => {
     expect(mocks.warn).toHaveBeenCalledWith('Whapi QR fetch deferred', expect.objectContaining({
       channelId: 'channel_123',
       status: 404,
+    }));
+  });
+
+  it('fails safely when Whapi channel activation fails before QR can be prepared', async () => {
+    const { tx } = await prepareDb({
+      existingConnection: null,
+      lockedSettings: null,
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.activateWhapiManagedChannel.mockRejectedValueOnce(new WhapiConnectError('whapi_channel_mode_change_failed', {
+      detail: '{"error":"unauthorized"}',
+      status: 401,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'whapi_channel_mode_change_failed' });
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(mocks.configureWhapiChannelWebhook).not.toHaveBeenCalled();
+    expect(mocks.fetchWhapiQrCodeDataUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not convert non-initialization QR failures into pending state', async () => {
+    await prepareDb({
+      existingConnection: null,
+      lockedSettings: null,
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '{"error":"Unauthorized"}',
+      status: 401,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'whapi_qr_fetch_failed' });
+    expect(mocks.warn).toHaveBeenCalledWith('Whapi QR connect failed', expect.objectContaining({
+      error: 'whapi_qr_fetch_failed',
+      status: 401,
     }));
   });
 });

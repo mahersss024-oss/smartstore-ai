@@ -127,6 +127,7 @@ export const POST = async () => {
           displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
         }
       : await createManagedChannel();
+    let hasReplacedManagedChannel = false;
     const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
       && existingConfig.managedChannelActivatedAt.trim()
       ? existingConfig.managedChannelActivatedAt
@@ -188,6 +189,7 @@ export const POST = async () => {
           status: error.status,
         });
         managedChannel = await createManagedChannel();
+        hasReplacedManagedChannel = true;
         await activateChannelForQr(managedChannel.channelId);
         nextManagedChannelActivatedAt = new Date().toISOString();
         webhookUrl = buildWebhookUrl(managedChannel.channelId);
@@ -218,7 +220,9 @@ export const POST = async () => {
         ? existingConfig.encryptedApiToken
         : encryptSecret(managedChannel.apiToken);
       const apiTokenPreview = maskApiKey(managedChannel.apiToken);
-      const displayPhoneNumber = managedChannel.displayPhoneNumber ?? existingConfig.displayPhoneNumber ?? '';
+      const displayPhoneNumber = managedChannel.displayPhoneNumber
+        ?? (hasReplacedManagedChannel ? '' : existingConfig.displayPhoneNumber)
+        ?? '';
       const whatsappChannel = buildWhatsAppChannelConfig({
         apiTokenPreview,
         channelId: managedChannel.channelId,
@@ -245,6 +249,16 @@ export const POST = async () => {
           .limit(1)
           .for('update');
         const metadata = (lockedSettings?.metadata ?? settings?.metadata ?? {}) as StoreSettingsMetadata;
+        const nextContactChannels = {
+          ...(metadata.contactChannels ?? {}),
+        };
+
+        if (displayPhoneNumber) {
+          nextContactChannels.whatsapp = displayPhoneNumber;
+        } else {
+          delete nextContactChannels.whatsapp;
+        }
+
         const nextMetadata: StoreSettingsMetadata = {
           ...metadata,
           channelIntegrations: {
@@ -266,10 +280,7 @@ export const POST = async () => {
               whatsappTarget: whatsappChannel.whatsappTarget,
             },
           },
-          contactChannels: {
-            ...(metadata.contactChannels ?? {}),
-            ...(displayPhoneNumber ? { whatsapp: displayPhoneNumber } : {}),
-          },
+          contactChannels: nextContactChannels,
         };
 
         if (lockedSettings || settings) {
@@ -332,6 +343,7 @@ export const POST = async () => {
             status: error.status,
           });
           managedChannel = await createManagedChannel();
+          hasReplacedManagedChannel = true;
           await activateChannelForQr(managedChannel.channelId);
           nextManagedChannelActivatedAt = new Date().toISOString();
           webhookReady = false;
