@@ -301,11 +301,11 @@ export const channelConnectionsTable = pgTable('channel_connections', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 }, table => [
   uniqueIndex('channel_connections_organization_channel_unique').on(table.organizationId, table.channel),
-  // Inbound WhatsApp Cloud API (Meta) webhooks resolve the store by phoneNumberId.
+  // Inbound Whapi webhooks resolve the store by managed channelId.
   // Without this expression index every inbound message scans all active whatsapp
   // connections (a pre-auth full scan that does not scale to many stores).
-  index('channel_connections_meta_phone_number_idx')
-    .on(sql`(${table.config} ->> 'phoneNumberId')`)
+  index('channel_connections_whapi_channel_idx')
+    .on(sql`(${table.config} ->> 'channelId')`)
     .where(sql`${table.channel} = 'whatsapp' AND ${table.isActive} = true`),
 ]);
 

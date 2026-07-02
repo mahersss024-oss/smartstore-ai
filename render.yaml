@@ -1,9 +1,9 @@
 # Render Blueprint for SmartStore AI.
-# In Render: New → Blueprint → connect this repo. Render reads this file, creates
+# In Render: New -> Blueprint -> connect this repo. Render reads this file, creates
 # the web service, and prompts you to fill the `sync: false` secrets.
 #
-# REGION: matched to the Neon database region (us-east-1 → Render `virginia`).
-# Keep these aligned — every request hits Neon, so a mismatch adds latency.
+# REGION: matched to the Neon database region (us-east-1 -> Render `virginia`).
+# Keep these aligned; every request hits Neon, so a mismatch adds latency.
 #
 # BRANCH: deploys `main` (production-ready code merged from feat/async-ai-outbox).
 
@@ -12,7 +12,7 @@ services:
     name: smartstore-ai
     runtime: node
     region: virginia # matches Neon us-east-1
-    plan: starter # always-on; do NOT use `free` (it sleeps → webhooks fail)
+    plan: starter # always-on; do NOT use `free` (it sleeps -> webhooks fail)
     branch: main
     autoDeploy: true
     # --include=dev forces devDependencies (next.config.ts needs @next/bundle-analyzer,
@@ -48,11 +48,17 @@ services:
         sync: false
       - key: MAINTENANCE_SECRET # Bearer for the sweeper endpoint
         sync: false
-      # WhatsApp Cloud API (Meta) — set when the WhatsApp channel goes live:
-      - key: META_APP_SECRET
+      # Whapi.cloud managed WhatsApp channels:
+      - key: WHAPI_PARTNER_API_TOKEN
         sync: false
-      - key: META_WEBHOOK_VERIFY_TOKEN
+      - key: WHAPI_PROJECT_ID
         sync: false
+      - key: WHAPI_PARTNER_API_BASE
+        value: https://manager.whapi.cloud
+      - key: WHAPI_GATE_API_BASE
+        value: https://gate.whapi.cloud
+      - key: WHAPI_MANAGED_CHANNEL_EXTEND_DAYS
+        value: '30'
       - key: NEXT_PUBLIC_SENTRY_DSN
         sync: false
       - key: SENTRY_AUTH_TOKEN

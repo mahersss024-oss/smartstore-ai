@@ -90,7 +90,12 @@ const assertNoHorizontalOverflow = async (pageName: string, viewportName: string
 };
 
 const assertNoBrokenFallbackText = async (pageName: string, page: Page) => {
-  const bodyText = await page.locator('body').textContent();
+  const bodyText = await page.locator('body').evaluate((node) => {
+    const clone = node.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('script, style, noscript').forEach(element => element.remove());
+
+    return clone.textContent;
+  });
 
   expect(bodyText, `${pageName} should not render broken translation fallbacks`).not.toContain('????');
 };

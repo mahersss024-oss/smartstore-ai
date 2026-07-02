@@ -20,8 +20,8 @@ items are tracked explicitly in the ledgers.
 ## Current Runtime Decisions
 
 - Deployment provider: Render.
-- WhatsApp provider: Meta WhatsApp Cloud API.
-- Historical notes that mention Vercel or Twilio describe earlier
+- WhatsApp provider: Whapi.cloud managed WhatsApp channels.
+- Historical notes that mention Vercel, Twilio, or Meta describe earlier
   implementation/certification periods and are not the active runtime contract.
 
 ## Completed Programming Evidence
@@ -33,7 +33,7 @@ items are tracked explicitly in the ledgers.
 - i18n check passed.
 - Full unit/UI test suite passed: 106 test files and 980 tests.
 - Production build passed and generated 89 pages/routes.
-- Focused Meta WhatsApp webhook/store settings tests passed.
+- Focused Whapi WhatsApp webhook/store settings tests passed.
 - Coverage gate passed with permanent floors in place.
 - Production dependency audit passed with 0 vulnerabilities.
 - Full npm audit passed in the latest recorded pass.
@@ -43,10 +43,10 @@ items are tracked explicitly in the ledgers.
   storing the Sentry token in documentation.
 - Clerk API reachability for users and organizations was verified with a
   temporary owner-supplied key.
-- WhatsApp uses Meta WhatsApp Cloud API in source code.
-- Meta webhook verification uses the configured verify token and request
-  signature validation uses the Meta app secret.
-- Per-store Meta outbound sending uses encrypted store access tokens and
+- WhatsApp uses Whapi.cloud in source code.
+- Whapi inbound webhooks resolve stores by channel id and optional per-store
+  webhook secret.
+- Per-store Whapi outbound sending uses encrypted store API tokens and
   recipient-to-store isolation is covered by focused tests.
 - Durable WhatsApp AI processing is implemented behind `AI_PROCESSING_MODE` with
   a tenant-scoped outbox, signed QStash worker, lease fencing, strict
@@ -60,7 +60,7 @@ items are tracked explicitly in the ledgers.
 ## Completed Code Fix Areas
 
 - Clerk production key configuration was corrected and evidenced.
-- Meta WhatsApp credentials are encrypted per store and do not require a
+- Whapi WhatsApp credentials are encrypted per store and do not require a
   redeploy when updated.
 - Managed Neon production DB configuration was evidenced through DB-backed
   production smoke.
@@ -68,9 +68,9 @@ items are tracked explicitly in the ledgers.
   legacy payloads from becoming operational credentials.
 - Secret rotation supports decrypt-only previous platform keys.
 - Provider error logging redacts exact runtime credentials before logging.
-- Meta provider failures return safe retry responses without exposing
+- Whapi provider failures return safe retry responses without exposing
   credentials.
-- Meta non-retryable AI failures return readable Arabic fallback replies and
+- Whapi non-retryable AI failures return readable Arabic fallback replies and
   are covered by a regression test.
 - WhatsApp webhook delivery no longer acknowledges incomplete customer-facing
   processing as success.
@@ -107,7 +107,7 @@ The only current programming debt explicitly left open in the defect ledger is:
 These items are outside pure source-code correctness and remain required for
 maximum production certification:
 
-- Full live Meta WhatsApp end-to-end certification script for inbound message,
+- Full live Whapi WhatsApp end-to-end certification script for inbound message,
   AI response, cart update, service/payment selection, order creation, review,
   and complaint/note capture.
 - Large-scale concurrent write/AI load proof beyond the current read-only

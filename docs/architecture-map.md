@@ -8,8 +8,8 @@ Generated: 2026-06-28
 - Server actions/API layer: validates input, resolves tenant scope, calls services, mutates database, revalidates paths.
 - Service/domain layer: AI orchestration, product resolution, order lifecycle, checkout, rate limiting, billing sync, webhook idempotency.
 - Database layer: Drizzle schema and migrations.
-- External services: Clerk, Stripe, AI provider, Render, Meta WhatsApp Cloud
-  API, PostgreSQL hosting.
+- External services: Clerk, Stripe, AI provider, Render, Whapi.cloud,
+  PostgreSQL hosting.
 
 ## Decision boundaries
 

@@ -95,8 +95,8 @@ vi.mock('@/libs/OrderWorkflow', () => ({
   },
 }));
 
-vi.mock('@/libs/MetaInboundProcessor', () => ({
-  sendMetaConversationTextMessage: mockSendWhatsAppConversationTextMessage,
+vi.mock('@/libs/WhapiWhatsApp', () => ({
+  sendWhapiConversationTextMessage: mockSendWhatsAppConversationTextMessage,
 }));
 
 vi.mock('@/models/Schema', () => ({
@@ -339,7 +339,7 @@ describe('OrderActions', () => {
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('تمت الموافقة على طلبك.');
     mockDbSelectLimit.mockResolvedValueOnce([{
       aiAnalysis: {
-        externalThreadId: 'twa:14155552671:966549764152',
+        externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       },
       customerAddress: null,
       customerPhone: '966549764152',
@@ -522,7 +522,7 @@ describe('OrderActions', () => {
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('طلبك قيد التحضير الآن.');
     mockDbSelectLimit.mockResolvedValueOnce([{
       aiAnalysis: {
-        externalThreadId: 'twa:14155552671:966549764152',
+        externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       },
       customerAddress: null,
       customerPhone: '966549764152',
@@ -539,7 +539,7 @@ describe('OrderActions', () => {
 
     expect(mockSendWhatsAppConversationTextMessage).toHaveBeenCalledWith({
       body: 'طلبك قيد التحضير الآن.',
-      externalThreadId: 'twa:14155552671:966549764152',
+      externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       organizationId: 'org_1',
     });
   });
@@ -550,7 +550,7 @@ describe('OrderActions', () => {
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('طلبك قيد التجهيز الآن.');
     mockDbSelectLimit.mockResolvedValueOnce([{
       aiAnalysis: {
-        externalThreadId: 'twa:14155552671:966549764152',
+        externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       },
       customerAddress: null,
       customerPhone: '966549764152',
@@ -593,13 +593,13 @@ describe('OrderActions', () => {
     expect(mockSendWhatsAppConversationTextMessage).not.toHaveBeenCalled();
   });
 
-  it('sends completed WhatsApp orders a review request through WhatsApp Cloud API', async () => {
+  it('sends completed WhatsApp orders a review request through Whapi', async () => {
     const { completeOrderAndRequestReview } = await import('./OrderActions');
 
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('طلبك رقم 162 تم إنجازه بنجاح.');
     mockDbSelectLimit.mockResolvedValueOnce([{
       aiAnalysis: {
-        externalThreadId: 'twa:14155552671:966549764152',
+        externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       },
       customerAddress: null,
       customerPhone: '966549764152',
@@ -616,7 +616,7 @@ describe('OrderActions', () => {
 
     expect(mockSendWhatsAppConversationTextMessage).toHaveBeenCalledWith({
       body: 'طلبك رقم 162 تم إنجازه بنجاح.',
-      externalThreadId: 'twa:14155552671:966549764152',
+      externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       organizationId: 'org_1',
     });
     expect(mockTxInsertValues).toHaveBeenCalledWith(expect.objectContaining({
@@ -699,7 +699,7 @@ describe('OrderActions', () => {
     mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('طلبك رقم 162 تم إنجازه بنجاح.');
     mockDbSelectLimit.mockResolvedValueOnce([{
       aiAnalysis: {
-        externalThreadId: 'twa:14155552671:966549764152',
+        externalThreadId: 'wwa:CATWMN-B42ST:966549764152',
       },
       customerAddress: null,
       customerPhone: '966549764152',

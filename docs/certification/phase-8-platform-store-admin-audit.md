@@ -54,7 +54,7 @@ Behavior:
   display number, mode, and access token through `saveWhatsAppSettings`.
 - New access tokens are encrypted before they reach the saved channel config.
 - Leaving the access-token field blank keeps the existing encrypted token.
-- Runtime WhatsApp sending decrypts `encryptedAccessToken` from the store channel
+- Runtime WhatsApp sending decrypts legacy encrypted access token from the store channel
   connection.
 - The channel connection is scoped by active organization and channel.
 

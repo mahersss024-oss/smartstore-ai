@@ -28,8 +28,11 @@ stay in Render and must not be committed.
 - `CLERK_WEBHOOK_SIGNING_SECRET`
 - `PLATFORM_ADMIN_USER_IDS`
 - `PLATFORM_SECRETS_ENCRYPTION_KEY`
-- `META_APP_SECRET`
-- `META_WEBHOOK_VERIFY_TOKEN`
+- `WHAPI_PARTNER_API_TOKEN`
+- `WHAPI_PROJECT_ID`
+- `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
+- `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
+- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=30`
 - `MAINTENANCE_SECRET`
 
 Optional variables:
@@ -51,63 +54,27 @@ Optional variables:
 - `BETTER_STACK_INGESTING_HOST`
 - `NEXT_IMAGE_REMOTE_HOSTS`
 
-## WhatsApp Providers
+## WhatsApp Provider
 
-WhatsApp supports two store-level providers:
+WhatsApp uses **Whapi.cloud** only.
 
-- **Meta WhatsApp Cloud API**
-- **Whapi.cloud**
+The store dashboard QR flow creates or reuses the store channel, switches it to
+live mode, extends it from the partner day balance, configures the webhook,
+encrypts the channel token in the database, and displays the QR without
+merchant-side manual credential entry.
 
-Platform-level values for Meta:
-
-- `META_APP_SECRET`
-- `META_WEBHOOK_VERIFY_TOKEN`
-
-Per-store Meta values are saved encrypted from the store dashboard:
-
-- Phone Number ID
-- Access Token
-- Display phone number
-- Optional WhatsApp Business Account ID
-
-The Meta inbound webhook URL is:
+The inbound webhook route is:
 
 ```text
 https://smartstore-ai.com/api/whatsapp/webhook
 ```
 
-Subscribe the Meta app to the `messages` webhook field.
-
-Per-store Whapi values are also saved encrypted from the store dashboard:
+Per-store Whapi values are saved encrypted in `channel_connections.config`:
 
 - Whapi Channel ID
 - Whapi API Token
 - Display phone number
 - Whapi webhook secret
-
-Whapi does not require global Render environment variables. Configure Whapi with
-the store-specific webhook URL shown in the dashboard:
-
-```text
-https://smartstore-ai.com/api/whatsapp/webhook?provider=whapi&channelId=<channelId>&secret=<webhookSecret>
-```
-
-For one-click QR connection, set these platform-level Render variables:
-
-- `WHAPI_PARTNER_API_TOKEN`
-- `WHAPI_PROJECT_ID`
-
-Optional overrides:
-
-- `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
-- `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
-- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=30`
-
-When these are present, the store can click "Show QR" in the dashboard. The
-platform creates/reuses the Whapi channel, switches it to live mode, extends it
-from the partner day balance once, configures the webhook, encrypts the channel
-token in the database, and displays the QR without merchant-side manual
-credential entry.
 
 ## DNS
 
@@ -134,5 +101,6 @@ Use Render Cron Jobs or QStash Schedules.
 1. Open `/robots.txt` and confirm a 200 response.
 2. Open `/sign-in` and confirm Clerk renders.
 3. Open a public web-order link and confirm the page renders.
-4. Send a WhatsApp test message through the provider configured for the store.
-5. Confirm the message maps to the correct store and an AI reply is sent.
+4. Connect WhatsApp from store settings using the Whapi QR flow.
+5. Send a WhatsApp test message.
+6. Confirm the message maps to the correct store and an AI reply is sent.

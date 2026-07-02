@@ -52,7 +52,7 @@ for certification gates and evidence requirements.
 - Database: Drizzle ORM with PostgreSQL schema in `src/models/Schema.ts`.
 - Auth: Clerk sessions and organizations.
 - Billing: Stripe platform subscriptions and add-ons.
-- Customer channels: public web ordering and WhatsApp (Meta) webhook.
+- Customer channels: public web ordering and Whapi WhatsApp webhook.
 - AI: platform-managed AI provider configuration, AI employee agent, shared
   conversation engine, guardrails, diagnostics, and action logs.
 - Runtime settings: platform-managed production keys through
@@ -111,8 +111,8 @@ for certification gates and evidence requirements.
 ## API Routes
 
 - `src/app/api/ai-employee/messages/route.ts`: AI employee message endpoint.
-- `src/app/api/whatsapp/webhook/route.ts`: signed WhatsApp (Meta) inbound event
-  handling and tenant routing.
+- `src/app/api/whatsapp/webhook/route.ts`: Whapi inbound WhatsApp event handling
+  and tenant routing.
 - `src/app/api/clerk/webhooks/route.ts`: Clerk webhook handler.
 - `src/app/api/stripe/webhooks/route.ts`: Stripe webhook handler.
 - `src/app/api/payments/moyasar/callback/route.ts`: Moyasar callback endpoint.
@@ -144,7 +144,7 @@ for certification gates and evidence requirements.
 - Store and catalog: `StoreSettings`, `StoreReadiness`,
   `StoreServiceControls`, `StoreAIContext`, `ProductDuplicateDetection`,
   `ProductCatalogMetadata`, `ProductImageStorage`.
-- Integrations: `Stripe`, `WebhookIdempotency`, `MetaWhatsApp`,
+- Integrations: `Stripe`, `WebhookIdempotency`, `WhapiWhatsApp`,
   `ClerkOrganizationSync`, `OutboundHttp`.
 - Platform controls: `PlatformAdmin`, `PlatformAIClient`,
   `PlatformAIProviderConfig`, `PlatformRuntimeConfig`, `PlatformAIPolicy`.

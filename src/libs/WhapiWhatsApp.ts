@@ -1,10 +1,13 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { channelConnectionsTable } from '@/models/Schema';
 import { db } from './DB';
+import { Env } from './Env';
 import { decryptSecret } from './PlatformAIProviderConfig';
 
-const WHAPI_API_BASE = 'https://gate.whapi.cloud';
 const WHATSAPP_CHANNEL = 'whatsapp';
+const WHAPI_THREAD_PREFIX = 'wwa';
+
+const getWhapiApiBase = () => Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '');
 
 export type WhapiInboundMessage = {
   body: string;
@@ -134,7 +137,7 @@ export const sendWhapiText = async (params: {
   body: string;
   to: string;
 }) => {
-  const response = await fetch(`${WHAPI_API_BASE}/messages/text`, {
+  const response = await fetch(`${getWhapiApiBase()}/messages/text`, {
     body: JSON.stringify({
       body: params.body,
       to: params.to,
@@ -177,6 +180,112 @@ export const sendWhapiText = async (params: {
   } catch {
     return undefined;
   }
+};
+
+const parseWhapiExternalThreadId = (externalThreadId?: null | string) => {
+  if (!externalThreadId) {
+    return null;
+  }
+
+  const [prefix, channelId, ...recipientParts] = externalThreadId.split(':');
+  const recipient = recipientParts.join(':').trim();
+
+  if (prefix !== WHAPI_THREAD_PREFIX || !channelId?.trim() || !recipient) {
+    return null;
+  }
+
+  return {
+    channelId: channelId.trim(),
+    recipient,
+  };
+};
+
+const findWhapiOutboundStoreConnection = async (params: {
+  channelId: string;
+  organizationId: string;
+}): Promise<WhapiStoreConnection | null> => {
+  const rows = await db
+    .select({
+      config: channelConnectionsTable.config,
+      connectionStatus: channelConnectionsTable.connectionStatus,
+      isActive: channelConnectionsTable.isActive,
+      organizationId: channelConnectionsTable.organizationId,
+    })
+    .from(channelConnectionsTable)
+    .where(
+      and(
+        eq(channelConnectionsTable.organizationId, params.organizationId),
+        eq(channelConnectionsTable.channel, WHATSAPP_CHANNEL),
+        eq(channelConnectionsTable.isActive, true),
+        sql`${channelConnectionsTable.config}->>'provider' = 'whapi'`,
+        sql`${channelConnectionsTable.config}->>'channelId' = ${params.channelId}`,
+      ),
+    )
+    .limit(1);
+
+  const row = rows[0];
+  const config = row?.config as WhapiConnectionConfig | null;
+  const apiToken = config?.encryptedApiToken
+    ? decryptSecret(config.encryptedApiToken)
+    : undefined;
+
+  if (
+    row
+    && config?.provider === 'whapi'
+    && typeof config.channelId === 'string'
+    && apiToken
+    && row.connectionStatus === 'connected'
+    && row.isActive
+  ) {
+    return {
+      apiToken,
+      channelId: config.channelId,
+      displayPhoneNumber: typeof config.displayPhoneNumber === 'string'
+        ? config.displayPhoneNumber
+        : undefined,
+      organizationId: row.organizationId,
+    };
+  }
+
+  return null;
+};
+
+export const sendWhapiConversationTextMessage = async (params: {
+  body: string;
+  externalThreadId?: null | string;
+  organizationId: string;
+}) => {
+  const thread = parseWhapiExternalThreadId(params.externalThreadId);
+
+  if (!thread) {
+    return {
+      reason: 'missing_whapi_thread',
+      status: 'skipped' as const,
+    };
+  }
+
+  const connection = await findWhapiOutboundStoreConnection({
+    channelId: thread.channelId,
+    organizationId: params.organizationId,
+  });
+
+  if (!connection) {
+    return {
+      reason: 'whapi_connection_not_found',
+      status: 'skipped' as const,
+    };
+  }
+
+  const outboundMessageId = await sendWhapiText({
+    apiToken: connection.apiToken,
+    body: params.body,
+    to: thread.recipient,
+  });
+
+  return {
+    outboundMessageId,
+    status: 'sent' as const,
+  };
 };
 
 export const findWhapiStoreConnection = async (params: {

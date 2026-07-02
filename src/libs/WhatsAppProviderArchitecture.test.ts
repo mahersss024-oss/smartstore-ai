@@ -18,9 +18,9 @@ const collectSourceFiles = (directory: string): string[] => {
   });
 };
 
-// The WhatsApp channel must run only through official providers (WhatsApp Cloud
-// WhatsApp Cloud API). Unofficial QR/pairing automation libraries violate
-// WhatsApp's terms and risk permanent number bans, so they must never appear.
+// The WhatsApp channel must run only through the approved platform provider.
+// Unofficial local QR/pairing automation libraries violate WhatsApp's terms and
+// risk permanent number bans, so they must never appear in application code.
 describe('WhatsApp provider architecture', () => {
   it('contains no unofficial / QR automation libraries', () => {
     const files = collectSourceFiles(sourceRoot).filter(file => file !== thisFile);

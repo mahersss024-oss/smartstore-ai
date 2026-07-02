@@ -25,7 +25,7 @@ type StoreSettingsMetadata = {
   };
 } & Record<string, unknown>;
 
-export const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
+const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
   return (config.provider === 'whapi' || config.mode === 'whapi')
     && Boolean(config.channelId && config.encryptedApiToken);
 };

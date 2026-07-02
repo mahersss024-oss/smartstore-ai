@@ -4,9 +4,9 @@ const mocks = vi.hoisted(() => ({
   claimAiInboundJob: vi.fn(),
   completeAiInboundJob: vi.fn(),
   failAiInboundJob: vi.fn(),
-  findMetaStoreConnection: vi.fn(),
+  findWhapiStoreConnection: vi.fn(),
   getAiInboundJob: vi.fn(),
-  processMetaInboundMessage: vi.fn(),
+  processWhapiInboundMessage: vi.fn(),
   renewAiInboundJobLease: vi.fn(),
   verify: vi.fn(),
 }));
@@ -34,15 +34,19 @@ vi.mock('@/libs/AIInboundJobQueue', () => ({
 
 vi.mock('@/libs/WhatsAppInboundShared', () => ({
   ConversationBusyError: class ConversationBusyError extends Error {},
-  MessageRetryError: class MessageRetryError extends Error {},
+  MessageRetryError: class MessageRetryError extends Error {
+    constructor(public readonly reason: string) {
+      super(reason);
+    }
+  },
 }));
 
-vi.mock('@/libs/MetaInboundProcessor', () => ({
-  processMetaInboundMessage: mocks.processMetaInboundMessage,
+vi.mock('@/libs/WhapiInboundProcessor', () => ({
+  processWhapiInboundMessage: mocks.processWhapiInboundMessage,
 }));
 
-vi.mock('@/libs/MetaWhatsApp', () => ({
-  findMetaStoreConnection: mocks.findMetaStoreConnection,
+vi.mock('@/libs/WhapiWhatsApp', () => ({
+  findWhapiStoreConnection: mocks.findWhapiStoreConnection,
 }));
 
 vi.mock('@/libs/Logger', () => ({
@@ -79,14 +83,17 @@ describe('AI inbound worker', () => {
       organizationId: 'org_1',
       payload: {
         message: {
-          body: 'سلام',
+          body: 'salam',
+          channelId: 'CATWMN-B42ST',
           from: '966500000001',
-          messageId: 'wamid.1',
-          phoneNumberId: '123456',
+          messageId: 'whapi.1',
+          profileName: 'Maher',
+          webhookSecret: 'secret_1',
         },
       },
     });
-    mocks.findMetaStoreConnection.mockResolvedValue({
+    mocks.findWhapiStoreConnection.mockResolvedValue({
+      channelId: 'CATWMN-B42ST',
       organizationId: 'org_1',
     });
     mocks.completeAiInboundJob.mockResolvedValue(true);
@@ -123,12 +130,28 @@ describe('AI inbound worker', () => {
     expect(mocks.verify).not.toHaveBeenCalled();
   });
 
-  it('processes a claimed job and completes it with the same lease', async () => {
+  it('processes a claimed Whapi job and completes it with the same lease', async () => {
     const { POST } = await import('./route');
     const response = await POST(buildRequest());
 
     expect(response.status).toBe(200);
-    expect(mocks.processMetaInboundMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.findWhapiStoreConnection).toHaveBeenCalledWith({
+      channelId: 'CATWMN-B42ST',
+      webhookSecret: 'secret_1',
+    });
+    expect(mocks.processWhapiInboundMessage).toHaveBeenCalledWith(expect.objectContaining({
+      connection: {
+        channelId: 'CATWMN-B42ST',
+        organizationId: 'org_1',
+      },
+      message: {
+        body: 'salam',
+        channelId: 'CATWMN-B42ST',
+        from: '966500000001',
+        messageId: 'whapi.1',
+        profileName: 'Maher',
+      },
+    }));
     expect(mocks.completeAiInboundJob).toHaveBeenCalledWith({
       jobId: 7,
       leaseToken: 'lease-1',
@@ -137,7 +160,7 @@ describe('AI inbound worker', () => {
   });
 
   it('renews the job lease immediately before the processor sends a reply', async () => {
-    mocks.processMetaInboundMessage.mockImplementationOnce(
+    mocks.processWhapiInboundMessage.mockImplementationOnce(
       async (params: { beforeSend: () => Promise<void> }) => {
         await params.beforeSend();
       },
@@ -152,7 +175,7 @@ describe('AI inbound worker', () => {
   });
 
   it('records a retryable failure without leaking it to QStash retries', async () => {
-    mocks.processMetaInboundMessage.mockRejectedValueOnce(
+    mocks.processWhapiInboundMessage.mockRejectedValueOnce(
       new Error('provider credential details'),
     );
     const { POST } = await import('./route');
@@ -170,9 +193,14 @@ describe('AI inbound worker', () => {
   });
 
   it('classifies an unsupported-channel error as terminal', async () => {
-    mocks.processMetaInboundMessage.mockRejectedValueOnce(
-      new Error('Unsupported AI inbound channel: web_chat'),
-    );
+    mocks.claimAiInboundJob.mockResolvedValueOnce({
+      attempts: 1,
+      channel: 'web_chat',
+      id: 7,
+      leaseToken: 'lease-1',
+      organizationId: 'org_1',
+      payload: {},
+    });
     mocks.failAiInboundJob.mockResolvedValueOnce({ status: 'dead', updated: true });
     const { POST } = await import('./route');
     const response = await POST(buildRequest());

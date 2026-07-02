@@ -24,8 +24,8 @@ const recommendedVariables = [
   'PLATFORM_ADMIN_USER_IDS',
   'PLATFORM_SECRETS_ENCRYPTION_KEY',
   'PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS',
-  'META_APP_SECRET',
-  'META_WEBHOOK_VERIFY_TOKEN',
+  'WHAPI_PARTNER_API_TOKEN',
+  'WHAPI_PROJECT_ID',
 ];
 
 const qstashVariables = [
@@ -151,8 +151,7 @@ const validateSecretLength = (key, value, issues) => {
 const doesValueLookLikeProviderSecret = value =>
   /^(?:sk|pk)_(?:live|test)_/.test(value)
   || value.startsWith('GOCSPX-')
-  || value.startsWith('EAAG')
-  || value.startsWith('EAAM');
+  || value.startsWith('whapi_');
 
 const validateDedicatedEncryptionKey = (key, value, issues) => {
   if (key !== 'PLATFORM_SECRETS_ENCRYPTION_KEY' || !value) {
@@ -267,8 +266,8 @@ if (getEnvValue('AI_PROCESSING_MODE') === 'outbox') {
   }
 }
 
-if (!getEnvValue('META_APP_SECRET') || !getEnvValue('META_WEBHOOK_VERIFY_TOKEN')) {
-  warnings.push('META_APP_SECRET or META_WEBHOOK_VERIFY_TOKEN is missing. The WhatsApp Cloud API webhook will reject deliveries until these are configured.');
+if (!getEnvValue('WHAPI_PARTNER_API_TOKEN') || !getEnvValue('WHAPI_PROJECT_ID')) {
+  warnings.push('WHAPI_PARTNER_API_TOKEN or WHAPI_PROJECT_ID is missing. Whapi QR connection will be unavailable until both are configured.');
 }
 
 if (warnings.length > 0) {

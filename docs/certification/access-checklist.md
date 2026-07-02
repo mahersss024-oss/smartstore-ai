@@ -21,7 +21,7 @@ Status values:
 | Production runtime logs | needs confirmation | Confirm Render logs show healthy requests and no provider-send failures after deployment. |
 | Database provider | needs confirmation | Provider is PostgreSQL/Neon in current operations, but backup status, PITR status, and restore process still need external evidence. |
 | Clerk | needs confirmation | Production app access and key rotation authority are not recorded in this checklist. |
-| Meta WhatsApp | needs confirmation | App/WABA access exists from setup conversation, but owner/role, production access, webhook subscription, app secret, verify token, and store token freshness still require external evidence. |
+| Whapi WhatsApp | needs confirmation | Partner/project/channel access exists from setup conversation, but owner/role, partner balance, channel lifecycle, webhook configuration, and store token freshness still require external evidence. |
 | AI provider | needs confirmation | Runtime provider settings exist in platform admin, but provider account access and quota controls are not recorded. |
 | Stripe | not applicable | Automated platform billing is outside the current launch scope. Provider access and live billing certification become mandatory before the feature is enabled after launch. |
 | Moyasar and other online payment providers | not applicable | Customer online payments are disabled and outside the current launch scope. Existing provider foundations are retained for post-launch activation. |
@@ -42,9 +42,11 @@ Required or recommended production ownership still needs to be mapped for:
 - `PLATFORM_ADMIN_USER_IDS`
 - `PLATFORM_SECRETS_ENCRYPTION_KEY`
 - `AI_EMPLOYEE_WEBHOOK_SECRET`
-- `META_WEBHOOK_VERIFY_TOKEN`
-- `META_APP_SECRET`
-- `META_GRAPH_API_VERSION`
+- `WHAPI_PARTNER_API_TOKEN`
+- `WHAPI_PROJECT_ID`
+- `WHAPI_PARTNER_API_BASE`
+- `WHAPI_GATE_API_BASE`
+- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS`
 - `MAINTENANCE_SECRET`
 - Optional post-launch `STRIPE_*`
 - Optional post-launch Moyasar/payment-provider and Better Stack variables.

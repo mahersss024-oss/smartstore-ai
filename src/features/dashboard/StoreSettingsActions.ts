@@ -11,7 +11,6 @@ import {
   isValidGoogleMapsUrl,
 } from '@/libs/GoogleMaps';
 import {
-  decryptSecret,
   encryptSecret,
   maskApiKey,
 } from '@/libs/PlatformAIProviderConfig';
@@ -48,7 +47,6 @@ type StoreSettingsMetadata = {
   };
   channelIntegrations?: {
     whatsapp?: {
-      accessTokenPreview?: string | null;
       apiTokenPreview?: string | null;
       channelId?: string | null;
       connectionStatus?: string;
@@ -57,9 +55,7 @@ type StoreSettingsMetadata = {
       managedChannelActivatedAt?: string | null;
       mode?: string;
       phoneNumber?: string | null;
-      phoneNumberId?: string | null;
       provider?: string | null;
-      wabaId?: string | null;
       webhookSecret?: string | null;
       webhookReady?: boolean;
       whatsappLink?: string | null;
@@ -98,20 +94,16 @@ type StoreSettingsMetadata = {
 type CustomerEntryMode = NonNullable<StoreSettingsMetadata['customerEntry']>['mode'];
 type DefaultCustomerEntryChannel = NonNullable<StoreSettingsMetadata['customerEntry']>['defaultChannel'];
 type ExistingWhatsappConfig = {
-  accessTokenPreview?: string | null;
   apiTokenPreview?: string | null;
   channelId?: string | null;
   connectionStatus?: string | null;
   displayPhoneNumber?: string | null;
-  encryptedAccessToken?: string | null;
   encryptedApiToken?: string | null;
   managedByPlatform?: boolean | null;
   managedChannelActivatedAt?: string | null;
   mode?: string | null;
   phoneNumber?: string | null;
-  phoneNumberId?: string | null;
   provider?: string | null;
-  wabaId?: string | null;
   webhookSecret?: string | null;
 };
 
@@ -191,11 +183,6 @@ const allowedDefaultCustomerEntryChannels = new Set([
   'web',
   'whatsapp',
 ]);
-const allowedWhatsAppProviders = new Set([
-  'meta',
-  'whapi',
-]);
-
 const getActiveOrganizationId = async () => {
   const { orgId } = await auth();
 
@@ -231,63 +218,6 @@ const getExistingWhatsappConfig = async (organizationId: string) => {
     : {};
 };
 
-const resolveMetaConnectionInput = (
-  formData: FormData,
-  existing: ExistingWhatsappConfig,
-) => {
-  const submittedPhoneNumberId = String(formData.get('metaPhoneNumberId') ?? '').trim();
-  const submittedAccessToken = String(formData.get('metaAccessToken') ?? '').trim();
-  const submittedWabaId = String(formData.get('metaWabaId') ?? '').trim();
-  const submittedDisplayPhone = String(formData.get('metaDisplayPhoneNumber') ?? '').trim();
-  const phoneNumberId = submittedPhoneNumberId || existing.phoneNumberId?.trim() || null;
-  const accessToken = submittedAccessToken
-    || (existing.encryptedAccessToken
-      ? decryptSecret(existing.encryptedAccessToken)
-      : undefined);
-  const encryptedAccessToken = submittedAccessToken
-    ? encryptSecret(submittedAccessToken)
-    : existing.encryptedAccessToken ?? null;
-  const wabaId = submittedWabaId || existing.wabaId?.trim() || null;
-  const displayPhoneNumber = submittedDisplayPhone || existing.displayPhoneNumber?.trim() || null;
-
-  logSecretLengthDiagnostics('meta.access_token.save_store_settings', {
-    decryptedLength: accessToken?.length ?? null,
-    inputLength: submittedAccessToken.length || null,
-    retrievedLength: existing.encryptedAccessToken?.length ?? null,
-    storedLength: encryptedAccessToken?.length ?? null,
-  });
-
-  return {
-    accessToken,
-    accessTokenPreview: submittedAccessToken
-      ? maskApiKey(submittedAccessToken)
-      : existing.accessTokenPreview ?? null,
-    displayPhoneNumber,
-    encryptedAccessToken,
-    hasAccessToken: Boolean(accessToken && encryptedAccessToken),
-    phoneNumberId,
-    submittedCredentials: Boolean(submittedPhoneNumberId || submittedAccessToken),
-    wabaId,
-  };
-};
-
-const isMetaConnectionShapeValid = (
-  input: ReturnType<typeof resolveMetaConnectionInput>,
-) => {
-  return /^\d{6,20}$/.test(input.phoneNumberId ?? '')
-    && Boolean(input.accessToken);
-};
-
-const normalizeWhatsAppProvider = (
-  formData: FormData,
-  existing: ExistingWhatsappConfig,
-) => {
-  const submittedProvider = String(formData.get('whatsappProvider') ?? '').trim();
-  const provider = submittedProvider || existing.provider || existing.mode || 'meta';
-
-  return allowedWhatsAppProviders.has(provider) ? provider as 'meta' | 'whapi' : 'meta';
-};
-
 const generateWebhookSecret = () => randomBytes(24).toString('hex');
 
 const resolveWhapiConnectionInput = (
@@ -300,9 +230,7 @@ const resolveWhapiConnectionInput = (
   const submittedWebhookSecret = String(formData.get('whapiWebhookSecret') ?? '').trim();
   const channelId = submittedChannelId || existing.channelId?.trim() || null;
   const apiToken = submittedApiToken
-    || (existing.encryptedApiToken
-      ? decryptSecret(existing.encryptedApiToken)
-      : undefined);
+    || (existing.encryptedApiToken ? 'stored-whapi-token' : undefined);
   const encryptedApiToken = submittedApiToken
     ? encryptSecret(submittedApiToken)
     : existing.encryptedApiToken ?? null;
@@ -617,46 +545,27 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
   }
 
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
-  const whatsappProvider = normalizeWhatsAppProvider(formData, existingWhatsappConfig);
-  const meta = resolveMetaConnectionInput(formData, existingWhatsappConfig);
   const whapi = resolveWhapiConnectionInput(formData, existingWhatsappConfig);
-  const hasAnyWhatsAppSetting = whatsappProvider === 'whapi'
-    ? Boolean(whapi.channelId || whapi.apiToken)
-    : Boolean(meta.phoneNumberId || meta.accessToken);
+  const hasAnyWhatsAppSetting = Boolean(whapi.channelId || whapi.apiToken);
 
   if (
     hasAnyWhatsAppSetting
-    && (
-      whatsappProvider === 'whapi'
-        ? !isWhapiConnectionShapeValid(whapi)
-        : !isMetaConnectionShapeValid(meta)
-    )
+    && !isWhapiConnectionShapeValid(whapi)
   ) {
     redirectValidationError(locale, 'invalid_whatsapp_credentials');
   }
 
-  const whatsappChannel = whatsappProvider === 'whapi'
-    ? buildWhatsAppChannelConfig({
-        apiTokenPreview: whapi.apiTokenPreview,
-        channelId: whapi.channelId,
-        displayPhoneNumber: whapi.displayPhoneNumber,
-        encryptedApiToken: whapi.encryptedApiToken,
-        hasApiToken: whapi.hasApiToken,
-        provider: 'whapi',
-        status: submittedWhatsappStatus,
-        storeName,
-        webhookSecret: whapi.webhookSecret,
-      })
-    : buildWhatsAppChannelConfig({
-        displayPhoneNumber: meta.displayPhoneNumber,
-        encryptedAccessToken: meta.encryptedAccessToken,
-        hasAccessToken: meta.hasAccessToken,
-        phoneNumberId: meta.phoneNumberId,
-        provider: 'meta',
-        status: submittedWhatsappStatus,
-        storeName,
-        wabaId: meta.wabaId,
-      });
+  const whatsappChannel = buildWhatsAppChannelConfig({
+    apiTokenPreview: whapi.apiTokenPreview,
+    channelId: whapi.channelId,
+    displayPhoneNumber: whapi.displayPhoneNumber,
+    encryptedApiToken: whapi.encryptedApiToken,
+    hasApiToken: whapi.hasApiToken,
+    provider: 'whapi',
+    status: submittedWhatsappStatus,
+    storeName,
+    webhookSecret: whapi.webhookSecret,
+  });
 
   // Store settings metadata and the WhatsApp channel connection must move
   // together: inbound routing reads channel_connections while the dashboard reads
@@ -678,19 +587,16 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       channelIntegrations: {
         ...(lockedMetadata.channelIntegrations ?? {}),
         whatsapp: {
-          accessTokenPreview: whatsappProvider === 'meta' ? meta.accessTokenPreview : null,
-          apiTokenPreview: whatsappProvider === 'whapi' ? whapi.apiTokenPreview : null,
-          channelId: whatsappProvider === 'whapi' ? whapi.channelId : null,
+          apiTokenPreview: whapi.apiTokenPreview,
+          channelId: whapi.channelId,
           connectionStatus: whatsappChannel.connectionStatus,
-          displayPhoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
-          managedByPlatform: whatsappProvider === 'whapi' ? whapi.managedByPlatform ?? undefined : undefined,
-          managedChannelActivatedAt: whatsappProvider === 'whapi' ? whapi.managedChannelActivatedAt : undefined,
+          displayPhoneNumber: whapi.displayPhoneNumber,
+          managedByPlatform: whapi.managedByPlatform ?? undefined,
+          managedChannelActivatedAt: whapi.managedChannelActivatedAt,
           mode: whatsappChannel.mode,
-          phoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
-          phoneNumberId: whatsappProvider === 'meta' ? meta.phoneNumberId : null,
-          provider: whatsappProvider,
-          wabaId: whatsappProvider === 'meta' ? meta.wabaId : null,
-          webhookSecret: whatsappProvider === 'whapi' ? whapi.webhookSecret : null,
+          phoneNumber: whapi.displayPhoneNumber,
+          provider: 'whapi',
+          webhookSecret: whapi.webhookSecret,
           webhookReady: whatsappChannel.connectionStatus === 'connected',
           whatsappLink: whatsappChannel.whatsappLink,
           whatsappTarget: whatsappChannel.whatsappTarget,
@@ -698,7 +604,7 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       },
       contactChannels: {
         ...(lockedMetadata.contactChannels ?? {}),
-        whatsapp: (whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber) || undefined,
+        whatsapp: whapi.displayPhoneNumber || undefined,
         email: email || undefined,
         phone: phone || undefined,
       },
@@ -756,13 +662,11 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       .values({
         aiMode: 'assist',
         channel: 'whatsapp',
-        config: whatsappProvider === 'whapi'
-          ? {
-              ...whatsappChannel.config,
-              managedByPlatform: whapi.managedByPlatform ?? undefined,
-              managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
-            }
-          : whatsappChannel.config,
+        config: {
+          ...whatsappChannel.config,
+          managedByPlatform: whapi.managedByPlatform ?? undefined,
+          managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+        },
         connectionStatus: whatsappChannel.connectionStatus,
         displayName: 'WhatsApp',
         isActive: whatsappChannel.isActive,
@@ -771,13 +675,11 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       .onConflictDoUpdate({
         set: {
           aiMode: 'assist',
-          config: whatsappProvider === 'whapi'
-            ? {
-                ...whatsappChannel.config,
-                managedByPlatform: whapi.managedByPlatform ?? undefined,
-                managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
-              }
-            : whatsappChannel.config,
+          config: {
+            ...whatsappChannel.config,
+            managedByPlatform: whapi.managedByPlatform ?? undefined,
+            managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+          },
           connectionStatus: whatsappChannel.connectionStatus,
           displayName: 'WhatsApp',
           isActive: whatsappChannel.isActive,
@@ -818,15 +720,9 @@ export const saveWhatsAppSettings = async (
     .limit(1);
 
   const existingWhatsappConfig = await getExistingWhatsappConfig(organizationId);
-  const whatsappProvider = normalizeWhatsAppProvider(formData, existingWhatsappConfig);
-  const meta = resolveMetaConnectionInput(formData, existingWhatsappConfig);
   const whapi = resolveWhapiConnectionInput(formData, existingWhatsappConfig);
 
-  if (
-    whatsappProvider === 'whapi'
-      ? !isWhapiConnectionShapeValid(whapi)
-      : !isMetaConnectionShapeValid(meta)
-  ) {
+  if (!isWhapiConnectionShapeValid(whapi)) {
     return {
       message: 'invalid_whatsapp_credentials',
       status: 'error',
@@ -836,26 +732,16 @@ export const saveWhatsAppSettings = async (
   const storeName = existingSettings?.storeName
     || String(formData.get('storeName') ?? '').trim()
     || 'SmartStore';
-  const whatsappChannel = whatsappProvider === 'whapi'
-    ? buildWhatsAppChannelConfig({
-        apiTokenPreview: whapi.apiTokenPreview,
-        channelId: whapi.channelId,
-        displayPhoneNumber: whapi.displayPhoneNumber,
-        encryptedApiToken: whapi.encryptedApiToken,
-        hasApiToken: whapi.hasApiToken,
-        provider: 'whapi',
-        storeName,
-        webhookSecret: whapi.webhookSecret,
-      })
-    : buildWhatsAppChannelConfig({
-        displayPhoneNumber: meta.displayPhoneNumber,
-        encryptedAccessToken: meta.encryptedAccessToken,
-        hasAccessToken: meta.hasAccessToken,
-        phoneNumberId: meta.phoneNumberId,
-        provider: 'meta',
-        storeName,
-        wabaId: meta.wabaId,
-      });
+  const whatsappChannel = buildWhatsAppChannelConfig({
+    apiTokenPreview: whapi.apiTokenPreview,
+    channelId: whapi.channelId,
+    displayPhoneNumber: whapi.displayPhoneNumber,
+    encryptedApiToken: whapi.encryptedApiToken,
+    hasApiToken: whapi.hasApiToken,
+    provider: 'whapi',
+    storeName,
+    webhookSecret: whapi.webhookSecret,
+  });
 
   // Keep metadata and the WhatsApp channel connection atomic (see saveStoreSettings).
   // Re-read the metadata row with FOR UPDATE inside the transaction so a concurrent
@@ -874,17 +760,14 @@ export const saveWhatsAppSettings = async (
       channelIntegrations: {
         ...(lockedMetadata.channelIntegrations ?? {}),
         whatsapp: {
-          accessTokenPreview: whatsappProvider === 'meta' ? meta.accessTokenPreview : null,
-          apiTokenPreview: whatsappProvider === 'whapi' ? whapi.apiTokenPreview : null,
-          channelId: whatsappProvider === 'whapi' ? whapi.channelId : null,
+          apiTokenPreview: whapi.apiTokenPreview,
+          channelId: whapi.channelId,
           connectionStatus: whatsappChannel.connectionStatus,
-          displayPhoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
+          displayPhoneNumber: whapi.displayPhoneNumber,
           mode: whatsappChannel.mode,
-          phoneNumber: whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber,
-          phoneNumberId: whatsappProvider === 'meta' ? meta.phoneNumberId : null,
-          provider: whatsappProvider,
-          wabaId: whatsappProvider === 'meta' ? meta.wabaId : null,
-          webhookSecret: whatsappProvider === 'whapi' ? whapi.webhookSecret : null,
+          phoneNumber: whapi.displayPhoneNumber,
+          provider: 'whapi',
+          webhookSecret: whapi.webhookSecret,
           webhookReady: whatsappChannel.connectionStatus === 'connected',
           whatsappLink: whatsappChannel.whatsappLink,
           whatsappTarget: whatsappChannel.whatsappTarget,
@@ -892,7 +775,7 @@ export const saveWhatsAppSettings = async (
       },
       contactChannels: {
         ...(lockedMetadata.contactChannels ?? {}),
-        whatsapp: (whatsappProvider === 'whapi' ? whapi.displayPhoneNumber : meta.displayPhoneNumber) || undefined,
+        whatsapp: whapi.displayPhoneNumber || undefined,
       },
     };
 

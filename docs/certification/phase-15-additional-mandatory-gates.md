@@ -159,7 +159,7 @@ Blocking gaps:
 
 Known providers:
 
-- Meta WhatsApp Cloud API.
+- legacy WhatsApp provider.
 - AI provider through platform runtime settings.
 - Clerk.
 - Vercel.

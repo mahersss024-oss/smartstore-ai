@@ -6,7 +6,6 @@ import { revalidatePath } from 'next/cache';
 import { generateCustomerReplyForSystemEvent } from '@/features/ai/AIEmployeeAgent';
 import { OrderConcurrencyError } from '@/features/dashboard/OrderErrors';
 import { db } from '@/libs/DB';
-import { sendMetaConversationTextMessage } from '@/libs/MetaInboundProcessor';
 import {
   getOrderConversationReference,
   writeOrderCustomerConversationMessage,
@@ -17,6 +16,7 @@ import {
   ORDER_EVENT_TYPE,
   ORDER_STATUS,
 } from '@/libs/OrderWorkflow';
+import { sendWhapiConversationTextMessage } from '@/libs/WhapiWhatsApp';
 import {
   aiActionLogsTable,
   customerReviewsTable,
@@ -109,7 +109,7 @@ const sendWhatsAppOrderStatusNotification = async (params: {
 
   const conversationReference = getOrderConversationReference(params.aiAnalysis);
 
-  await sendMetaConversationTextMessage({
+  await sendWhapiConversationTextMessage({
     body: params.body,
     externalThreadId: conversationReference.externalThreadId,
     organizationId: params.organizationId,

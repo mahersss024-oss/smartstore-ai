@@ -109,10 +109,10 @@ describe('resolveCustomerEntryOperationalContext — complete channel matrix', (
       expect(ctx.fulfillmentType).toBeUndefined();
     });
 
-    it('whatsapp_business_api variant → still recognized as whatsapp', () => {
-      const ctx = resolveCustomerEntryOperationalContext('whatsapp_business_api');
+    it('legacy whatsapp variant → safe fallback with no fulfillment defaults', () => {
+      const ctx = resolveCustomerEntryOperationalContext('whatsapp_legacy_api');
 
-      expect(ctx.source).toBe('whatsapp');
+      expect(ctx.source).toBe('direct');
       expect(ctx.deliveryPreference).toBeUndefined();
       expect(ctx.fulfillmentType).toBeUndefined();
     });

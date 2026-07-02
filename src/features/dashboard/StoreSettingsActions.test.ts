@@ -36,12 +36,12 @@ const {
     mockBuildWhatsAppChannelConfig: vi.fn((params: Record<string, unknown>) => ({
       config: {
         ...params,
-        mode: 'meta',
-        provider: 'meta',
+        mode: 'whapi',
+        provider: 'whapi',
       },
-      connectionStatus: params.hasAccessToken ? 'connected' : 'pending_setup',
-      isActive: Boolean(params.hasAccessToken),
-      mode: 'meta',
+      connectionStatus: params.hasApiToken ? 'connected' : 'pending_setup',
+      isActive: Boolean(params.hasApiToken),
+      mode: 'whapi',
       whatsappLink: 'https://wa.me/14155552671',
       whatsappTarget: 'https://wa.me/14155552671',
     })),
@@ -95,8 +95,7 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
   maskApiKey: vi.fn(() => 'bbb...bbbb'),
 }));
 
-// WhatsApp credential validation is done locally; the action now validates
-// the submitted account id locally.
+// WhatsApp credential validation is done locally by the action.
 
 vi.mock('@/models/Schema', () => ({
   channelConnectionsTable: {
@@ -132,14 +131,16 @@ vi.mock('@/libs/SubscriptionEntitlements', () => ({
   isSubscriptionLimitError: vi.fn(() => false),
 }));
 
-const validPhoneNumberId = '1119417571262523';
-const validAccessToken = `EAA${'b'.repeat(40)}`;
+const validChannelId = 'CATWMN-B42ST';
+const validApiToken = 'whapi_channel_token_1234567890';
+const validWebhookSecret = '0123456789abcdef0123456789abcdef0123456789abcdef';
 
-const buildMetaFormData = () => {
+const buildWhapiFormData = () => {
   const formData = new FormData();
-  formData.set('metaPhoneNumberId', validPhoneNumberId);
-  formData.set('metaAccessToken', validAccessToken);
-  formData.set('metaDisplayPhoneNumber', '+14155552671');
+  formData.set('whapiChannelId', validChannelId);
+  formData.set('whapiApiToken', validApiToken);
+  formData.set('whapiDisplayPhoneNumber', '+14155552671');
+  formData.set('whapiWebhookSecret', validWebhookSecret);
 
   return formData;
 };
@@ -168,25 +169,28 @@ describe('saveWhatsAppSettings', () => {
     expect(mockDbInsert).not.toHaveBeenCalled();
   });
 
-  it('encrypts per-store Meta credentials and activates only the authenticated store', async () => {
+  it('encrypts per-store Whapi credentials and activates only the authenticated store', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [],
     );
 
-    const result = await saveWhatsApp(buildMetaFormData());
+    const result = await saveWhatsApp(buildWhapiFormData());
 
     expect(result).toEqual({
       message: 'whatsapp_settings_saved',
       status: 'success',
     });
-    expect(mockEncryptSecret).toHaveBeenCalledWith(validAccessToken);
+    expect(mockEncryptSecret).toHaveBeenCalledWith(validApiToken);
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
+        apiTokenPreview: 'bbb...bbbb',
+        channelId: validChannelId,
         displayPhoneNumber: '+14155552671',
-        encryptedAccessToken: `encrypted:${validAccessToken}`,
-        hasAccessToken: true,
-        phoneNumberId: validPhoneNumberId,
+        encryptedApiToken: `encrypted:${validApiToken}`,
+        hasApiToken: true,
+        provider: 'whapi',
+        webhookSecret: validWebhookSecret,
       }),
     );
     expect(mockDbInsertValues).toHaveBeenCalledWith(
@@ -196,22 +200,24 @@ describe('saveWhatsAppSettings', () => {
     );
   });
 
-  it('keeps an existing encrypted access token when the token input is blank', async () => {
+  it('keeps an existing encrypted Whapi token when the token input is blank', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [{
         config: {
-          accessTokenPreview: 'EAA...bbbb',
+          apiTokenPreview: 'whp...bbbb',
+          channelId: validChannelId,
           displayPhoneNumber: '+14155552671',
-          encryptedAccessToken: 'encrypted:stored-token',
-          phoneNumberId: validPhoneNumberId,
-          provider: 'meta',
+          encryptedApiToken: 'encrypted:stored-token',
+          provider: 'whapi',
+          webhookSecret: validWebhookSecret,
         },
       }],
     );
     const formData = new FormData();
-    formData.set('metaPhoneNumberId', validPhoneNumberId);
-    formData.set('metaDisplayPhoneNumber', '+14155552671');
+    formData.set('whapiChannelId', validChannelId);
+    formData.set('whapiDisplayPhoneNumber', '+14155552671');
+    formData.set('whapiWebhookSecret', validWebhookSecret);
 
     const result = await saveWhatsApp(formData);
 
@@ -219,19 +225,21 @@ describe('saveWhatsAppSettings', () => {
     expect(mockEncryptSecret).not.toHaveBeenCalled();
     expect(mockBuildWhatsAppChannelConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        encryptedAccessToken: 'encrypted:stored-token',
+        encryptedApiToken: 'encrypted:stored-token',
+        hasApiToken: true,
       }),
     );
   });
 
-  it('does not write an invalid Meta configuration', async () => {
+  it('does not write an invalid Whapi configuration', async () => {
     selectRows.push(
       [{ id: 1, metadata: {}, storeName: 'Store One' }],
       [],
     );
     const formData = new FormData();
-    formData.set('metaPhoneNumberId', 'not-a-valid-id');
-    formData.set('metaAccessToken', validAccessToken);
+    formData.set('whapiChannelId', 'invalid channel id');
+    formData.set('whapiApiToken', validApiToken);
+    formData.set('whapiWebhookSecret', validWebhookSecret);
 
     const result = await saveWhatsApp(formData);
 

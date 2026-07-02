@@ -15,9 +15,9 @@ const validEnv: Record<string, string | undefined> = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ['pk', 'live', 'test_certification_key'].join('_'),
   NODE_ENV: 'test',
   PLATFORM_ADMIN_USER_IDS: 'user_123',
-  META_APP_SECRET: 'd'.repeat(32),
-  META_WEBHOOK_VERIFY_TOKEN: 'e'.repeat(32),
   PLATFORM_SECRETS_ENCRYPTION_KEY: 'c'.repeat(32),
+  WHAPI_PARTNER_API_TOKEN: 'd'.repeat(32),
+  WHAPI_PROJECT_ID: 'project_123',
 };
 
 const runValidation = (

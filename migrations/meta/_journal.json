@@ -232,6 +232,13 @@
       "when": 1782650700000,
       "tag": "0032_drop_channel_connections_whatsapp_from_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1783080000000,
+      "tag": "0033_whapi_only_channel_lookup_idx",
+      "breakpoints": true
     }
   ]
 }

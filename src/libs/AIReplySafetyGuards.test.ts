@@ -22,7 +22,7 @@ describe('AIReplySafetyGuards', () => {
   });
 
   it('guards long WhatsApp access-token-like values in replies', () => {
-    const reply = 'Meta token: EAAMGoR5ZC4ekBRimSJe4CzcnxCuWv11JdwJ7P7JZC7xeNm3';
+    const reply = 'Provider token: whapi_test_token_value_that_should_not_reach_customers_1234567890';
 
     expect(guardCustomerPrivacyReply({ reply })).toEqual({
       guarded: true,

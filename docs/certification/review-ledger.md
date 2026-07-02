@@ -11,7 +11,7 @@ alone.
 ## Current Source Of Truth
 
 - Deployment provider: Render.
-- WhatsApp provider: Meta WhatsApp Cloud API.
+- WhatsApp provider: Whapi.cloud managed WhatsApp channels.
 - Active WhatsApp webhook route: `/api/whatsapp/webhook`.
 - Active branch: `main`.
 - Latest verification commits:
@@ -77,9 +77,9 @@ blockers unless the product owner changes the intended behavior.
 
 ## Historical Notes
 
-Older memory entries mention Twilio and Vercel from previous implementation
+Older memory entries mention Twilio, Meta, and Vercel from previous implementation
 periods. They are historical only. Active code/config/docs now target Render and
-Meta WhatsApp Cloud API.
+Whapi.cloud.
 
 Historical migrations must not be edited or deleted only because they mention
 older provider names. Migrations are point-in-time database history.
@@ -91,7 +91,7 @@ The following cannot be certified from repository code alone:
 - Real Render deployment health after each push.
 - Production Neon database connectivity, backups, point-in-time recovery, and
   live schema state.
-- Meta WhatsApp live webhook delivery from production WABA/phone numbers.
+- Whapi WhatsApp live webhook delivery from production channels.
 - Sustained capacity claims such as 1000 stores or 100000 customers without a
   controlled load test and production-like monitoring.
 

@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Env } from '@/libs/Env';
 import { logger } from '@/libs/Logger';
-import { processMetaInboundMessage } from '@/libs/MetaInboundProcessor';
-import {
-  findMetaStoreConnection,
-  parseMetaWebhookPayload,
-  parseMetaWebhookStatusUpdates,
-  verifyMetaSignature,
-} from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
 import { runWebhookEventOnce } from '@/libs/WebhookIdempotency';
 import { processWhapiInboundMessage } from '@/libs/WhapiInboundProcessor';
@@ -25,26 +17,7 @@ export const maxDuration = 60;
 const MAX_BODY_BYTES = 64 * 1024;
 const RETRY_AFTER_SECONDS = 2;
 
-/**
- * Webhook verification handshake. Meta calls this once with hub.mode=subscribe
- * and the verify token; echo the challenge back when the token matches.
- */
-export const GET = (request: Request) => {
-  const url = new URL(request.url);
-  const mode = url.searchParams.get('hub.mode');
-  const token = url.searchParams.get('hub.verify_token');
-  const challenge = url.searchParams.get('hub.challenge');
-
-  if (
-    mode === 'subscribe'
-    && Boolean(Env.META_WEBHOOK_VERIFY_TOKEN)
-    && token === Env.META_WEBHOOK_VERIFY_TOKEN
-  ) {
-    return new Response(challenge ?? '', { status: 200 });
-  }
-
-  return new Response('Forbidden', { status: 403 });
-};
+export const GET = () => NextResponse.json({ ok: true, provider: 'whapi' });
 
 const handleWebhookRetryError = (params: {
   providerLabel: string;
@@ -143,86 +116,5 @@ export const POST = async (request: Request) => {
     throw error;
   }
 
-  const url = new URL(request.url);
-
-  if (url.searchParams.get('provider') === 'whapi') {
-    return processWhapiWebhook(request, rawBody);
-  }
-
-  const signature = request.headers.get('x-hub-signature-256');
-
-  if (!Env.META_APP_SECRET || !verifyMetaSignature(rawBody, signature, Env.META_APP_SECRET)) {
-    logger.warn('Meta webhook signature verification failed', {
-      hasSignature: Boolean(signature),
-    });
-
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  let payload: unknown;
-
-  try {
-    payload = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ ok: true, skipped: true });
-  }
-
-  const message = parseMetaWebhookPayload(payload);
-
-  if (!message) {
-    const statusUpdates = parseMetaWebhookStatusUpdates(payload);
-
-    for (const statusUpdate of statusUpdates) {
-      const logPayload = {
-        errors: statusUpdate.errors,
-        messageId: statusUpdate.messageId,
-        phoneNumberId: statusUpdate.phoneNumberId,
-        recipientId: statusUpdate.recipientId,
-        status: statusUpdate.status,
-        timestamp: statusUpdate.timestamp,
-      };
-
-      if (statusUpdate.status === 'failed') {
-        logger.warn('Meta WhatsApp delivery status failed', logPayload);
-      } else {
-        logger.info('Meta WhatsApp delivery status received', logPayload);
-      }
-    }
-
-    // Status updates and unsupported message types are acknowledged, not processed.
-    return NextResponse.json({ ok: true, skipped: true, statusUpdates: statusUpdates.length });
-  }
-
-  const connection = await findMetaStoreConnection(message.phoneNumberId);
-
-  if (!connection) {
-    logger.warn('Meta message skipped: no store connection matched', {
-      phoneNumberId: message.phoneNumberId,
-    });
-
-    return NextResponse.json({ ok: true, skipped: true });
-  }
-
-  logger.info('Meta WhatsApp webhook received', {
-    messageId: message.messageId,
-    phoneNumberId: message.phoneNumberId,
-  });
-
-  try {
-    const result = await runWebhookEventOnce({
-      eventId: message.messageId,
-      eventType: 'meta.whatsapp.message',
-      handler: async () => processMetaInboundMessage({ connection, message }),
-      metadata: { from: message.from, phoneNumberId: message.phoneNumberId },
-      provider: 'meta',
-    });
-
-    if (result.status === 'in_progress') {
-      throw new MessageRetryError('webhook_event_in_progress');
-    }
-
-    return NextResponse.json({ ok: true, duplicate: result.duplicate, status: result.status });
-  } catch (error) {
-    return handleWebhookRetryError({ error, providerLabel: 'Meta' });
-  }
+  return processWhapiWebhook(request, rawBody);
 };

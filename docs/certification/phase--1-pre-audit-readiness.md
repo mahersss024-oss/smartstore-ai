@@ -36,7 +36,7 @@ In scope:
   complaints, conversations, and operational retention.
 - AI employee model behavior, guardrails, semantic review, repair path,
   orchestration diagnostics, and action permissions.
-- WhatsApp Cloud API adapter, webhook verification, customer isolation,
+- legacy WhatsApp provider adapter, webhook verification, customer isolation,
   interactive messages, order status notifications, review requests, and
   feedback capture.
 

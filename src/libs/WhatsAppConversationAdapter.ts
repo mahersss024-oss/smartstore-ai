@@ -196,13 +196,13 @@ const isVisibleSystemAction = (
   ].includes(value);
 };
 
-export const readVisibleSystemActions = (value: unknown) => {
+const readVisibleSystemActions = (value: unknown) => {
   return Array.isArray(value)
     ? value.filter(isVisibleSystemAction)
     : [];
 };
 
-export const readSuggestedProducts = (value: unknown) => {
+const readSuggestedProducts = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -220,7 +220,7 @@ export const readSuggestedProducts = (value: unknown) => {
   });
 };
 
-export const readFulfillmentChoices = (value: unknown) => {
+const readFulfillmentChoices = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -230,7 +230,7 @@ export const readFulfillmentChoices = (value: unknown) => {
   });
 };
 
-export const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
+const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
   if (!value || typeof value !== 'object') {
     return {};
   }
@@ -248,7 +248,7 @@ export const readPaymentKinds = (value: unknown): AvailablePaymentKinds => {
   };
 };
 
-export const readCustomerDetails = (value: unknown): WhatsAppConversationCustomerDetails => {
+const readCustomerDetails = (value: unknown): WhatsAppConversationCustomerDetails => {
   if (!value || typeof value !== 'object') {
     return {};
   }
@@ -391,7 +391,7 @@ export const loadWhatsAppConversationMetadata = async (params: {
   return (conversation?.metadata ?? undefined) as WhatsAppConversationMetadata | undefined;
 };
 
-export const replaceWebOnlyInstructions = (reply: string) => {
+const replaceWebOnlyInstructions = (reply: string) => {
   return reply
     // "من/في الخيارات الظاهرة [لك] [على الشاشة]" — keep preposition
     .replace(

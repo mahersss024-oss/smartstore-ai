@@ -10,9 +10,9 @@ import {
 } from '@/libs/AIInboundJobQueue';
 import { Env } from '@/libs/Env';
 import { logger } from '@/libs/Logger';
-import { processMetaInboundMessage } from '@/libs/MetaInboundProcessor';
-import { findMetaStoreConnection } from '@/libs/MetaWhatsApp';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
+import { processWhapiInboundMessage } from '@/libs/WhapiInboundProcessor';
+import { findWhapiStoreConnection } from '@/libs/WhapiWhatsApp';
 import { ConversationBusyError, MessageRetryError } from '@/libs/WhatsAppInboundShared';
 
 // Classifies a worker failure so the queue can dead-letter deterministic errors
@@ -52,14 +52,14 @@ const requestSchema = z.object({
   jobId: z.number().int().positive(),
 });
 
-const metaPayloadSchema = z.object({
+const whapiPayloadSchema = z.object({
   message: z.object({
     body: z.string(),
+    channelId: z.string().min(1),
     from: z.string().min(1),
-    interactiveReplyId: z.string().optional(),
     messageId: z.string().min(1),
-    phoneNumberId: z.string().min(1),
     profileName: z.string().optional(),
+    webhookSecret: z.string().min(1),
   }),
 });
 
@@ -145,14 +145,17 @@ export const POST = async (request: Request) => {
       throw new Error(`Unsupported AI inbound channel: ${claimed.channel}`);
     }
 
-    const payload = metaPayloadSchema.parse(claimed.payload);
-    const connection = await findMetaStoreConnection(payload.message.phoneNumberId);
+    const payload = whapiPayloadSchema.parse(claimed.payload);
+    const connection = await findWhapiStoreConnection({
+      channelId: payload.message.channelId,
+      webhookSecret: payload.message.webhookSecret,
+    });
 
     if (!connection || connection.organizationId !== claimed.organizationId) {
-      throw new MessageRetryError('meta_store_connection_not_found');
+      throw new MessageRetryError('whapi_store_connection_not_found');
     }
 
-    await processMetaInboundMessage({
+    await processWhapiInboundMessage({
       beforeSend: async () => {
         const renewed = await renewAiInboundJobLease({
           jobId: claimed.id,
@@ -164,7 +167,13 @@ export const POST = async (request: Request) => {
         }
       },
       connection,
-      message: payload.message,
+      message: {
+        body: payload.message.body,
+        channelId: payload.message.channelId,
+        from: payload.message.from,
+        messageId: payload.message.messageId,
+        profileName: payload.message.profileName,
+      },
     });
 
     const completed = await completeAiInboundJob({

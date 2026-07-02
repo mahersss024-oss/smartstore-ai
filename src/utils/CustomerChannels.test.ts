@@ -56,7 +56,7 @@ describe('CustomerChannels', () => {
     );
   });
 
-  it('marks WhatsApp as pending setup when Meta credentials are missing', () => {
+  it('marks WhatsApp as pending setup when Whapi credentials are missing', () => {
     expect(buildWhatsAppChannelConfig({
       storeName: 'SmartStore',
     })).toMatchObject({
@@ -67,38 +67,40 @@ describe('CustomerChannels', () => {
     });
   });
 
-  it('prepares the WhatsApp Cloud API (Meta) connection from per-store credentials', () => {
+  it('prepares the Whapi connection from per-store credentials', () => {
     const config = buildWhatsAppChannelConfig({
+      apiTokenPreview: 'whp...oken',
+      channelId: 'CATWMN-B42ST',
       displayPhoneNumber: '+14155552671',
-      encryptedAccessToken: 'encrypted-token',
-      hasAccessToken: true,
-      phoneNumberId: '1119417571262523',
+      encryptedApiToken: 'encrypted-token',
+      hasApiToken: true,
       storeName: 'SmartStore',
-      wabaId: '2238131017017899',
+      webhookSecret: 'secret',
     });
 
     expect(config).toMatchObject({
       connectionStatus: 'connected',
       isActive: true,
-      mode: 'meta',
+      mode: 'whapi',
       whatsappTarget: 'https://wa.me/14155552671',
     });
     expect(config.config).toMatchObject({
-      connectionMethod: 'meta_cloud_api',
+      apiTokenPreview: 'whp...oken',
+      channelId: 'CATWMN-B42ST',
+      connectionMethod: 'whapi_cloud_api',
       customerMapping: 'whatsapp_phone',
       eventArchitecture: 'webhook_ready',
-      encryptedAccessToken: 'encrypted-token',
+      encryptedApiToken: 'encrypted-token',
       orderMapping: 'source_channel_order',
-      phoneNumberId: '1119417571262523',
-      provider: 'meta',
-      wabaId: '2238131017017899',
+      provider: 'whapi',
       webhookReady: true,
+      webhookSecret: 'secret',
     });
   });
 
-  it('does not activate a store with an incomplete Meta configuration', () => {
+  it('does not activate a store with an incomplete Whapi configuration', () => {
     const config = buildWhatsAppChannelConfig({
-      phoneNumberId: '1119417571262523',
+      channelId: 'CATWMN-B42ST',
       status: 'connected',
       storeName: 'SmartStore',
     });
@@ -106,7 +108,12 @@ describe('CustomerChannels', () => {
     expect(config).toMatchObject({
       connectionStatus: 'pending_setup',
       isActive: false,
-      mode: 'meta',
+      mode: 'whapi',
+    });
+    expect(config.config).toMatchObject({
+      channelId: 'CATWMN-B42ST',
+      provider: 'whapi',
+      webhookReady: false,
     });
   });
 

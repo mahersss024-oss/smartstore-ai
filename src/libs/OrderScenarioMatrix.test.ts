@@ -93,8 +93,8 @@ vi.mock('@/libs/OrderWorkflow', () => ({
     READY_FOR_PICKUP: 'ready_for_pickup',
   },
 }));
-vi.mock('@/libs/MetaInboundProcessor', () => ({
-  sendMetaConversationTextMessage: mockSendWhatsAppConversationTextMessage,
+vi.mock('@/libs/WhapiWhatsApp', () => ({
+  sendWhapiConversationTextMessage: mockSendWhatsAppConversationTextMessage,
 }));
 vi.mock('@/models/Schema', () => ({
   aiActionLogsTable: { orderId: 'orderId', organizationId: 'organizationId' },
@@ -153,12 +153,12 @@ describe('Order scenario matrix', () => {
       const { approveOrderForCustomer } = await import('@/features/dashboard/OrderActions');
 
       mockDbSelectLimit.mockResolvedValueOnce([
-        baseWhatsAppOrder(101, '966500000001', 'twa:14155552671:966500000001'),
+        baseWhatsAppOrder(101, '966500000001', 'wwa:CATWMN-B42ST:966500000001'),
       ]);
       await approveOrderForCustomer('en', 101);
 
       mockDbSelectLimit.mockResolvedValueOnce([
-        baseWhatsAppOrder(102, '966500000002', 'twa:14155552671:966500000002'),
+        baseWhatsAppOrder(102, '966500000002', 'wwa:CATWMN-B42ST:966500000002'),
       ]);
       await approveOrderForCustomer('en', 102);
 
@@ -166,8 +166,8 @@ describe('Order scenario matrix', () => {
 
       const [call1, call2] = mockSendWhatsAppConversationTextMessage.mock.calls;
 
-      expect(call1![0]).toMatchObject({ externalThreadId: 'twa:14155552671:966500000001' });
-      expect(call2![0]).toMatchObject({ externalThreadId: 'twa:14155552671:966500000002' });
+      expect(call1![0]).toMatchObject({ externalThreadId: 'wwa:CATWMN-B42ST:966500000001' });
+      expect(call2![0]).toMatchObject({ externalThreadId: 'wwa:CATWMN-B42ST:966500000002' });
       expect(call1![0].externalThreadId).not.toBe(call2![0].externalThreadId);
     });
 
@@ -175,21 +175,21 @@ describe('Order scenario matrix', () => {
       const { updateOrderStatusFromDashboard } = await import('@/features/dashboard/OrderActions');
 
       mockDbSelectLimit.mockResolvedValueOnce([{
-        ...baseWhatsAppOrder(101, '966500000001', 'twa:14155552671:966500000001'),
+        ...baseWhatsAppOrder(101, '966500000001', 'wwa:CATWMN-B42ST:966500000001'),
         status: 'approved_by_store',
       }]);
       await updateOrderStatusFromDashboard('en', 101, 'preparing');
 
       mockDbSelectLimit.mockResolvedValueOnce([{
-        ...baseWhatsAppOrder(102, '966500000002', 'twa:14155552671:966500000002'),
+        ...baseWhatsAppOrder(102, '966500000002', 'wwa:CATWMN-B42ST:966500000002'),
         status: 'approved_by_store',
       }]);
       await updateOrderStatusFromDashboard('en', 102, 'preparing');
 
       const calls = mockSendWhatsAppConversationTextMessage.mock.calls;
 
-      expect(calls[0]![0].externalThreadId).toBe('twa:14155552671:966500000001');
-      expect(calls[1]![0].externalThreadId).toBe('twa:14155552671:966500000002');
+      expect(calls[0]![0].externalThreadId).toBe('wwa:CATWMN-B42ST:966500000001');
+      expect(calls[1]![0].externalThreadId).toBe('wwa:CATWMN-B42ST:966500000002');
     });
 
     it('does not send WhatsApp notifications for web orders when a WhatsApp order exists', async () => {
@@ -199,13 +199,13 @@ describe('Order scenario matrix', () => {
       await approveOrderForCustomer('en', 201);
 
       mockDbSelectLimit.mockResolvedValueOnce([
-        baseWhatsAppOrder(202, '966500000002', 'twa:14155552671:966500000002'),
+        baseWhatsAppOrder(202, '966500000002', 'wwa:CATWMN-B42ST:966500000002'),
       ]);
       await approveOrderForCustomer('en', 202);
 
       expect(mockSendWhatsAppConversationTextMessage).toHaveBeenCalledTimes(1);
       expect(mockSendWhatsAppConversationTextMessage.mock.calls[0]![0]).toMatchObject({
-        externalThreadId: 'twa:14155552671:966500000002',
+        externalThreadId: 'wwa:CATWMN-B42ST:966500000002',
       });
     });
   });
@@ -257,7 +257,7 @@ describe('Order scenario matrix', () => {
       const { updateOrderStatusFromDashboard } = await import('@/features/dashboard/OrderActions');
 
       mockDbSelectLimit.mockResolvedValueOnce([{
-        ...baseWhatsAppOrder(303, '966500000001', 'twa:14155552671:966500000001'),
+        ...baseWhatsAppOrder(303, '966500000001', 'wwa:CATWMN-B42ST:966500000001'),
         status: 'preparing',
       }]);
       mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('Your order has been cancelled.');
@@ -266,7 +266,7 @@ describe('Order scenario matrix', () => {
       expect(mockAssertCanTransitionOrderStatus).toHaveBeenCalledWith('preparing', 'cancelled');
       expect(mockSendWhatsAppConversationTextMessage).toHaveBeenCalledOnce();
       expect(mockSendWhatsAppConversationTextMessage.mock.calls[0]![0]).toMatchObject({
-        externalThreadId: 'twa:14155552671:966500000001',
+        externalThreadId: 'wwa:CATWMN-B42ST:966500000001',
       });
     });
   });
@@ -346,14 +346,14 @@ describe('Order scenario matrix', () => {
 
       mockGenerateCustomerReplyForSystemEvent.mockResolvedValueOnce('Please review your order!');
       mockDbSelectLimit.mockResolvedValueOnce([{
-        ...baseWhatsAppOrder(501, '966500000001', 'twa:14155552671:966500000001'),
+        ...baseWhatsAppOrder(501, '966500000001', 'wwa:CATWMN-B42ST:966500000001'),
         status: 'ready_for_pickup',
       }]);
       await completeOrderAndRequestReview('en', 501);
 
       expect(mockSendWhatsAppConversationTextMessage).toHaveBeenCalledOnce();
       expect(mockSendWhatsAppConversationTextMessage.mock.calls[0]![0]).toMatchObject({
-        externalThreadId: 'twa:14155552671:966500000001',
+        externalThreadId: 'wwa:CATWMN-B42ST:966500000001',
       });
     });
 

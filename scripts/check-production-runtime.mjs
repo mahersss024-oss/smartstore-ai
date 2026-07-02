@@ -104,8 +104,10 @@ const getRuntimeStatus = (runtimeConfig) => {
       maintenanceSecretStored: typeof internal.encryptedMaintenanceSecret === 'string' && internal.encryptedMaintenanceSecret.length > 0,
     },
     whatsapp: {
-      appSecretConfigured: Boolean(getEnvValue('META_APP_SECRET')),
-      webhookVerifyTokenConfigured: Boolean(getEnvValue('META_WEBHOOK_VERIFY_TOKEN')),
+      gateApiBase: getEnvValue('WHAPI_GATE_API_BASE') || 'https://gate.whapi.cloud',
+      partnerApiTokenConfigured: Boolean(getEnvValue('WHAPI_PARTNER_API_TOKEN')),
+      projectIdConfigured: Boolean(getEnvValue('WHAPI_PROJECT_ID')),
+      provider: 'whapi',
     },
   };
 };

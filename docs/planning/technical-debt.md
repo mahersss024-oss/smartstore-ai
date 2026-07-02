@@ -55,11 +55,10 @@ Status markers:
 
 - [x] WhatsApp adapter has implemented channel capabilities with tests.
 
-  Evidence: `src/libs/MetaWhatsApp.ts` and
-  `src/libs/MetaWhatsApp.test.ts` cover thread isolation, signature
-  verification, text/interactive/location parsing, product lists, payment
-  buttons, cart controls, cart summaries, review list messages, and normalized
-  cart metadata.
+  Evidence: `src/libs/WhapiWhatsApp.ts`, `src/libs/WhapiInboundProcessor.ts`,
+  and the WhatsApp webhook/worker route tests cover tenant routing, webhook
+  parsing, outbound sending, order notifications, and normalized conversation
+  metadata.
 
 - [x] WhatsApp order status/review/feedback paths have source and test evidence.
 

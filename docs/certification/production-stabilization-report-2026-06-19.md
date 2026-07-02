@@ -45,7 +45,7 @@ Affected files:
 
 Fix:
 - Restored a Meta WhatsApp webhook route with signature verification, token verification, idempotency, per-customer processing locks, typing indicator, AI/web-chat engine parity, and outbound replies.
-- Added Meta WhatsApp Cloud API send utilities and interactive message support.
+- Added legacy WhatsApp provider send utilities and interactive message support.
 - Kept Twilio as a fallback path for legacy stores without making it the only provider.
 
 Verification:

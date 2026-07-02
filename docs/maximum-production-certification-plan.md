@@ -108,7 +108,7 @@ Required preparation:
 - [ ] Confirm who can approve code changes, deployments, secret rotations, and
   database operations.
 - [ ] Confirm access to GitHub, Vercel, production logs, database provider,
-  Clerk, Meta WhatsApp, AI provider, Stripe, Moyasar, and observability tools.
+  Clerk, Whapi WhatsApp, AI provider, Stripe, Moyasar, and observability tools.
 - [ ] Confirm no real secrets will be pasted into chat, tickets, screenshots, or
   committed files.
 - [ ] Create a dedicated audit evidence folder or report file.
@@ -228,7 +228,7 @@ Special focus:
 
 - [ ] `AIEmployeeAgent.ts`
 - [ ] `WebOrderChat.tsx`
-- [ ] `MetaWhatsApp.ts`
+- [ ] `WhapiWhatsApp.ts`
 - [ ] `WebChatActions.ts`
 - [ ] `OrderOperations.ts`
 - [ ] `OrderWorkflow.ts`
@@ -285,8 +285,8 @@ web-order.
 
 Required source trace:
 
-- [ ] Meta webhook verification request.
-- [ ] Meta webhook message request.
+- [ ] Whapi webhook verification request.
+- [ ] Whapi webhook message request.
 - [ ] Signature verification.
 - [ ] Idempotency.
 - [ ] Conversation lock.
@@ -315,7 +315,7 @@ Required failure scenarios:
 - [ ] Store connection not found.
 - [ ] Expired or invalid store access token.
 - [ ] Customer sends multiple messages while previous reply is processing.
-- [ ] Meta send API fails.
+- [ ] Whapi send API fails.
 - [ ] AI provider fails.
 - [ ] DB write fails after message is received.
 - [ ] Interactive payload is malformed.
@@ -871,7 +871,7 @@ Exit criteria:
 
 Required providers:
 
-- [ ] Meta WhatsApp Cloud API.
+- [ ] Whapi WhatsApp provider.
 - [ ] OpenAI.
 - [ ] DeepSeek or OpenAI-compatible providers.
 - [ ] Clerk.
@@ -1165,7 +1165,7 @@ Required packages:
 - [ ] Drizzle.
 - [ ] Stripe.
 - [ ] Sentry/logging providers.
-- [ ] WhatsApp/Meta API version.
+- [ ] WhatsApp/Whapi API version.
 - [ ] TypeScript.
 - [ ] Playwright/Vitest.
 

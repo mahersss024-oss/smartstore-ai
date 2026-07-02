@@ -25,8 +25,8 @@ Before deploy:
 4. Confirm production `DATABASE_URL` points to the managed database provider,
    not localhost or PGlite.
 5. Confirm Clerk production keys are configured for production traffic.
-6. Confirm each active WhatsApp store has encrypted WhatsApp (Meta) credentials and a
-   unique WhatsApp number in its channel connection.
+6. Confirm each active WhatsApp store has encrypted Whapi credentials and a
+   unique Whapi channel id in its channel connection.
 7. Confirm `PLATFORM_SECRETS_ENCRYPTION_KEY` is set in Render and is not
    exposed in the admin UI.
 8. Confirm `MAINTENANCE_SECRET` is set in Render or platform runtime settings.
@@ -67,10 +67,10 @@ Rollback trigger:
 | `PLATFORM_ADMIN_USER_IDS` | Platform operator | Render | Clerk user IDs | Keep least privilege. |
 | `PLATFORM_SECRETS_ENCRYPTION_KEY` | Platform operator | Render only | Secure random generator | Active encryption root; do not store in DB/admin UI. |
 | `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` | Platform operator | Render only | Previous active roots | Temporary comma-separated decrypt-only keyring used during staged rotation. |
-| Store WhatsApp Phone Number ID | Store/platform admin | DB channel connection | Meta WhatsApp setup | Per-store identifier; no redeploy required after save. |
-| Store WhatsApp Access Token | Store/platform admin | Encrypted DB channel connection | Meta WhatsApp setup | Per-store secret used for webhook verification and outbound messages. |
-| Store WhatsApp display number | Store/platform admin | DB channel connection | Meta WhatsApp setup | Must be unique among active stores and use `whatsapp:+number`. |
-| Store WhatsApp Business Account ID | Store/platform admin | DB channel connection | Meta WhatsApp setup | Optional per-store MG SID. |
+| Store Whapi Channel ID | Store/platform admin | DB channel connection | Whapi channel | Per-store identifier; no redeploy required after save. |
+| Store Whapi API Token | Store/platform admin | Encrypted DB channel connection | Whapi channel | Per-store secret used for outbound messages. |
+| Store Whapi webhook secret | Store/platform admin | DB channel connection | Whapi webhook URL | Per-store secret used to verify inbound messages. |
+| Store WhatsApp display number | Store/platform admin | DB channel connection | Whapi channel | Human-readable sender number shown to operators. |
 | `AI_EMPLOYEE_WEBHOOK_SECRET` | Platform operator | Render or platform runtime settings | Secure random generator | Protects public AI employee API. |
 | Platform AI provider key | Platform operator | Encrypted DB platform settings | AI provider console | Production key belongs in platform admin runtime settings or provider secret manager. |
 | `MAINTENANCE_SECRET` | Platform operator | Render or platform runtime settings | Secure random generator | Protects `/api/maintenance/cleanup`. |
@@ -102,7 +102,7 @@ Provider-specific checks:
 
 - Clerk: verify sign-in, dashboard access, organization selection, and Clerk
   webhook.
-- WhatsApp (Meta): verify signed webhook delivery, inbound test message,
+- WhatsApp (Whapi): verify webhook delivery, inbound test message,
   outbound reply, and per-store credential status.
 - AI provider: verify platform AI provider settings, safe simulation, and
   customer chat reply.
@@ -260,7 +260,7 @@ Immediate containment:
 
 - Do not rotate the store Auth Token repeatedly until the failure source is
   identified.
-- Confirm the Meta webhook points to
+- Confirm the Whapi webhook points to
   `/api/whatsapp/webhook`.
 - Confirm store channel connection is active.
 
@@ -268,10 +268,10 @@ Diagnosis:
 
 1. Check WhatsApp webhook route logs for signature, idempotency, connection,
    AI, and outbound send outcomes.
-2. Check the incoming `To` number matches the store `phoneNumberId`.
-3. Check the store Account SID and encrypted Auth Token are valid.
+2. Check the incoming Whapi `channelId` matches the store channel connection.
+3. Check the store encrypted Whapi API token and webhook secret are valid.
 4. Check AI route result and empty-reply behavior.
-5. Check the Meta message delivery response.
+5. Check the Whapi outbound message delivery response.
 
 Recovery:
 

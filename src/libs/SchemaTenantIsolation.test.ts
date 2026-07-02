@@ -161,10 +161,10 @@ vi.mock('@/libs/OrderWorkflow', () => ({
 
 vi.mock('@/utils/CustomerChannels', () => ({
   buildWhatsAppChannelConfig: vi.fn((params: Record<string, unknown>) => ({
-    config: { ...params, mode: 'meta', provider: 'meta' },
+    config: { ...params, mode: 'whapi', provider: 'whapi' },
     connectionStatus: 'connected',
     isActive: true,
-    mode: 'meta',
+    mode: 'whapi',
     whatsappLink: 'https://wa.me/966500000000',
     whatsappTarget: '966500000000',
   })),
@@ -176,8 +176,8 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
   maskApiKey: vi.fn(() => 'bbb...bbbb'),
 }));
 
-vi.mock('@/libs/MetaInboundProcessor', () => ({
-  sendMetaConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
+vi.mock('@/libs/WhapiWhatsApp', () => ({
+  sendWhapiConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
 }));
 
 vi.mock('@/libs/ProductImageStorage', () => ({
@@ -422,9 +422,10 @@ describe('Store A / Store B tenant isolation matrix', () => {
   describe('StoreSettingsActions — WhatsApp writes scoped to the authenticated org', () => {
     const buildWhatsAppFormData = (phone: string) => {
       const fd = new FormData();
-      fd.set('metaPhoneNumberId', '1119417571262523');
-      fd.set('metaAccessToken', `EAA${'b'.repeat(40)}`);
-      fd.set('metaDisplayPhoneNumber', phone);
+      fd.set('whapiChannelId', 'CATWMN-B42ST');
+      fd.set('whapiApiToken', `whapi_${'b'.repeat(40)}`);
+      fd.set('whapiDisplayPhoneNumber', phone);
+      fd.set('whapiWebhookSecret', '0123456789abcdef0123456789abcdef0123456789abcdef');
 
       return fd;
     };

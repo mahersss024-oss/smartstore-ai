@@ -49,7 +49,7 @@ vi.mock('./DB', () => ({
 const enqueueInput = {
   channel: 'whatsapp' as const,
   dedupeKey: 'SM123',
-  externalThreadId: 'twa:1:2',
+  externalThreadId: 'wwa:CATWMN-B42ST:966500000001',
   organizationId: 'org_1',
   payload: { body: 'hi' },
 };

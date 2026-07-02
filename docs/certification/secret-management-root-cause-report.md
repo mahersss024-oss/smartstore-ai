@@ -40,10 +40,10 @@ Store settings password input
   -> channel_connections.config jsonb
   -> findWhatsAppStoreConnection
   -> decryptSecret
-  -> WhatsApp Cloud API Authorization header
+  -> Whapi API Authorization header
 
 Environment-only provider keys
-Vercel environment variable
+Render environment variable
   -> Env validation
   -> runtime service module
   -> provider SDK/API request
@@ -53,23 +53,23 @@ Vercel environment variable
 
 | Secret | Entry point | Storage | Encryption | Retrieval/use |
 | --- | --- | --- | --- | --- |
-| `PLATFORM_SECRETS_ENCRYPTION_KEY` | Vercel env | Environment only | Not encrypted; active root key | `getPrimaryEncryptionSecret` in `src/libs/PlatformAIProviderConfig.ts` |
-| `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` | Vercel env | Environment only | Not encrypted; comma-separated decrypt-only rotation keyring | `getPreviousEncryptionSecrets` in `src/libs/PlatformAIProviderConfig.ts` |
-| `CLERK_SECRET_KEY` | Vercel env | Environment only | Not encrypted | Clerk server SDK and legacy decrypt fallback |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Vercel env | Public frontend env | Public by design | Clerk frontend auth |
-| `CLERK_WEBHOOK_SIGNING_SECRET` | Vercel env / Clerk SDK | Environment only | Not encrypted by app | Clerk webhook verification via Clerk SDK |
+| `PLATFORM_SECRETS_ENCRYPTION_KEY` | Render env | Environment only | Not encrypted; active root key | `getPrimaryEncryptionSecret` in `src/libs/PlatformAIProviderConfig.ts` |
+| `PLATFORM_SECRETS_PREVIOUS_ENCRYPTION_KEYS` | Render env | Environment only | Not encrypted; comma-separated decrypt-only rotation keyring | `getPreviousEncryptionSecrets` in `src/libs/PlatformAIProviderConfig.ts` |
+| `CLERK_SECRET_KEY` | Render env | Environment only | Not encrypted | Clerk server SDK and legacy decrypt fallback |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Render env | Public frontend env | Public by design | Clerk frontend auth |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Render env / Clerk SDK | Environment only | Not encrypted by app | Clerk webhook verification via Clerk SDK |
 | Platform AI API key | Admin form | `platform_settings.value.encryptedApiKey` | AES-256-GCM reversible encryption | `getPlatformAIProviderConfig` -> `PlatformAIClient` |
-| `legacy Meta app secret (removed)` | Admin runtime form or Vercel env | `platform_settings.value.whatsapp.encryptedAppSecret` or env | AES-256-GCM when DB-backed | WhatsApp `x-hub-signature-256` verification |
-| `legacy Meta webhook verify token (removed)` | Admin runtime form or Vercel env | `platform_settings.value.whatsapp.encryptedWebhookVerifyToken` or env | AES-256-GCM when DB-backed | Meta webhook challenge verification |
-| Store WhatsApp access token | Store settings form | `channel_connections.config.encryptedAccessToken` | AES-256-GCM reversible encryption | WhatsApp outbound send |
-| `AI_EMPLOYEE_WEBHOOK_SECRET` | Admin runtime form or Vercel env | `platform_settings.value.internal.encryptedAIEmployeeWebhookSecret` or env | AES-256-GCM when DB-backed | `/api/ai-employee/messages` header comparison |
-| `MAINTENANCE_SECRET` | Admin runtime form or Vercel env | `platform_settings.value.internal.encryptedMaintenanceSecret` or env | AES-256-GCM when DB-backed | `/api/maintenance/cleanup` bearer token |
-| `STRIPE_SECRET_KEY` | Vercel env | Environment only | Not encrypted by app | Stripe SDK |
-| `STRIPE_WEBHOOK_SECRET` | Vercel env | Environment only | Not encrypted by app | Stripe webhook signature verification |
-| `MOYASAR_SECRET_KEY` | Vercel env | Environment only | Not encrypted by app | Moyasar Basic auth |
-| `BETTER_STACK_SOURCE_TOKEN` | Vercel env | Environment only | Not encrypted by app | Log forwarding Authorization header |
-| `SENTRY_AUTH_TOKEN` | Vercel env | Environment/build only | Not encrypted by app | Sentry source-map upload |
-| `NEXT_PUBLIC_SENTRY_DSN` | Vercel env | Public frontend env | Public DSN by design | Sentry client/server initialization |
+| Store Whapi API token | Store settings form or managed QR connect | `channel_connections.config.encryptedApiToken` | AES-256-GCM reversible encryption | Whapi outbound send |
+| `WHAPI_PARTNER_API_TOKEN` | Render env | Environment only | Not encrypted by app | Managed Whapi project/channel creation |
+| `WHAPI_PROJECT_ID` | Render env | Environment only | Not encrypted by app | Managed Whapi project selection |
+| `AI_EMPLOYEE_WEBHOOK_SECRET` | Admin runtime form or Render env | `platform_settings.value.internal.encryptedAIEmployeeWebhookSecret` or env | AES-256-GCM when DB-backed | `/api/ai-employee/messages` header comparison |
+| `MAINTENANCE_SECRET` | Admin runtime form or Render env | `platform_settings.value.internal.encryptedMaintenanceSecret` or env | AES-256-GCM when DB-backed | `/api/maintenance/cleanup` bearer token |
+| `STRIPE_SECRET_KEY` | Render env | Environment only | Not encrypted by app | Stripe SDK |
+| `STRIPE_WEBHOOK_SECRET` | Render env | Environment only | Not encrypted by app | Stripe webhook signature verification |
+| `MOYASAR_SECRET_KEY` | Render env | Environment only | Not encrypted by app | Moyasar Basic auth |
+| `BETTER_STACK_SOURCE_TOKEN` | Render env | Environment only | Not encrypted by app | Log forwarding Authorization header |
+| `SENTRY_AUTH_TOKEN` | Render env | Environment/build only | Not encrypted by app | Sentry source-map upload |
+| `NEXT_PUBLIC_SENTRY_DSN` | Render env | Public frontend env | Public DSN by design | Sentry client/server initialization |
 
 ## Encryption Findings
 
@@ -88,30 +88,32 @@ Vercel environment variable
 
 ## Root Cause
 
-Confirmed issue: legacy store WhatsApp access-token handling could treat an
-old `accessToken` field as usable without proving that it was a raw token.
+Confirmed issue from the earlier provider implementation: legacy store WhatsApp
+access-token handling could treat an old plain-token field as usable without
+proving that it was a raw token. The current Whapi-only implementation uses
+`encryptedApiToken` and does not reuse legacy provider token fields.
 
 The risky paths were:
 
 - `src/features/dashboard/StoreSettingsActions.ts:522`
 - `src/features/dashboard/StoreSettingsActions.ts:714`
-- `src/libs/TwilioWhatsApp.ts:538`
+- legacy provider send path
 - `src/app/[locale]/(auth)/dashboard/settings/page.tsx:290`
 
 Before the fix, when a store saved WhatsApp settings with the token field blank,
-the code preserved `encryptedAccessToken` correctly when present. If
-`encryptedAccessToken` was absent, it encrypted any non-empty legacy
-`accessToken`. That was safe only for real legacy raw tokens. It was unsafe for
-masked previews such as `EAA...1234`, all-star placeholders, or already
-encrypted payloads accidentally stored under the legacy key.
+the code preserved an encrypted credential correctly when present. If the
+encrypted credential was absent, it encrypted any non-empty legacy plain-token
+field. That was safe only for real legacy raw tokens. It was unsafe for masked
+previews, all-star placeholders, or already encrypted payloads accidentally
+stored under the legacy key.
 
 Impact:
 
-- A masked preview could be encrypted and stored as if it were a valid Meta
+- A masked preview could be encrypted and stored as if it were a valid provider
   access token.
 - A masked preview could mark WhatsApp as configured in the store UI.
-- A masked preview could be returned by the connection lookup and sent to Meta
-  as an Authorization bearer token.
+- A masked preview could be returned by the connection lookup and sent to the
+  provider as an Authorization bearer token.
 - This would cause outbound WhatsApp sends to fail even while the UI looked
   configured.
 
@@ -125,15 +127,15 @@ Implemented strict secret classification:
 
 Store save paths now:
 
-- Keep a real `encryptedAccessToken` as-is.
-- Preserve an encrypted payload found in the old `accessToken` slot without
+- Keep a real encrypted credential as-is.
+- Preserve an encrypted payload found in the old plain-token slot without
   double-encrypting it.
 - Encrypt only a reusable legacy plain token.
 - Reject masked/all-star previews as unusable credentials.
 
 Runtime lookup now:
 
-- Decrypts `encryptedAccessToken` first.
+- Decrypts the encrypted credential first.
 - Falls back only to a reusable legacy plain token.
 - Ignores masked previews and encrypted-looking legacy values.
 
