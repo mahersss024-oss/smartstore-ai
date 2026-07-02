@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { channelConnectionsTable } from '@/models/Schema';
 import { db } from './DB';
 import { Env } from './Env';
-import { decryptSecret } from './PlatformAIProviderConfig';
+import { getWhapiManagedChannel } from './WhapiConnect';
 
 const WHATSAPP_CHANNEL = 'whatsapp';
 const WHAPI_THREAD_PREFIX = 'wwa';
@@ -27,7 +27,6 @@ export type WhapiStoreConnection = {
 type WhapiConnectionConfig = {
   channelId?: null | string;
   displayPhoneNumber?: null | string;
-  encryptedApiToken?: null | string;
   provider?: null | string;
   webhookSecret?: null | string;
 };
@@ -200,6 +199,35 @@ const parseWhapiExternalThreadId = (externalThreadId?: null | string) => {
   };
 };
 
+const resolveLiveWhapiStoreConnection = async (params: {
+  config: WhapiConnectionConfig;
+  organizationId: string;
+}): Promise<WhapiStoreConnection | null> => {
+  const channelId = typeof params.config.channelId === 'string'
+    ? params.config.channelId.trim()
+    : '';
+
+  if (params.config.provider !== 'whapi' || !channelId) {
+    return null;
+  }
+
+  const managedChannel = await getWhapiManagedChannel({ channelId });
+
+  if (!managedChannel?.apiToken) {
+    return null;
+  }
+
+  return {
+    apiToken: managedChannel.apiToken,
+    channelId: managedChannel.channelId,
+    displayPhoneNumber: managedChannel.displayPhoneNumber
+      ?? (typeof params.config.displayPhoneNumber === 'string'
+        ? params.config.displayPhoneNumber
+        : undefined),
+    organizationId: params.organizationId,
+  };
+};
+
 const findWhapiOutboundStoreConnection = async (params: {
   channelId: string;
   organizationId: string;
@@ -225,26 +253,18 @@ const findWhapiOutboundStoreConnection = async (params: {
 
   const row = rows[0];
   const config = row?.config as WhapiConnectionConfig | null;
-  const apiToken = config?.encryptedApiToken
-    ? decryptSecret(config.encryptedApiToken)
-    : undefined;
 
   if (
     row
     && config?.provider === 'whapi'
     && typeof config.channelId === 'string'
-    && apiToken
     && row.connectionStatus === 'connected'
     && row.isActive
   ) {
-    return {
-      apiToken,
-      channelId: config.channelId,
-      displayPhoneNumber: typeof config.displayPhoneNumber === 'string'
-        ? config.displayPhoneNumber
-        : undefined,
+    return resolveLiveWhapiStoreConnection({
+      config,
       organizationId: row.organizationId,
-    };
+    });
   }
 
   return null;
@@ -311,29 +331,21 @@ export const findWhapiStoreConnection = async (params: {
 
   for (const row of rows) {
     const config = row.config as WhapiConnectionConfig | null;
-    const apiToken = config?.encryptedApiToken
-      ? decryptSecret(config.encryptedApiToken)
-      : undefined;
     const configuredSecret = config?.webhookSecret?.trim();
 
     if (
       config
       && config.provider === 'whapi'
       && typeof config.channelId === 'string'
-      && apiToken
       && configuredSecret
       && configuredSecret === params.webhookSecret?.trim()
       && row.connectionStatus === 'connected'
       && row.isActive
     ) {
-      return {
-        apiToken,
-        channelId: config.channelId,
-        displayPhoneNumber: typeof config.displayPhoneNumber === 'string'
-          ? config.displayPhoneNumber
-          : undefined,
+      return resolveLiveWhapiStoreConnection({
+        config,
         organizationId: row.organizationId,
-      };
+      });
     }
   }
 

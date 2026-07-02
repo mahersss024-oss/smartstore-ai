@@ -229,8 +229,10 @@ const resolveWhapiConnectionInput = (
   const submittedDisplayPhone = String(formData.get('whapiDisplayPhoneNumber') ?? '').trim();
   const submittedWebhookSecret = String(formData.get('whapiWebhookSecret') ?? '').trim();
   const channelId = submittedChannelId || existing.channelId?.trim() || null;
+  const isManagedChannel = Boolean(existing.managedByPlatform && channelId);
   const apiToken = submittedApiToken
-    || (existing.encryptedApiToken ? 'stored-whapi-token' : undefined);
+    || (existing.encryptedApiToken ? 'stored-whapi-token' : undefined)
+    || (isManagedChannel ? 'managed-whapi-channel' : undefined);
   const encryptedApiToken = submittedApiToken
     ? encryptSecret(submittedApiToken)
     : existing.encryptedApiToken ?? null;
@@ -252,7 +254,7 @@ const resolveWhapiConnectionInput = (
     channelId,
     displayPhoneNumber,
     encryptedApiToken,
-    hasApiToken: Boolean(apiToken && encryptedApiToken),
+    hasApiToken: Boolean(apiToken && (encryptedApiToken || isManagedChannel)),
     managedByPlatform: existing.managedByPlatform ?? null,
     managedChannelActivatedAt: existing.managedChannelActivatedAt ?? null,
     submittedCredentials: Boolean(submittedChannelId || submittedApiToken),

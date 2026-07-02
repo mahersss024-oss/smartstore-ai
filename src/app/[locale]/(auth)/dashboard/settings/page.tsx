@@ -299,8 +299,8 @@ export default async function SettingsPage(props: {
     apiTokenPreview: whapiApiTokenPreview,
     channelId: whapiChannelId,
     displayPhoneNumber: whapiDisplayPhoneNumber,
-    encryptedApiToken: whatsappConfig.encryptedApiToken,
-    hasApiToken: Boolean(whatsappConfig.encryptedApiToken),
+    encryptedApiToken: null,
+    hasApiToken: Boolean(whapiChannelId),
     provider: 'whapi',
     status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
     storeName: currentSettings?.storeName ?? 'SmartStore',
@@ -360,7 +360,7 @@ export default async function SettingsPage(props: {
       labelKey: 'whatsapp_check_whapi_channel_id',
     },
     {
-      isReady: Boolean(whatsappConfig.encryptedApiToken),
+      isReady: Boolean(whapiChannelId),
       labelKey: 'whatsapp_check_whapi_api_token',
     },
     {

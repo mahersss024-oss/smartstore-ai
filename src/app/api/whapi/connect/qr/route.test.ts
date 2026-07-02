@@ -230,7 +230,7 @@ describe('Whapi QR connect route', () => {
       channel: 'whatsapp',
       config: expect.objectContaining({
         channelId: 'channel_123',
-        encryptedApiToken: 'encrypted_channel_token',
+        encryptedApiToken: null,
         provider: 'whapi',
       }),
       organizationId: 'org_1',
@@ -385,7 +385,7 @@ describe('Whapi QR connect route', () => {
       channel: 'whatsapp',
       config: expect.objectContaining({
         channelId: 'channel_123',
-        encryptedApiToken: 'encrypted_channel_token',
+        encryptedApiToken: null,
         managedChannelActivatedAt: expect.any(String),
         provider: 'whapi',
       }),
@@ -470,7 +470,7 @@ describe('Whapi QR connect route', () => {
       config: expect.objectContaining({
         channelId: 'replacement_channel',
         displayPhoneNumber: null,
-        encryptedApiToken: 'encrypted_replacement_token',
+        encryptedApiToken: null,
         phoneNumber: null,
       }),
     }));
@@ -586,7 +586,7 @@ describe('Whapi QR connect route', () => {
       channel: 'whatsapp',
       config: expect.objectContaining({
         channelId: 'channel_123',
-        encryptedApiToken: 'encrypted_channel_token',
+        encryptedApiToken: null,
         provider: 'whapi',
       }),
       organizationId: 'org_1',

@@ -7,11 +7,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
 import { logger } from '@/libs/Logger';
-import {
-  decryptSecret,
-  encryptSecret,
-  maskApiKey,
-} from '@/libs/PlatformAIProviderConfig';
+import { maskApiKey } from '@/libs/PlatformAIProviderConfig';
 import {
   activateWhapiManagedChannel,
   checkWhapiManagedChannelExists,
@@ -40,7 +36,6 @@ type WhapiConnectionConfig = {
   apiTokenPreview?: null | string;
   channelId?: null | string;
   displayPhoneNumber?: null | string;
-  encryptedApiToken?: null | string;
   managedChannelActivatedAt?: null | string;
   provider?: null | string;
   webhookSecret?: null | string;
@@ -115,9 +110,6 @@ export const POST = async () => {
         )
         .limit(1);
       const existingConfig = (existingConnection?.config ?? {}) as WhapiConnectionConfig;
-      const existingToken = existingConfig.provider === 'whapi' && existingConfig.encryptedApiToken
-        ? (decryptSecret(existingConfig.encryptedApiToken) ?? '')
-        : '';
       const existingChannelId = existingConfig.provider === 'whapi' && existingConfig.channelId
         ? existingConfig.channelId
         : '';
@@ -151,14 +143,6 @@ export const POST = async () => {
             organizationId: orgId,
             status: error instanceof WhapiConnectError ? error.status : undefined,
           });
-
-          if (existingToken) {
-            return {
-              apiToken: existingToken,
-              channelId: existingChannelId,
-              displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
-            };
-          }
 
           throw error;
         }
@@ -289,9 +273,6 @@ export const POST = async () => {
       }
 
       const persistManagedChannel = async () => {
-        const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
-          ? existingConfig.encryptedApiToken
-          : encryptSecret(managedChannel.apiToken);
         const apiTokenPreview = maskApiKey(managedChannel.apiToken);
         const displayPhoneNumber = managedChannel.displayPhoneNumber
           ?? (hasReplacedManagedChannel ? '' : existingConfig.displayPhoneNumber)
@@ -300,7 +281,7 @@ export const POST = async () => {
           apiTokenPreview,
           channelId: managedChannel.channelId,
           displayPhoneNumber,
-          encryptedApiToken,
+          encryptedApiToken: null,
           hasApiToken: true,
           provider: 'whapi',
           status: 'connected',

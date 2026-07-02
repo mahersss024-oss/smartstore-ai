@@ -27,7 +27,7 @@ type StoreSettingsMetadata = {
 
 const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
   return (config.provider === 'whapi' || config.mode === 'whapi')
-    && Boolean(config.channelId && config.encryptedApiToken);
+    && Boolean(config.channelId);
 };
 
 export const buildDisconnectedWhatsAppConnection = (config: ExistingWhatsappConfig) => {
@@ -51,8 +51,8 @@ export const buildDisconnectedWhatsAppMetadata = (config: ExistingWhatsappConfig
     apiTokenPreview: config.apiTokenPreview ?? null,
     channelId: config.channelId ?? null,
     displayPhoneNumber: config.displayPhoneNumber ?? null,
-    encryptedApiToken: config.encryptedApiToken ?? null,
-    hasApiToken: Boolean(config.encryptedApiToken),
+    encryptedApiToken: null,
+    hasApiToken: Boolean(config.channelId),
     provider: 'whapi',
     status: 'disconnected',
     storeName: 'SmartStore',
