@@ -191,7 +191,17 @@ export const POST = async () => {
         await activateChannelForQr(managedChannel.channelId);
         nextManagedChannelActivatedAt = new Date().toISOString();
         webhookUrl = buildWebhookUrl(managedChannel.channelId);
-        await configureWebhook();
+        try {
+          await configureWebhook();
+        } catch (replacementError) {
+          logger.warn('Whapi webhook configure deferred', {
+            channelId: managedChannel.channelId,
+            detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
+            error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+            organizationId: orgId,
+            status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+          });
+        }
       } else {
         logger.warn('Whapi webhook configure deferred', {
           channelId: managedChannel.channelId,
