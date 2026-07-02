@@ -367,9 +367,9 @@ const callWhapiPartnerChannelAction = async (params: {
   }
 };
 
-export const checkWhapiManagedChannelExists = async (params: {
+export const getWhapiManagedChannel = async (params: {
   channelId: string;
-}) => {
+}): Promise<WhapiManagedChannel | null> => {
   if (!Env.WHAPI_PARTNER_API_TOKEN) {
     throw new WhapiConnectError('whapi_partner_credentials_missing');
   }
@@ -384,19 +384,35 @@ export const checkWhapiManagedChannelExists = async (params: {
   });
 
   if (response.ok) {
-    return true;
+    const responseText = await response.text().catch(() => '');
+
+    try {
+      return parseWhapiManagedChannel(responseText ? JSON.parse(responseText) : {});
+    } catch (error) {
+      if (error instanceof WhapiConnectError) {
+        throw error;
+      }
+
+      throw new WhapiConnectError('whapi_channel_response_invalid');
+    }
   }
 
   const responseText = await response.text().catch(() => '');
 
   if (response.status === 404) {
-    return false;
+    return null;
   }
 
   throw new WhapiConnectError('whapi_channel_lookup_failed', {
     detail: sanitizeErrorDetail(responseText || 'empty_response'),
     status: response.status,
   });
+};
+
+export const checkWhapiManagedChannelExists = async (params: {
+  channelId: string;
+}) => {
+  return Boolean(await getWhapiManagedChannel(params));
 };
 
 export const changeWhapiManagedChannelMode = async (params: {

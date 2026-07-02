@@ -283,7 +283,12 @@ describe('WhapiConnect', () => {
 
   it('checks whether a managed channel still exists through the partner API', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        channel: {
+          id: 'GAMORA-8BDZS',
+          token: 'channel_token',
+        },
+      }), { status: 200 }))
       .mockResolvedValueOnce(new Response('missing', { status: 404 }));
 
     vi.stubGlobal('fetch', fetchMock);

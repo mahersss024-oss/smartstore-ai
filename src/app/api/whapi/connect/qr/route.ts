@@ -18,6 +18,7 @@ import {
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
   fetchWhapiQrCodeDataUrl,
+  getWhapiManagedChannel,
   isWhapiManagedConnectConfigured,
   restartWhapiManagedChannel,
   WhapiConnectError,
@@ -124,15 +125,48 @@ export const POST = async () => {
       const createManagedChannel = () => createWhapiManagedChannel({
         name: `${storeName} - ${orgId}`,
       });
-      const isUsingExistingChannel = Boolean(existingToken && existingChannelId);
-      let managedChannel: WhapiManagedChannel = isUsingExistingChannel
-        ? {
-            apiToken: existingToken,
-            channelId: existingChannelId,
-            displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
+      const loadExistingManagedChannel = async () => {
+        if (!existingChannelId) {
+          return null;
+        }
+
+        try {
+          const upstreamChannel = await getWhapiManagedChannel({ channelId: existingChannelId });
+
+          if (!upstreamChannel) {
+            return null;
           }
-        : await createManagedChannel();
-      let hasReplacedManagedChannel = false;
+
+          return {
+            ...upstreamChannel,
+            displayPhoneNumber: upstreamChannel.displayPhoneNumber
+              ?? existingConfig.displayPhoneNumber
+              ?? undefined,
+          };
+        } catch (error) {
+          logger.warn('Whapi saved channel lookup deferred', {
+            channelId: existingChannelId,
+            detail: error instanceof WhapiConnectError ? error.detail : undefined,
+            error: error instanceof Error ? error.message : 'unknown_error',
+            organizationId: orgId,
+            status: error instanceof WhapiConnectError ? error.status : undefined,
+          });
+
+          if (existingToken) {
+            return {
+              apiToken: existingToken,
+              channelId: existingChannelId,
+              displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
+            };
+          }
+
+          throw error;
+        }
+      };
+      const existingManagedChannel = await loadExistingManagedChannel();
+      const isUsingExistingChannel = Boolean(existingManagedChannel);
+      let managedChannel: WhapiManagedChannel = existingManagedChannel ?? await createManagedChannel();
+      let hasReplacedManagedChannel = Boolean(existingChannelId && !existingManagedChannel);
       const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
         && existingConfig.managedChannelActivatedAt.trim()
         ? existingConfig.managedChannelActivatedAt
