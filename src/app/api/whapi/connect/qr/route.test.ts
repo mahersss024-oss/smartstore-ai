@@ -273,6 +273,80 @@ describe('Whapi QR connect route', () => {
     });
   });
 
+  it('replaces a saved managed Whapi channel when it no longer exists upstream', async () => {
+    const { insertChains } = await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'deleted_channel',
+          displayPhoneNumber: '+966500000002',
+          encryptedApiToken: 'encrypted_deleted_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.configureWhapiChannelWebhook
+      .mockRejectedValueOnce(new WhapiConnectError('whapi_webhook_configure_failed', {
+        detail: '{"error":"Channel not found"}',
+        status: 404,
+      }))
+      .mockResolvedValueOnce(undefined);
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      qrDataUrl: 'data:image/png;base64,QR',
+      webhookReady: true,
+    });
+    expect(mocks.createWhapiManagedChannel).toHaveBeenCalledWith({
+      name: 'Golden Chicken - org_1',
+    });
+    expect(mocks.activateWhapiManagedChannel).toHaveBeenCalledWith({
+      channelId: 'channel_123',
+    });
+    expect(mocks.configureWhapiChannelWebhook).toHaveBeenNthCalledWith(1, {
+      apiToken: 'deleted_token',
+      webhookUrl: expect.stringContaining('channelId=deleted_channel'),
+    });
+    expect(mocks.configureWhapiChannelWebhook).toHaveBeenNthCalledWith(2, {
+      apiToken: 'channel_token',
+      webhookUrl: expect.stringContaining('channelId=channel_123'),
+    });
+    expect(insertChains[0]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'whatsapp',
+      config: expect.objectContaining({
+        channelId: 'channel_123',
+        encryptedApiToken: 'encrypted_channel_token',
+        managedChannelActivatedAt: expect.any(String),
+        provider: 'whapi',
+      }),
+      organizationId: 'org_1',
+    }));
+    expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenCalledWith({
+      apiToken: 'channel_token',
+    });
+    expect(mocks.warn).toHaveBeenCalledWith(
+      'Whapi saved channel missing; creating replacement channel',
+      expect.objectContaining({
+        channelId: 'deleted_channel',
+        status: 404,
+      }),
+    );
+  });
+
   it('returns a pending QR response when Whapi is still initializing the channel', async () => {
     await prepareDb({
       existingConnection: null,

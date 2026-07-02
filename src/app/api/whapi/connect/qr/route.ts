@@ -1,3 +1,4 @@
+import type { WhapiManagedChannel } from '@/libs/WhapiConnect';
 import { randomBytes } from 'node:crypto';
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
@@ -109,20 +110,23 @@ export const POST = async () => {
       .limit(1);
     const existingConfig = (existingConnection?.config ?? {}) as WhapiConnectionConfig;
     const existingToken = existingConfig.provider === 'whapi' && existingConfig.encryptedApiToken
-      ? decryptSecret(existingConfig.encryptedApiToken)
+      ? (decryptSecret(existingConfig.encryptedApiToken) ?? '')
       : '';
     const existingChannelId = existingConfig.provider === 'whapi' && existingConfig.channelId
       ? existingConfig.channelId
       : '';
-    const managedChannel = existingToken && existingChannelId
+    const storeName = settings?.storeName ?? 'SmartStore';
+    const createManagedChannel = () => createWhapiManagedChannel({
+      name: `${storeName} - ${orgId}`,
+    });
+    const isUsingExistingChannel = Boolean(existingToken && existingChannelId);
+    let managedChannel: WhapiManagedChannel = isUsingExistingChannel
       ? {
           apiToken: existingToken,
           channelId: existingChannelId,
           displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
         }
-      : await createWhapiManagedChannel({
-          name: `${settings?.storeName ?? 'SmartStore'} - ${orgId}`,
-        });
+      : await createManagedChannel();
     const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
       && existingConfig.managedChannelActivatedAt.trim()
       ? existingConfig.managedChannelActivatedAt
@@ -139,26 +143,50 @@ export const POST = async () => {
 
     const webhookSecret = existingConfig.webhookSecret?.trim() || generateWebhookSecret();
     const origin = await getOrigin();
-    const webhookUrl = `${origin}/api/whatsapp/webhook?provider=whapi&channelId=${
-      encodeURIComponent(managedChannel.channelId)
-    }&secret=${encodeURIComponent(webhookSecret)}`;
+    const buildWebhookUrl = (channelId: string) => {
+      return `${origin}/api/whatsapp/webhook?provider=whapi&channelId=${
+        encodeURIComponent(channelId)
+      }&secret=${encodeURIComponent(webhookSecret)}`;
+    };
+    let webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
     let webhookReady = false;
 
-    try {
+    const configureWebhook = async () => {
       await configureWhapiChannelWebhook({
         apiToken: managedChannel.apiToken,
         webhookUrl,
       });
       webhookReady = true;
+    };
+
+    try {
+      await configureWebhook();
     } catch (error) {
-      logger.warn('Whapi webhook configure deferred', {
-        channelId: managedChannel.channelId,
-        detail: error instanceof WhapiConnectError ? error.detail : undefined,
-        error: error instanceof Error ? error.message : 'unknown_error',
-        organizationId: orgId,
-        status: error instanceof WhapiConnectError ? error.status : undefined,
-      });
+      if (isUsingExistingChannel && error instanceof WhapiConnectError && error.status === 404) {
+        logger.warn('Whapi saved channel missing; creating replacement channel', {
+          channelId: managedChannel.channelId,
+          detail: error.detail,
+          error: error.message,
+          organizationId: orgId,
+          status: error.status,
+        });
+        managedChannel = await createManagedChannel();
+        await activateWhapiManagedChannel({
+          channelId: managedChannel.channelId,
+        });
+        nextManagedChannelActivatedAt = new Date().toISOString();
+        webhookUrl = buildWebhookUrl(managedChannel.channelId);
+        await configureWebhook();
+      } else {
+        logger.warn('Whapi webhook configure deferred', {
+          channelId: managedChannel.channelId,
+          detail: error instanceof WhapiConnectError ? error.detail : undefined,
+          error: error instanceof Error ? error.message : 'unknown_error',
+          organizationId: orgId,
+          status: error instanceof WhapiConnectError ? error.status : undefined,
+        });
+      }
     }
 
     const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
