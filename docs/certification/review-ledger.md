@@ -15,6 +15,9 @@ alone.
 - Active WhatsApp webhook route: `/api/whatsapp/webhook`.
 - Active branch: `main`.
 - Latest verification commits:
+  - `cf79a3a` `fix(whapi): refresh QR connection after scan`
+  - `a11fc3e` `fix(ai): prioritize checkout details before product selection`
+  - `0fa0938` `fix(i18n): restore Arabic WhatsApp readiness copy`
   - `982caf3` `test: run browser e2e sequentially`
   - `0ae42a6` `ci: make semantic release opt-in`
 
@@ -27,6 +30,10 @@ The following checks were run locally after the latest stabilization fixes:
 - `npm test`: passed.
 - `npm run build-local`: passed.
 - `npm run test:e2e`: passed after enforcing sequential Playwright workers.
+- Focused compatibility suite passed: 8 files and 90 tests covering Whapi
+  provider architecture, QR refresh after scan, managed-channel reuse,
+  legacy channel metadata handling, channel isolation fallback, legacy order
+  normalization, and subscription service controls.
 
 GitHub checks on `0ae42a6` completed successfully:
 

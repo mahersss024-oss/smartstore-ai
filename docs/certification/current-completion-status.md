@@ -31,9 +31,13 @@ items are tracked explicitly in the ledgers.
   line-wrapping warnings in one page; they do not fail the gate.
 - Dependency/dead-code scan passed.
 - i18n check passed.
-- Full unit/UI test suite passed: 106 test files and 980 tests.
+- Full unit/UI test suite passed: 108 test files and 986 tests.
 - Production build passed and generated 89 pages/routes.
 - Focused Whapi WhatsApp webhook/store settings tests passed.
+- Focused compatibility suite passed: 8 files and 90 tests covering Whapi
+  provider architecture, QR refresh after scan, managed-channel reuse,
+  customer-channel legacy metadata handling, channel isolation fallback,
+  order-data legacy normalization, and subscription service controls.
 - Coverage gate passed with permanent floors in place.
 - Production dependency audit passed with 0 vulnerabilities.
 - Full npm audit passed in the latest recorded pass.
