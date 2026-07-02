@@ -96,27 +96,23 @@ const prepareDb = async (params: {
   lockedSettings?: null | Record<string, unknown>;
   settings?: null | Record<string, unknown>;
 }) => {
-  const { db } = await import('@/libs/DB');
-  type SelectMock = {
-    mockReturnValueOnce: (value: unknown) => SelectMock;
-  };
-  const selectMock = db.select as unknown as SelectMock;
   const updateChain = createUpdateChain();
   const insertChains = [createInsertChain(), createInsertChain()];
   const tx = {
+    execute: vi.fn().mockResolvedValue(undefined),
     insert: vi.fn()
       .mockReturnValueOnce(insertChains[0])
       .mockReturnValueOnce(insertChains[1]),
-    select: vi.fn().mockReturnValue(createSelectChain(
-      params.lockedSettings ? [params.lockedSettings] : [],
-      { forUpdate: true },
-    )),
+    select: vi.fn()
+      .mockReturnValueOnce(createSelectChain(params.settings ? [params.settings] : []))
+      .mockReturnValueOnce(createSelectChain(params.existingConnection ? [params.existingConnection] : []))
+      .mockReturnValue(createSelectChain(
+        params.lockedSettings ? [params.lockedSettings] : [],
+        { forUpdate: true },
+      )),
     update: vi.fn().mockReturnValue(updateChain),
   };
 
-  selectMock
-    .mockReturnValueOnce(createSelectChain(params.settings ? [params.settings] : []))
-    .mockReturnValueOnce(createSelectChain(params.existingConnection ? [params.existingConnection] : []));
   mocks.transaction.mockImplementation(async (handler: (transaction: unknown) => Promise<unknown>) => handler(tx));
 
   return {
@@ -201,6 +197,7 @@ describe('Whapi QR connect route', () => {
     expect(mocks.createWhapiManagedChannel).toHaveBeenCalledWith({
       name: 'Golden Chicken - org_1',
     });
+    expect(tx.execute).toHaveBeenCalledTimes(1);
     expect(mocks.activateWhapiManagedChannel).toHaveBeenCalledWith({
       channelId: 'channel_123',
     });

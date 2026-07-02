@@ -1,7 +1,7 @@
 import type { WhapiManagedChannel } from '@/libs/WhapiConnect';
 import { randomBytes } from 'node:crypto';
 import { auth } from '@clerk/nextjs/server';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
@@ -88,160 +88,162 @@ export const POST = async () => {
   }
 
   try {
-    const [settings] = await db
-      .select({
-        metadata: storeSettingsTable.metadata,
-        storeName: storeSettingsTable.storeName,
-      })
-      .from(storeSettingsTable)
-      .where(eq(storeSettingsTable.organizationId, orgId))
-      .limit(1);
-    const [existingConnection] = await db
-      .select({
-        config: channelConnectionsTable.config,
-      })
-      .from(channelConnectionsTable)
-      .where(
-        and(
-          eq(channelConnectionsTable.organizationId, orgId),
-          eq(channelConnectionsTable.channel, 'whatsapp'),
-        ),
-      )
-      .limit(1);
-    const existingConfig = (existingConnection?.config ?? {}) as WhapiConnectionConfig;
-    const existingToken = existingConfig.provider === 'whapi' && existingConfig.encryptedApiToken
-      ? (decryptSecret(existingConfig.encryptedApiToken) ?? '')
-      : '';
-    const existingChannelId = existingConfig.provider === 'whapi' && existingConfig.channelId
-      ? existingConfig.channelId
-      : '';
-    const storeName = settings?.storeName ?? 'SmartStore';
-    const createManagedChannel = () => createWhapiManagedChannel({
-      name: `${storeName} - ${orgId}`,
-    });
-    const isUsingExistingChannel = Boolean(existingToken && existingChannelId);
-    let managedChannel: WhapiManagedChannel = isUsingExistingChannel
-      ? {
-          apiToken: existingToken,
-          channelId: existingChannelId,
-          displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
-        }
-      : await createManagedChannel();
-    let hasReplacedManagedChannel = false;
-    const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
-      && existingConfig.managedChannelActivatedAt.trim()
-      ? existingConfig.managedChannelActivatedAt
-      : null;
+    return await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`whapi_qr_connect:${orgId}`}))`);
 
-    let nextManagedChannelActivatedAt = managedChannelActivatedAt;
-    const activateChannelForQr = async (channelId: string) => {
+      const [settings] = await tx
+        .select({
+          metadata: storeSettingsTable.metadata,
+          storeName: storeSettingsTable.storeName,
+        })
+        .from(storeSettingsTable)
+        .where(eq(storeSettingsTable.organizationId, orgId))
+        .limit(1);
+      const [existingConnection] = await tx
+        .select({
+          config: channelConnectionsTable.config,
+        })
+        .from(channelConnectionsTable)
+        .where(
+          and(
+            eq(channelConnectionsTable.organizationId, orgId),
+            eq(channelConnectionsTable.channel, 'whatsapp'),
+          ),
+        )
+        .limit(1);
+      const existingConfig = (existingConnection?.config ?? {}) as WhapiConnectionConfig;
+      const existingToken = existingConfig.provider === 'whapi' && existingConfig.encryptedApiToken
+        ? (decryptSecret(existingConfig.encryptedApiToken) ?? '')
+        : '';
+      const existingChannelId = existingConfig.provider === 'whapi' && existingConfig.channelId
+        ? existingConfig.channelId
+        : '';
+      const storeName = settings?.storeName ?? 'SmartStore';
+      const createManagedChannel = () => createWhapiManagedChannel({
+        name: `${storeName} - ${orgId}`,
+      });
+      const isUsingExistingChannel = Boolean(existingToken && existingChannelId);
+      let managedChannel: WhapiManagedChannel = isUsingExistingChannel
+        ? {
+            apiToken: existingToken,
+            channelId: existingChannelId,
+            displayPhoneNumber: existingConfig.displayPhoneNumber ?? undefined,
+          }
+        : await createManagedChannel();
+      let hasReplacedManagedChannel = false;
+      const managedChannelActivatedAt = typeof existingConfig.managedChannelActivatedAt === 'string'
+        && existingConfig.managedChannelActivatedAt.trim()
+        ? existingConfig.managedChannelActivatedAt
+        : null;
+
+      let nextManagedChannelActivatedAt = managedChannelActivatedAt;
+      const activateChannelForQr = async (channelId: string) => {
+        try {
+          await activateWhapiManagedChannel({ channelId });
+        } catch (error) {
+          if (error instanceof WhapiConnectError && error.message === 'whapi_channel_extend_failed') {
+            logger.warn('Whapi channel extension deferred', {
+              channelId,
+              detail: error.detail,
+              error: error.message,
+              organizationId: orgId,
+              status: error.status,
+            });
+            return;
+          }
+
+          throw error;
+        }
+      };
+
+      if (!nextManagedChannelActivatedAt) {
+        await activateChannelForQr(managedChannel.channelId);
+        nextManagedChannelActivatedAt = new Date().toISOString();
+      }
+
+      const webhookSecret = existingConfig.webhookSecret?.trim() || generateWebhookSecret();
+      const origin = await getOrigin();
+      const buildWebhookUrl = (channelId: string) => {
+        return `${origin}/api/whatsapp/webhook?provider=whapi&channelId=${
+          encodeURIComponent(channelId)
+        }&secret=${encodeURIComponent(webhookSecret)}`;
+      };
+      let webhookUrl = buildWebhookUrl(managedChannel.channelId);
+
+      let webhookReady = false;
+
+      const configureWebhook = async () => {
+        await configureWhapiChannelWebhook({
+          apiToken: managedChannel.apiToken,
+          webhookUrl,
+        });
+        webhookReady = true;
+      };
+
       try {
-        await activateWhapiManagedChannel({ channelId });
+        await configureWebhook();
       } catch (error) {
-        if (error instanceof WhapiConnectError && error.message === 'whapi_channel_extend_failed') {
-          logger.warn('Whapi channel extension deferred', {
-            channelId,
+        if (isUsingExistingChannel && error instanceof WhapiConnectError && error.status === 404) {
+          logger.warn('Whapi saved channel missing; creating replacement channel', {
+            channelId: managedChannel.channelId,
             detail: error.detail,
             error: error.message,
             organizationId: orgId,
             status: error.status,
           });
-          return;
-        }
-
-        throw error;
-      }
-    };
-
-    if (!nextManagedChannelActivatedAt) {
-      await activateChannelForQr(managedChannel.channelId);
-      nextManagedChannelActivatedAt = new Date().toISOString();
-    }
-
-    const webhookSecret = existingConfig.webhookSecret?.trim() || generateWebhookSecret();
-    const origin = await getOrigin();
-    const buildWebhookUrl = (channelId: string) => {
-      return `${origin}/api/whatsapp/webhook?provider=whapi&channelId=${
-        encodeURIComponent(channelId)
-      }&secret=${encodeURIComponent(webhookSecret)}`;
-    };
-    let webhookUrl = buildWebhookUrl(managedChannel.channelId);
-
-    let webhookReady = false;
-
-    const configureWebhook = async () => {
-      await configureWhapiChannelWebhook({
-        apiToken: managedChannel.apiToken,
-        webhookUrl,
-      });
-      webhookReady = true;
-    };
-
-    try {
-      await configureWebhook();
-    } catch (error) {
-      if (isUsingExistingChannel && error instanceof WhapiConnectError && error.status === 404) {
-        logger.warn('Whapi saved channel missing; creating replacement channel', {
-          channelId: managedChannel.channelId,
-          detail: error.detail,
-          error: error.message,
-          organizationId: orgId,
-          status: error.status,
-        });
-        managedChannel = await createManagedChannel();
-        hasReplacedManagedChannel = true;
-        await activateChannelForQr(managedChannel.channelId);
-        nextManagedChannelActivatedAt = new Date().toISOString();
-        webhookUrl = buildWebhookUrl(managedChannel.channelId);
-        try {
-          await configureWebhook();
-        } catch (replacementError) {
+          managedChannel = await createManagedChannel();
+          hasReplacedManagedChannel = true;
+          await activateChannelForQr(managedChannel.channelId);
+          nextManagedChannelActivatedAt = new Date().toISOString();
+          webhookUrl = buildWebhookUrl(managedChannel.channelId);
+          try {
+            await configureWebhook();
+          } catch (replacementError) {
+            logger.warn('Whapi webhook configure deferred', {
+              channelId: managedChannel.channelId,
+              detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
+              error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+              organizationId: orgId,
+              status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+            });
+          }
+        } else {
           logger.warn('Whapi webhook configure deferred', {
             channelId: managedChannel.channelId,
-            detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
-            error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+            detail: error instanceof WhapiConnectError ? error.detail : undefined,
+            error: error instanceof Error ? error.message : 'unknown_error',
             organizationId: orgId,
-            status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+            status: error instanceof WhapiConnectError ? error.status : undefined,
           });
         }
-      } else {
-        logger.warn('Whapi webhook configure deferred', {
-          channelId: managedChannel.channelId,
-          detail: error instanceof WhapiConnectError ? error.detail : undefined,
-          error: error instanceof Error ? error.message : 'unknown_error',
-          organizationId: orgId,
-          status: error instanceof WhapiConnectError ? error.status : undefined,
-        });
       }
-    }
 
-    const persistManagedChannel = async () => {
-      const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
-        ? existingConfig.encryptedApiToken
-        : encryptSecret(managedChannel.apiToken);
-      const apiTokenPreview = maskApiKey(managedChannel.apiToken);
-      const displayPhoneNumber = managedChannel.displayPhoneNumber
-        ?? (hasReplacedManagedChannel ? '' : existingConfig.displayPhoneNumber)
-        ?? '';
-      const whatsappChannel = buildWhatsAppChannelConfig({
-        apiTokenPreview,
-        channelId: managedChannel.channelId,
-        displayPhoneNumber,
-        encryptedApiToken,
-        hasApiToken: true,
-        provider: 'whapi',
-        status: 'connected',
-        storeName,
-        webhookReady,
-        webhookSecret,
-      });
-      const whatsappChannelConfig = {
-        ...whatsappChannel.config,
-        managedByPlatform: true,
-        managedChannelActivatedAt: nextManagedChannelActivatedAt,
-      };
+      const persistManagedChannel = async () => {
+        const encryptedApiToken = existingToken === managedChannel.apiToken && existingConfig.encryptedApiToken
+          ? existingConfig.encryptedApiToken
+          : encryptSecret(managedChannel.apiToken);
+        const apiTokenPreview = maskApiKey(managedChannel.apiToken);
+        const displayPhoneNumber = managedChannel.displayPhoneNumber
+          ?? (hasReplacedManagedChannel ? '' : existingConfig.displayPhoneNumber)
+          ?? '';
+        const whatsappChannel = buildWhatsAppChannelConfig({
+          apiTokenPreview,
+          channelId: managedChannel.channelId,
+          displayPhoneNumber,
+          encryptedApiToken,
+          hasApiToken: true,
+          provider: 'whapi',
+          status: 'connected',
+          storeName,
+          webhookReady,
+          webhookSecret,
+        });
+        const whatsappChannelConfig = {
+          ...whatsappChannel.config,
+          managedByPlatform: true,
+          managedChannelActivatedAt: nextManagedChannelActivatedAt,
+        };
 
-      await db.transaction(async (tx) => {
         const [lockedSettings] = await tx
           .select({ metadata: storeSettingsTable.metadata })
           .from(storeSettingsTable)
@@ -320,106 +322,106 @@ export const POST = async () => {
               channelConnectionsTable.channel,
             ],
           });
-      });
-    };
+      };
 
-    await persistManagedChannel();
+      await persistManagedChannel();
 
-    let qrDataUrl = '';
-    let qrPending = false;
+      let qrDataUrl = '';
+      let qrPending = false;
 
-    try {
-      qrDataUrl = await fetchWhapiQrCodeDataUrl({
-        apiToken: managedChannel.apiToken,
-      });
-    } catch (error) {
-      if (error instanceof WhapiConnectError && error.status === 404) {
-        if (isUsingExistingChannel) {
-          logger.warn('Whapi saved channel missing during QR fetch; creating replacement channel', {
-            channelId: managedChannel.channelId,
-            detail: error.detail,
-            error: error.message,
-            organizationId: orgId,
-            status: error.status,
-          });
-          managedChannel = await createManagedChannel();
-          hasReplacedManagedChannel = true;
-          await activateChannelForQr(managedChannel.channelId);
-          nextManagedChannelActivatedAt = new Date().toISOString();
-          webhookReady = false;
-          webhookUrl = buildWebhookUrl(managedChannel.channelId);
-
-          try {
-            await configureWebhook();
-          } catch (replacementError) {
-            logger.warn('Whapi webhook configure deferred', {
+      try {
+        qrDataUrl = await fetchWhapiQrCodeDataUrl({
+          apiToken: managedChannel.apiToken,
+        });
+      } catch (error) {
+        if (error instanceof WhapiConnectError && error.status === 404) {
+          if (isUsingExistingChannel) {
+            logger.warn('Whapi saved channel missing during QR fetch; creating replacement channel', {
               channelId: managedChannel.channelId,
-              detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
-              error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+              detail: error.detail,
+              error: error.message,
               organizationId: orgId,
-              status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+              status: error.status,
             });
-          }
+            managedChannel = await createManagedChannel();
+            hasReplacedManagedChannel = true;
+            await activateChannelForQr(managedChannel.channelId);
+            nextManagedChannelActivatedAt = new Date().toISOString();
+            webhookReady = false;
+            webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
-          await persistManagedChannel();
-          try {
-            qrDataUrl = await fetchWhapiQrCodeDataUrl({
-              apiToken: managedChannel.apiToken,
-            });
-          } catch (replacementQrError) {
-            if (replacementQrError instanceof WhapiConnectError && replacementQrError.status === 404) {
-              qrPending = true;
-              logger.warn('Whapi replacement QR fetch deferred', {
+            try {
+              await configureWebhook();
+            } catch (replacementError) {
+              logger.warn('Whapi webhook configure deferred', {
                 channelId: managedChannel.channelId,
-                detail: replacementQrError.detail,
-                error: replacementQrError.message,
+                detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
+                error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
                 organizationId: orgId,
-                status: replacementQrError.status,
+                status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
               });
-            } else {
-              throw replacementQrError;
             }
+
+            await persistManagedChannel();
+            try {
+              qrDataUrl = await fetchWhapiQrCodeDataUrl({
+                apiToken: managedChannel.apiToken,
+              });
+            } catch (replacementQrError) {
+              if (replacementQrError instanceof WhapiConnectError && replacementQrError.status === 404) {
+                qrPending = true;
+                logger.warn('Whapi replacement QR fetch deferred', {
+                  channelId: managedChannel.channelId,
+                  detail: replacementQrError.detail,
+                  error: replacementQrError.message,
+                  organizationId: orgId,
+                  status: replacementQrError.status,
+                });
+              } else {
+                throw replacementQrError;
+              }
+            }
+          } else {
+            qrPending = true;
+            logger.warn('Whapi QR fetch deferred', {
+              channelId: managedChannel.channelId,
+              detail: error.detail,
+              error: error.message,
+              organizationId: orgId,
+              status: error.status,
+            });
           }
         } else {
-          qrPending = true;
-          logger.warn('Whapi QR fetch deferred', {
-            channelId: managedChannel.channelId,
-            detail: error.detail,
-            error: error.message,
-            organizationId: orgId,
-            status: error.status,
-          });
+          throw error;
         }
-      } else {
-        throw error;
       }
-    }
 
-    logger.info('Whapi QR connect prepared', {
-      channelId: managedChannel.channelId,
-      organizationId: orgId,
-      qrPending,
-    });
+      logger.info('Whapi QR connect prepared', {
+        channelId: managedChannel.channelId,
+        organizationId: orgId,
+        qrPending,
+      });
 
-    if (qrPending) {
-      return NextResponse.json(
-        {
-          channelId: managedChannel.channelId,
-          error: 'whapi_channel_initializing',
-          pending: true,
-          retryAfterSeconds: 90,
-          webhookReady,
-          webhookUrl,
-        },
-        { status: 202 },
-      );
-    }
+      if (qrPending) {
+        return NextResponse.json(
+          {
+            channelId: managedChannel.channelId,
+            error: 'whapi_channel_initializing',
+            pending: true,
+            retryAfterSeconds: 90,
+            webhookReady,
+            webhookUrl,
+          },
+          { status: 202 },
+        );
+      }
 
-    return NextResponse.json({
-      channelId: managedChannel.channelId,
-      qrDataUrl,
-      webhookReady,
-      webhookUrl,
+      return NextResponse.json({
+        channelId: managedChannel.channelId,
+        qrDataUrl,
+        webhookReady,
+        webhookUrl,
+      });
     });
   } catch (error) {
     logger.warn('Whapi QR connect failed', {
