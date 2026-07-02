@@ -341,7 +341,7 @@ const callWhapiPartnerChannelAction = async (params: {
   channelId: string;
   errorMessage: string;
   method: 'PATCH' | 'POST';
-  pathSuffix: 'extend' | 'mode';
+  pathSuffix: 'extend' | 'mode' | 'restart';
 }) => {
   if (!Env.WHAPI_PARTNER_API_TOKEN) {
     throw new WhapiConnectError('whapi_partner_credentials_missing');
@@ -365,6 +365,38 @@ const callWhapiPartnerChannelAction = async (params: {
       status: response.status,
     });
   }
+};
+
+export const checkWhapiManagedChannelExists = async (params: {
+  channelId: string;
+}) => {
+  if (!Env.WHAPI_PARTNER_API_TOKEN) {
+    throw new WhapiConnectError('whapi_partner_credentials_missing');
+  }
+
+  const url = buildWhapiManagerUrl(`/channels/${encodeURIComponent(params.channelId)}`);
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${Env.WHAPI_PARTNER_API_TOKEN}`,
+      accept: 'application/json',
+    },
+    method: 'GET',
+  });
+
+  if (response.ok) {
+    return true;
+  }
+
+  const responseText = await response.text().catch(() => '');
+
+  if (response.status === 404) {
+    return false;
+  }
+
+  throw new WhapiConnectError('whapi_channel_lookup_failed', {
+    detail: sanitizeErrorDetail(responseText || 'empty_response'),
+    status: response.status,
+  });
 };
 
 export const changeWhapiManagedChannelMode = async (params: {
@@ -398,6 +430,18 @@ export const extendWhapiManagedChannel = async (params: {
     errorMessage: 'whapi_channel_extend_failed',
     method: 'POST',
     pathSuffix: 'extend',
+  });
+};
+
+export const restartWhapiManagedChannel = async (params: {
+  channelId: string;
+}) => {
+  await callWhapiPartnerChannelAction({
+    body: {},
+    channelId: params.channelId,
+    errorMessage: 'whapi_channel_restart_failed',
+    method: 'POST',
+    pathSuffix: 'restart',
   });
 };
 

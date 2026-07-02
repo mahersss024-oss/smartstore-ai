@@ -3,11 +3,13 @@ import { Env } from './Env';
 import {
   activateWhapiManagedChannel,
   changeWhapiManagedChannelMode,
+  checkWhapiManagedChannelExists,
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
   extendWhapiManagedChannel,
   fetchWhapiQrCodeDataUrl,
   parseWhapiManagedChannel,
+  restartWhapiManagedChannel,
   WhapiConnectError,
 } from './WhapiConnect';
 
@@ -275,6 +277,41 @@ describe('WhapiConnect', () => {
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/extend');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       body: JSON.stringify({ comment: '[test]', days: 30 }),
+      method: 'POST',
+    });
+  });
+
+  it('checks whether a managed channel still exists through the partner API', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response('missing', { status: 404 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(checkWhapiManagedChannelExists({ channelId: 'GAMORA-8BDZS' }))
+      .resolves
+      .toBe(true);
+    await expect(checkWhapiManagedChannelExists({ channelId: 'MISSING-1' }))
+      .resolves
+      .toBe(false);
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS');
+    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://manager.whapi.test/channels/MISSING-1');
+  });
+
+  it('restarts a managed channel before QR retrieval', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(restartWhapiManagedChannel({ channelId: 'GAMORA-8BDZS' }))
+      .resolves
+      .toBeUndefined();
+
+    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://manager.whapi.test/channels/GAMORA-8BDZS/restart');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({}),
       method: 'POST',
     });
   });

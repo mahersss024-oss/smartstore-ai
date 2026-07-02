@@ -14,10 +14,12 @@ import {
 } from '@/libs/PlatformAIProviderConfig';
 import {
   activateWhapiManagedChannel,
+  checkWhapiManagedChannelExists,
   configureWhapiChannelWebhook,
   createWhapiManagedChannel,
   fetchWhapiQrCodeDataUrl,
   isWhapiManagedConnectConfigured,
+  restartWhapiManagedChannel,
   WhapiConnectError,
 } from '@/libs/WhapiConnect';
 import {
@@ -156,6 +158,35 @@ export const POST = async () => {
         }
       };
 
+      const checkChannelExists = async (channelId: string) => {
+        try {
+          return await checkWhapiManagedChannelExists({ channelId });
+        } catch (error) {
+          logger.warn('Whapi channel existence check deferred', {
+            channelId,
+            detail: error instanceof WhapiConnectError ? error.detail : undefined,
+            error: error instanceof Error ? error.message : 'unknown_error',
+            organizationId: orgId,
+            status: error instanceof WhapiConnectError ? error.status : undefined,
+          });
+          return true;
+        }
+      };
+
+      const restartChannelForQr = async (channelId: string) => {
+        try {
+          await restartWhapiManagedChannel({ channelId });
+        } catch (error) {
+          logger.warn('Whapi channel restart deferred', {
+            channelId,
+            detail: error instanceof WhapiConnectError ? error.detail : undefined,
+            error: error instanceof Error ? error.message : 'unknown_error',
+            organizationId: orgId,
+            status: error instanceof WhapiConnectError ? error.status : undefined,
+          });
+        }
+      };
+
       if (!nextManagedChannelActivatedAt) {
         await activateChannelForQr(managedChannel.channelId);
         nextManagedChannelActivatedAt = new Date().toISOString();
@@ -183,7 +214,12 @@ export const POST = async () => {
       try {
         await configureWebhook();
       } catch (error) {
-        if (isUsingExistingChannel && error instanceof WhapiConnectError && error.status === 404) {
+        const shouldReplaceMissingChannel = isUsingExistingChannel
+          && error instanceof WhapiConnectError
+          && error.status === 404
+          && !(await checkChannelExists(managedChannel.channelId));
+
+        if (shouldReplaceMissingChannel) {
           logger.warn('Whapi saved channel missing; creating replacement channel', {
             channelId: managedChannel.channelId,
             detail: error.detail,
@@ -325,6 +361,7 @@ export const POST = async () => {
       };
 
       await persistManagedChannel();
+      await restartChannelForQr(managedChannel.channelId);
 
       let qrDataUrl = '';
       let qrPending = false;
@@ -335,7 +372,10 @@ export const POST = async () => {
         });
       } catch (error) {
         if (error instanceof WhapiConnectError && error.status === 404) {
-          if (isUsingExistingChannel) {
+          const shouldReplaceMissingChannel = isUsingExistingChannel
+            && !(await checkChannelExists(managedChannel.channelId));
+
+          if (shouldReplaceMissingChannel) {
             logger.warn('Whapi saved channel missing during QR fetch; creating replacement channel', {
               channelId: managedChannel.channelId,
               detail: error.detail,
@@ -363,6 +403,7 @@ export const POST = async () => {
             }
 
             await persistManagedChannel();
+            await restartChannelForQr(managedChannel.channelId);
             try {
               qrDataUrl = await fetchWhapiQrCodeDataUrl({
                 apiToken: managedChannel.apiToken,

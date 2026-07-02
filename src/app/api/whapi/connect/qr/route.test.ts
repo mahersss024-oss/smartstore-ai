@@ -5,6 +5,7 @@ import { WhapiConnectError } from '@/libs/WhapiConnect';
 const mocks = vi.hoisted(() => ({
   activateWhapiManagedChannel: vi.fn(),
   auth: vi.fn(),
+  checkWhapiManagedChannelExists: vi.fn(),
   configureWhapiChannelWebhook: vi.fn(),
   createWhapiManagedChannel: vi.fn(),
   decryptSecret: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   isWhapiManagedConnectConfigured: vi.fn(),
   maskApiKey: vi.fn(),
+  restartWhapiManagedChannel: vi.fn(),
   transaction: vi.fn(),
   warn: vi.fn(),
 }));
@@ -47,10 +49,12 @@ vi.mock('@/libs/WhapiConnect', async (importOriginal) => {
   return {
     ...actual,
     activateWhapiManagedChannel: mocks.activateWhapiManagedChannel,
+    checkWhapiManagedChannelExists: mocks.checkWhapiManagedChannelExists,
     configureWhapiChannelWebhook: mocks.configureWhapiChannelWebhook,
     createWhapiManagedChannel: mocks.createWhapiManagedChannel,
     fetchWhapiQrCodeDataUrl: mocks.fetchWhapiQrCodeDataUrl,
     isWhapiManagedConnectConfigured: mocks.isWhapiManagedConnectConfigured,
+    restartWhapiManagedChannel: mocks.restartWhapiManagedChannel,
   };
 });
 
@@ -138,8 +142,10 @@ describe('Whapi QR connect route', () => {
       displayPhoneNumber: '+966500000001',
     });
     mocks.activateWhapiManagedChannel.mockResolvedValue(undefined);
+    mocks.checkWhapiManagedChannelExists.mockResolvedValue(true);
     mocks.configureWhapiChannelWebhook.mockResolvedValue(undefined);
     mocks.fetchWhapiQrCodeDataUrl.mockResolvedValue('data:image/png;base64,QR');
+    mocks.restartWhapiManagedChannel.mockResolvedValue(undefined);
     mocks.encryptSecret.mockReturnValue('encrypted_channel_token');
     mocks.decryptSecret.mockReturnValue('channel_token');
     mocks.maskApiKey.mockReturnValue('chann...oken');
@@ -330,6 +336,7 @@ describe('Whapi QR connect route', () => {
       },
     });
     mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.checkWhapiManagedChannelExists.mockResolvedValueOnce(false);
     mocks.configureWhapiChannelWebhook
       .mockRejectedValueOnce(new WhapiConnectError('whapi_webhook_configure_failed', {
         detail: '{"error":"Channel not found"}',
@@ -412,6 +419,7 @@ describe('Whapi QR connect route', () => {
       },
     });
     mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.checkWhapiManagedChannelExists.mockResolvedValueOnce(false);
     mocks.createWhapiManagedChannel.mockResolvedValueOnce({
       apiToken: 'replacement_token',
       channelId: 'replacement_channel',
@@ -470,6 +478,7 @@ describe('Whapi QR connect route', () => {
       },
     });
     mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.checkWhapiManagedChannelExists.mockResolvedValueOnce(false);
     mocks.configureWhapiChannelWebhook
       .mockRejectedValueOnce(new WhapiConnectError('whapi_webhook_configure_failed', {
         detail: '{"error":"Channel not found"}',
@@ -520,6 +529,7 @@ describe('Whapi QR connect route', () => {
       },
     });
     mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.checkWhapiManagedChannelExists.mockResolvedValueOnce(false);
     mocks.fetchWhapiQrCodeDataUrl
       .mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
         detail: '{"error":"Channel not found"}',
@@ -584,6 +594,7 @@ describe('Whapi QR connect route', () => {
       },
     });
     mocks.decryptSecret.mockReturnValue('deleted_token');
+    mocks.checkWhapiManagedChannelExists.mockResolvedValueOnce(false);
     mocks.fetchWhapiQrCodeDataUrl
       .mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
         detail: '{"error":"Channel not found"}',
@@ -609,6 +620,47 @@ describe('Whapi QR connect route', () => {
       channelId: 'channel_123',
       status: 404,
     }));
+  });
+
+  it('does not replace an existing Whapi channel when QR is not ready yet', async () => {
+    await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'existing_channel',
+          encryptedApiToken: 'encrypted_existing_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('existing_token');
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '{"error":"Channel not found"}',
+      status: 404,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload).toMatchObject({
+      channelId: 'existing_channel',
+      error: 'whapi_channel_initializing',
+      pending: true,
+    });
+    expect(mocks.checkWhapiManagedChannelExists).toHaveBeenCalledWith({
+      channelId: 'existing_channel',
+    });
+    expect(mocks.createWhapiManagedChannel).not.toHaveBeenCalled();
   });
 
   it('returns a pending QR response when Whapi is still initializing the channel', async () => {
