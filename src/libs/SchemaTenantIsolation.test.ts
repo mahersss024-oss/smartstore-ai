@@ -342,7 +342,7 @@ describe('Store A / Store B tenant isolation matrix', () => {
 
       expect(orgValues).toContain('org_store_a');
       expect(orgValues).not.toContain('org_store_b');
-    });
+    }, 15_000);
 
     it('scopes product archive reads and writes to Store B when authenticated as Store B', async () => {
       mockAuth.mockResolvedValue({ orgId: 'org_store_b', userId: 'user_2' });

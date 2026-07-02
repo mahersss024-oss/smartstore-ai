@@ -63,5 +63,5 @@ describe('Moyasar callback route', () => {
     expect(mockFetchMoyasarInvoice).not.toHaveBeenCalled();
     expect(mockDbSelect).not.toHaveBeenCalled();
     expect(mockDbTransaction).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 });

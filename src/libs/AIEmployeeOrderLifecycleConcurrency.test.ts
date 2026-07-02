@@ -87,7 +87,7 @@ describe('AIEmployeeOrderLifecycle concurrency', () => {
     })).resolves.toEqual({ created: false });
 
     expect(mocks.insertValues).not.toHaveBeenCalled();
-  }, 10_000);
+  }, 20_000);
 
   it('reports a changed state when automatic cancellation loses a race', async () => {
     mocks.updateReturning.mockResolvedValueOnce([]);

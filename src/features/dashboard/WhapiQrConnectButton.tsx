@@ -135,13 +135,16 @@ export const WhapiQrConnectButton = (props: {
           </div>
           <button
             type="button"
-            onClick={() => router.refresh()}
+            onClick={handleStart}
+            disabled={isLoading}
             className="
               inline-flex min-h-10 items-center justify-center rounded-lg border
               px-4 py-2 text-sm font-semibold text-primary transition
               hover:bg-primary/10
+              disabled:cursor-wait disabled:opacity-65
             "
           >
+            {isLoading ? <RefreshCw className="me-2 size-4 animate-spin" /> : null}
             {props.refreshLabel}
           </button>
         </div>
