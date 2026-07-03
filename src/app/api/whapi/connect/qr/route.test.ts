@@ -728,6 +728,47 @@ describe('Whapi QR connect route', () => {
     }));
   });
 
+  it('preserves a newly-created channel when Whapi QR fetch is temporarily unavailable', async () => {
+    const { insertChains } = await prepareDb({
+      existingConnection: null,
+      lockedSettings: null,
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '{"error":"Service Temporary Unavailable Error"}',
+      status: 503,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      error: 'whapi_channel_initializing',
+      pending: true,
+      retryAfterSeconds: 90,
+    });
+    expect(insertChains[0]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'whatsapp',
+      config: expect.objectContaining({
+        channelId: 'channel_123',
+        encryptedApiToken: null,
+        provider: 'whapi',
+      }),
+      organizationId: 'org_1',
+    }));
+    expect(mocks.createWhapiManagedChannel).toHaveBeenCalledTimes(1);
+    expect(mocks.warn).toHaveBeenCalledWith('Whapi QR fetch deferred', expect.objectContaining({
+      channelId: 'channel_123',
+      status: 503,
+    }));
+  });
+
   it('fails safely when Whapi channel activation fails before QR can be prepared', async () => {
     const { tx } = await prepareDb({
       existingConnection: null,

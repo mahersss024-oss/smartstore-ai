@@ -43,6 +43,10 @@ type WhapiConnectionConfig = {
 
 const generateWebhookSecret = () => randomBytes(24).toString('hex');
 
+const isWhapiQrPendingError = (error: WhapiConnectError) => {
+  return [404, 429, 502, 503, 504].includes(error.status ?? 0);
+};
+
 const getOrigin = async () => {
   if (Env.NEXT_PUBLIC_APP_URL) {
     return Env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
@@ -386,8 +390,9 @@ export const POST = async () => {
           apiToken: managedChannel.apiToken,
         });
       } catch (error) {
-        if (error instanceof WhapiConnectError && error.status === 404) {
+        if (error instanceof WhapiConnectError && isWhapiQrPendingError(error)) {
           const shouldReplaceMissingChannel = isUsingExistingChannel
+            && error.status === 404
             && !(await checkChannelExists(managedChannel.channelId));
 
           if (shouldReplaceMissingChannel) {
@@ -424,7 +429,7 @@ export const POST = async () => {
                 apiToken: managedChannel.apiToken,
               });
             } catch (replacementQrError) {
-              if (replacementQrError instanceof WhapiConnectError && replacementQrError.status === 404) {
+              if (replacementQrError instanceof WhapiConnectError && isWhapiQrPendingError(replacementQrError)) {
                 qrPending = true;
                 logger.warn('Whapi replacement QR fetch deferred', {
                   channelId: managedChannel.channelId,
