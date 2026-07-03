@@ -3,7 +3,7 @@
 import { QrCode, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type WhapiQrResponse = {
   channelId?: string;
@@ -12,6 +12,18 @@ type WhapiQrResponse = {
   qrDataUrl?: string;
   retryAfterSeconds?: number;
   webhookUrl?: string;
+};
+
+const MAX_AUTO_RETRIES = 6;
+const DEFAULT_RETRY_DELAY_SECONDS = 12;
+const MAX_RETRY_DELAY_SECONDS = 30;
+
+const normalizeRetryDelaySeconds = (value?: number) => {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_RETRY_DELAY_SECONDS;
+  }
+
+  return Math.min(Math.max(Math.round(value ?? DEFAULT_RETRY_DELAY_SECONDS), 5), MAX_RETRY_DELAY_SECONDS);
 };
 
 export const WhapiQrConnectButton = (props: {
@@ -27,11 +39,12 @@ export const WhapiQrConnectButton = (props: {
   const [error, setError] = useState('');
   const [pendingMessage, setPendingMessage] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [retryDelaySeconds, setRetryDelaySeconds] = useState(0);
+  const [autoRetryCount, setAutoRetryCount] = useState(0);
 
-  const handleStart = async () => {
+  const requestQr = useCallback(async (isAutoRetry = false) => {
     setIsLoading(true);
     setError('');
-    setPendingMessage('');
 
     try {
       const response = await fetch('/api/whapi/connect/qr', {
@@ -43,22 +56,48 @@ export const WhapiQrConnectButton = (props: {
       if (response.status === 202 || data.pending) {
         setQrDataUrl('');
         setPendingMessage(props.pendingLabel);
+        setRetryDelaySeconds(normalizeRetryDelaySeconds(data.retryAfterSeconds));
+        setAutoRetryCount(current => isAutoRetry ? current + 1 : 0);
         router.refresh();
         return;
       }
 
       if (!response.ok || !data.qrDataUrl) {
+        setRetryDelaySeconds(0);
         setError(data.error || props.errorLabel);
         return;
       }
 
+      setPendingMessage('');
+      setRetryDelaySeconds(0);
+      setAutoRetryCount(0);
       setQrDataUrl(data.qrDataUrl);
       router.refresh();
     } catch {
+      setRetryDelaySeconds(0);
       setError(props.errorLabel);
     } finally {
       setIsLoading(false);
     }
+  }, [props.errorLabel, props.pendingLabel, router]);
+
+  useEffect(() => {
+    if (!pendingMessage || retryDelaySeconds <= 0 || autoRetryCount >= MAX_AUTO_RETRIES) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void requestQr(true);
+    }, retryDelaySeconds * 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [autoRetryCount, pendingMessage, requestQr, retryDelaySeconds]);
+
+  const handleStart = async () => {
+    setPendingMessage('');
+    setRetryDelaySeconds(0);
+    setAutoRetryCount(0);
+    await requestQr(false);
   };
 
   return (
@@ -114,6 +153,9 @@ export const WhapiQrConnectButton = (props: {
         "
         >
           {pendingMessage}
+          {retryDelaySeconds > 0 && autoRetryCount < MAX_AUTO_RETRIES
+            ? ` (${retryDelaySeconds}s)`
+            : null}
         </div>
       )}
 
