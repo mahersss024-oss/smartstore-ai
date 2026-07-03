@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Env } from './Env';
 import {
@@ -223,8 +224,45 @@ describe('WhapiConnect', () => {
     expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/settings');
   });
 
+  it('fetches the QR image through the Whapi login endpoint', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ qr: 'QR_BASE64' }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchWhapiQrCodeDataUrl({ apiToken: 'channel_token' }))
+      .resolves
+      .toBe('data:image/png;base64,QR_BASE64');
+
+    expect(fetchMock.mock.calls[0]?.[0].toString())
+      .toBe('https://gate.whapi.test/users/login?wakeup=true&width=320&height=320');
+  });
+
+  it('falls back to the Whapi QR image endpoint when login output is temporarily unavailable', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('temporary unavailable', { status: 503 }))
+      .mockResolvedValueOnce(new Response('PNG_BYTES', {
+        headers: { 'content-type': 'image/png' },
+        status: 200,
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchWhapiQrCodeDataUrl({ apiToken: 'channel_token' }))
+      .resolves
+      .toBe(`data:image/png;base64,${Buffer.from('PNG_BYTES').toString('base64')}`);
+
+    expect(fetchMock.mock.calls[0]?.[0].toString())
+      .toBe('https://gate.whapi.test/users/login?wakeup=true&width=320&height=320');
+    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://gate.whapi.test/users/login/image');
+  });
+
   it('reports safe details when QR image is not ready yet', async () => {
     const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{"error":"Channel not found"}', { status: 404 }))
       .mockResolvedValueOnce(new Response('{"error":"Channel not found"}', { status: 404 }));
 
     vi.stubGlobal('fetch', fetchMock);
@@ -232,12 +270,14 @@ describe('WhapiConnect', () => {
     await expect(fetchWhapiQrCodeDataUrl({ apiToken: 'channel_token' }))
       .rejects
       .toMatchObject({
-        detail: '{"error":"Channel not found"}',
+        detail: '/users/login:404:{"error":"Channel not found"} | /users/login/image:404:{"error":"Channel not found"}',
         message: 'whapi_qr_fetch_failed',
         status: 404,
       });
 
-    expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://gate.whapi.test/users/login/image');
+    expect(fetchMock.mock.calls[0]?.[0].toString())
+      .toBe('https://gate.whapi.test/users/login?wakeup=true&width=320&height=320');
+    expect(fetchMock.mock.calls[1]?.[0].toString()).toBe('https://gate.whapi.test/users/login/image');
   });
 
   it('changes a managed channel to live mode through the partner API', async () => {

@@ -508,24 +508,14 @@ export const configureWhapiChannelWebhook = async (params: {
   }
 };
 
-export const fetchWhapiQrCodeDataUrl = async (params: {
-  apiToken: string;
-}) => {
-  const response = await fetch(`${Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '')}/users/login/image`, {
-    headers: {
-      Authorization: `Bearer ${params.apiToken}`,
-    },
-    method: 'GET',
-  });
-  const contentType = response.headers.get('content-type') ?? '';
-  const buffer = Buffer.from(await response.arrayBuffer());
+const isRetryableWhapiQrFetchStatus = (status: number) =>
+  [404, 429, 502, 503, 504].includes(status);
 
-  if (!response.ok) {
-    throw new WhapiConnectError('whapi_qr_fetch_failed', {
-      detail: sanitizeErrorDetail(buffer.toString('utf8') || 'empty_response'),
-      status: response.status,
-    });
-  }
+const parseWhapiQrCodeDataUrl = (params: {
+  buffer: Buffer;
+  contentType: string;
+}) => {
+  const { buffer, contentType } = params;
 
   if (contentType.startsWith('image/')) {
     return `data:${contentType};base64,${buffer.toString('base64')}`;
@@ -551,4 +541,66 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
   }
 
   throw new WhapiConnectError('whapi_qr_response_missing_image');
+};
+
+export const fetchWhapiQrCodeDataUrl = async (params: {
+  apiToken: string;
+}) => {
+  const loginUrl = new URL(`${Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '')}/users/login`);
+  loginUrl.searchParams.set('wakeup', 'true');
+  loginUrl.searchParams.set('width', '320');
+  loginUrl.searchParams.set('height', '320');
+
+  const loginResponse = await fetch(loginUrl.toString(), {
+    headers: {
+      Authorization: `Bearer ${params.apiToken}`,
+    },
+    method: 'GET',
+  });
+  const loginContentType = loginResponse.headers.get('content-type') ?? '';
+  const loginBuffer = Buffer.from(await loginResponse.arrayBuffer());
+
+  if (loginResponse.ok) {
+    try {
+      return parseWhapiQrCodeDataUrl({
+        buffer: loginBuffer,
+        contentType: loginContentType,
+      });
+    } catch (error) {
+      if (!(error instanceof WhapiConnectError)) {
+        throw error;
+      }
+    }
+  } else if (!isRetryableWhapiQrFetchStatus(loginResponse.status)) {
+    throw new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: sanitizeErrorDetail(loginBuffer.toString('utf8') || 'empty_response'),
+      status: loginResponse.status,
+    });
+  }
+
+  const imageResponse = await fetch(`${Env.WHAPI_GATE_API_BASE.replace(/\/+$/, '')}/users/login/image`, {
+    headers: {
+      Authorization: `Bearer ${params.apiToken}`,
+    },
+    method: 'GET',
+  });
+  const imageContentType = imageResponse.headers.get('content-type') ?? '';
+  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+  if (!imageResponse.ok) {
+    const loginDetail = loginResponse.ok
+      ? `login_response_unparseable:${loginContentType || 'unknown_content_type'}`
+      : `/users/login:${loginResponse.status}:${loginBuffer.toString('utf8') || 'empty_response'}`;
+    const imageDetail = `/users/login/image:${imageResponse.status}:${imageBuffer.toString('utf8') || 'empty_response'}`;
+
+    throw new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: sanitizeErrorDetail(`${loginDetail} | ${imageDetail}`),
+      status: imageResponse.status,
+    });
+  }
+
+  return parseWhapiQrCodeDataUrl({
+    buffer: imageBuffer,
+    contentType: imageContentType,
+  });
 };
