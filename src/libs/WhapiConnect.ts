@@ -83,9 +83,12 @@ export const parseWhapiManagedChannel = (payload: unknown): WhapiManagedChannel 
 
 const sanitizeErrorDetail = (responseText: string) => {
   const token = Env.WHAPI_PARTNER_API_TOKEN;
-  const redacted = token
+  const partnerRedacted = token
     ? responseText.replaceAll(token, '[redacted]')
     : responseText;
+  const redacted = partnerRedacted
+    .replace(/Bearer\s+[\w.~+/=-]{16,}/gi, 'Bearer [redacted]')
+    .replace(/\beyJ[\w-]{20,}\.[\w-]{20,}\.[\w-]{20,}\b/g, '[redacted-jwt]');
 
   return redacted.slice(0, 1200);
 };

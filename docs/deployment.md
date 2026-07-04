@@ -32,7 +32,7 @@ stay in Render and must not be committed.
 - `WHAPI_PROJECT_ID`
 - `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
 - `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
-- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=30`
+- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=5` (increase only when Whapi partner day balance is sufficient)
 - `MAINTENANCE_SECRET`
 
 Optional variables:

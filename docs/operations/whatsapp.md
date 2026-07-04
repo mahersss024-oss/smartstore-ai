@@ -14,7 +14,7 @@ Use this checklist for each merchant store before enabling WhatsApp traffic.
    - `WHAPI_PROJECT_ID`
    - `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
    - `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
-   - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=30`
+   - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=5` (or any value that is covered by the available Whapi partner day balance)
 2. In the store dashboard, open Settings -> WhatsApp.
 3. Click **Show QR**.
 4. The platform creates or reuses the store's Whapi channel, switches it to live
@@ -46,7 +46,7 @@ Platform-level WhatsApp environment values:
 - `WHAPI_PROJECT_ID`: Whapi project id used for managed channels.
 - `WHAPI_PARTNER_API_BASE`: defaults to `https://manager.whapi.cloud`.
 - `WHAPI_GATE_API_BASE`: defaults to `https://gate.whapi.cloud`.
-- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS`: defaults to `30`.
+- `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS`: defaults to `5`; raise it only when the Whapi partner balance can cover the requested days for each new channel.
 
 Optional, for durable async AI worker mode:
 

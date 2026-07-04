@@ -61,7 +61,7 @@ export const Env = createEnv({
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     WHAPI_GATE_API_BASE: z.url().default('https://gate.whapi.cloud'),
-    WHAPI_MANAGED_CHANNEL_EXTEND_DAYS: z.coerce.number().int().min(0).max(365).default(30),
+    WHAPI_MANAGED_CHANNEL_EXTEND_DAYS: z.coerce.number().int().min(0).max(365).default(5),
     WHAPI_PARTNER_API_BASE: z.url().default('https://manager.whapi.cloud'),
     WHAPI_PARTNER_API_TOKEN: z.string().optional(),
     WHAPI_PROJECT_ID: z.string().optional(),

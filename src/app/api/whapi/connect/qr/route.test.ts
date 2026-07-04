@@ -245,7 +245,7 @@ describe('Whapi QR connect route', () => {
   });
 
   it('continues to QR when Whapi channel day extension is temporarily unavailable', async () => {
-    await prepareDb({
+    const { insertChains, updateChain } = await prepareDb({
       existingConnection: null,
       lockedSettings: {
         metadata: {},
@@ -280,6 +280,20 @@ describe('Whapi QR connect route', () => {
     });
     expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenCalledWith({
       apiToken: 'channel_token',
+    });
+    expect(insertChains[0]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      config: expect.objectContaining({
+        managedChannelActivatedAt: null,
+      }),
+    }));
+    expect(updateChain.set).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        channelIntegrations: expect.objectContaining({
+          whatsapp: expect.objectContaining({
+            managedChannelActivatedAt: null,
+          }),
+        }),
+      }),
     });
   });
 
@@ -332,6 +346,7 @@ describe('Whapi QR connect route', () => {
         config: {
           channelId: 'ready_channel',
           encryptedApiToken: 'encrypted_ready_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
           provider: 'whapi',
           webhookReady: true,
           webhookSecret: 'saved_secret',

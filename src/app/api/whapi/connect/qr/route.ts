@@ -165,6 +165,7 @@ export const POST = async () => {
       const activateChannelForQr = async (channelId: string) => {
         try {
           await activateWhapiManagedChannel({ channelId });
+          return true;
         } catch (error) {
           if (error instanceof WhapiConnectError && error.message === 'whapi_channel_extend_failed') {
             logger.warn('Whapi channel extension deferred', {
@@ -174,7 +175,7 @@ export const POST = async () => {
               organizationId: orgId,
               status: error.status,
             });
-            return;
+            return false;
           }
 
           throw error;
@@ -211,10 +212,11 @@ export const POST = async () => {
       };
 
       if (!nextManagedChannelActivatedAt) {
-        if (!isUsingExistingChannel) {
-          await activateChannelForQr(managedChannel.channelId);
+        const activationCompleted = await activateChannelForQr(managedChannel.channelId);
+
+        if (activationCompleted) {
+          nextManagedChannelActivatedAt = new Date().toISOString();
         }
-        nextManagedChannelActivatedAt = new Date().toISOString();
       }
 
       const webhookSecret = existingConfig.webhookSecret?.trim() || generateWebhookSecret();
@@ -257,8 +259,8 @@ export const POST = async () => {
             });
             managedChannel = await createManagedChannel();
             hasReplacedManagedChannel = true;
-            await activateChannelForQr(managedChannel.channelId);
-            nextManagedChannelActivatedAt = new Date().toISOString();
+            const activationCompleted = await activateChannelForQr(managedChannel.channelId);
+            nextManagedChannelActivatedAt = activationCompleted ? new Date().toISOString() : null;
             webhookReady = false;
             webhookUrl = buildWebhookUrl(managedChannel.channelId);
             try {
@@ -415,8 +417,8 @@ export const POST = async () => {
             });
             managedChannel = await createManagedChannel();
             hasReplacedManagedChannel = true;
-            await activateChannelForQr(managedChannel.channelId);
-            nextManagedChannelActivatedAt = new Date().toISOString();
+            const activationCompleted = await activateChannelForQr(managedChannel.channelId);
+            nextManagedChannelActivatedAt = activationCompleted ? new Date().toISOString() : null;
             webhookReady = false;
             webhookUrl = buildWebhookUrl(managedChannel.channelId);
 

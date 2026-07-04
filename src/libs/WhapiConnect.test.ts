@@ -178,6 +178,32 @@ describe('WhapiConnect', () => {
       });
   });
 
+  it('redacts Whapi tokens from failed request details', async () => {
+    const exposedJwt = 'eyJabcdefghijklmnopqrstuvwxyz.eyJabcdefghijklmnopqrstuvwxyz.signatureabcdefghijklmnopqrstuvwxyz';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(`missing Bearer ${exposedJwt} partner_token`, { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response('missing channel', { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        projects: [{ id: 'project_123' }],
+      }), { status: 200 }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      await createWhapiManagedChannel({ name: 'Store Channel' });
+      throw new Error('expected createWhapiManagedChannel to fail');
+    } catch (error) {
+      expect(error).toMatchObject({
+        message: 'whapi_channel_create_failed',
+      });
+      expect((error as WhapiConnectError).detail).not.toContain('partner_token');
+      expect((error as WhapiConnectError).detail).not.toContain(exposedJwt);
+      expect((error as WhapiConnectError).detail).toContain('Bearer [redacted]');
+    }
+  });
+
   it('reports available project ids when the configured project id is wrong', async () => {
     Object.assign(Env, {
       WHAPI_PROJECT_ID: 'wrong_project',

@@ -689,7 +689,7 @@
     "whapi_qr_connect_description": "La plateforme cree ou reutilise le canal Whapi de ce magasin, configure le webhook automatiquement, puis affiche le QR code. Le marchand ne saisit aucun jeton ni parametre technique.",
     "whapi_qr_connect_button": "Afficher le QR",
     "whapi_qr_connect_error": "Impossible de preparer la connexion QR Whapi. Verifiez les cles Whapi de la plateforme puis reessayez.",
-    "whapi_qr_connect_pending": "Le canal Whapi a ete cree et son initialisation est en cours. Attendez environ une minute, puis cliquez de nouveau sur Afficher le QR.",
+    "whapi_qr_connect_pending": "Le canal Whapi a ete cree et son initialisation est en cours. La plateforme reessaiera automatiquement jusqu'a ce que le QR soit pret.",
     "whapi_qr_connect_refresh": "Actualiser apres scan",
     "whatsapp_prepared_mappings": "Mappages pr?ts : t?l?phone client, fil de conversation, source de commande, route de notification.",
     "whatsapp_webhook_ready": "Architecture webhook pr?te pour activer un fournisseur sans changer la logique de commande.",
