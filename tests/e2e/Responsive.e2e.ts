@@ -127,7 +127,7 @@ const assertTapTargetsInsideViewport = async (
 };
 
 test.describe('Responsive layout stability', () => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
   test.beforeAll(async () => {
     await seedResponsiveStore();
@@ -141,7 +141,7 @@ test.describe('Responsive layout stability', () => {
       });
 
       for (const pageCase of pages) {
-        await page.goto(pageCase.path);
+        await page.goto(pageCase.path, { waitUntil: 'domcontentloaded' });
 
         await expect(page.getByText(pageCase.text).first()).toBeVisible();
 

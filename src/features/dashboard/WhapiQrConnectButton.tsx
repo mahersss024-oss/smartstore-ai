@@ -28,7 +28,7 @@ const normalizeRetryDelaySeconds = (value?: number) => {
 
 export const WhapiQrConnectButton = (props: {
   buttonLabel: string;
-  description: string;
+  description?: string;
   errorLabel: string;
   pendingLabel: string;
   refreshLabel: string;
@@ -111,9 +111,11 @@ export const WhapiQrConnectButton = (props: {
           <div className="text-sm font-semibold">
             {props.title}
           </div>
-          <p className="mt-1 text-xs/6 text-muted-foreground">
-            {props.description}
-          </p>
+          {props.description && (
+            <p className="mt-1 text-xs/6 text-muted-foreground">
+              {props.description}
+            </p>
+          )}
         </div>
         <button
           type="button"

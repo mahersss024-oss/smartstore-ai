@@ -430,7 +430,6 @@ export default async function SettingsPage(props: {
     <>
       <TitleBar
         title={t('title_bar')}
-        description={t('title_bar_description')}
       />
 
       {limitWarning && (
@@ -574,16 +573,10 @@ export default async function SettingsPage(props: {
             placeholder={t('store_logo_placeholder')}
             className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
           />
-          <p className="text-xs text-muted-foreground">
-            {t('store_logo_hint')}
-          </p>
         </div>
 
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold">{t('store_theme')}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('store_theme_hint')}
-          </p>
           <div className="
             mt-4 grid gap-4
             md:grid-cols-3
@@ -657,9 +650,6 @@ export default async function SettingsPage(props: {
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground">
-            {t('business_type_hint')}
-          </p>
         </div>
 
         <div className="grid gap-2">
@@ -747,9 +737,6 @@ export default async function SettingsPage(props: {
                 <h4 className="text-sm font-bold text-emerald-950">
                   {t('whatsapp_readiness_title')}
                 </h4>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t('whatsapp_readiness_hint')}
-                </p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="
@@ -789,7 +776,6 @@ export default async function SettingsPage(props: {
               <div className="md:col-span-2">
                 <WhapiQrConnectButton
                   title={t('whapi_qr_connect_title')}
-                  description={t('whapi_qr_connect_description')}
                   buttonLabel={t('whapi_qr_connect_button')}
                   errorLabel={t('whapi_qr_connect_error')}
                   pendingLabel={t('whapi_qr_connect_pending')}
@@ -829,9 +815,6 @@ export default async function SettingsPage(props: {
                   placeholder={whapiApiTokenPreview || '********************************'}
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t('whapi_api_token_hint')}
-                </p>
               </div>
 
               <div className="grid gap-2">
@@ -866,9 +849,6 @@ export default async function SettingsPage(props: {
                   placeholder={t('whapi_webhook_secret_placeholder')}
                   className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t('whapi_webhook_secret_hint')}
-                </p>
               </div>
             </div>
 
@@ -924,11 +904,6 @@ export default async function SettingsPage(props: {
                 lg:grid-cols-[minmax(0,1fr)_auto]
               "
               >
-                <div className="grid gap-2 text-sm text-muted-foreground">
-                  <div>{t('whatsapp_prepared_mappings')}</div>
-                  <div>{t('whatsapp_webhook_ready')}</div>
-                </div>
-
                 <div className="
                   grid justify-items-center gap-2 rounded-xl border bg-white p-3
                   text-center text-slate-900 shadow-sm
@@ -1045,9 +1020,6 @@ export default async function SettingsPage(props: {
                       w-full dashboard-pill rounded-lg border px-3 py-2 text-sm
                     "
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t('smart_entry_link_hint')}
-                  </p>
                 </div>
 
                 <div className="
@@ -1106,9 +1078,6 @@ export default async function SettingsPage(props: {
               <div className="grid gap-3">
                 <div>
                   <h4 className="text-sm font-bold">{t('qr_control_panel')}</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t('qr_control_panel_hint')}
-                  </p>
                 </div>
                 <div className="
                   grid gap-3
@@ -1131,13 +1100,6 @@ export default async function SettingsPage(props: {
                       >
                         <div className="min-w-0">
                           <div className="text-sm font-bold">{t(card.labelKey)}</div>
-                          <div className="
-                            mt-1 max-w-full text-xs break-all text-slate-500
-                            sm:max-w-44
-                          "
-                          >
-                            {card.link}
-                          </div>
                         </div>
                         {/* eslint-disable-next-line next/no-img-element -- Inline SVG data URI generated server-side for QR control panel. */}
                         <img
@@ -1195,9 +1157,6 @@ export default async function SettingsPage(props: {
 
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold">{t('store_location')}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('store_location_hint')}
-          </p>
           <div className="
             mt-4 grid gap-4
             md:grid-cols-2
@@ -1329,9 +1288,6 @@ export default async function SettingsPage(props: {
 
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold">{t('knowledge_base')}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('knowledge_base_hint')}
-          </p>
 
           <div className="mt-4 grid gap-4">
             <div className="
@@ -1509,9 +1465,6 @@ export default async function SettingsPage(props: {
 
         <section>
           <h3 className="text-lg font-semibold">{paymentsT('delivery_methods')}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {paymentsT(`${selectedBusinessType}_delivery_hint`)}
-          </p>
           <div className="mt-4 grid gap-4">
             {deliveryOptions.map((option) => {
               const method = getDeliveryMethod(option);

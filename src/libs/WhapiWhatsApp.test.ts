@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getWhapiManagedChannel: vi.fn(),
@@ -36,6 +36,12 @@ const mockConnectionRows = (rows: unknown[]) => {
 };
 
 describe('WhapiWhatsApp', () => {
+  let whapiModule: typeof import('./WhapiWhatsApp');
+
+  beforeAll(async () => {
+    whapiModule = await import('./WhapiWhatsApp');
+  }, 15000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
@@ -47,7 +53,7 @@ describe('WhapiWhatsApp', () => {
   });
 
   it('parses an inbound text message from a Whapi-style payload', async () => {
-    const { parseWhapiWebhookPayload } = await import('./WhapiWhatsApp');
+    const { parseWhapiWebhookPayload } = whapiModule;
 
     expect(parseWhapiWebhookPayload({
       channel_id: 'channel_1',
@@ -67,7 +73,7 @@ describe('WhapiWhatsApp', () => {
   });
 
   it('uses the URL channel fallback and skips outgoing echoes', async () => {
-    const { parseWhapiWebhookPayload } = await import('./WhapiWhatsApp');
+    const { parseWhapiWebhookPayload } = whapiModule;
 
     expect(parseWhapiWebhookPayload({
       message: {
@@ -109,7 +115,7 @@ describe('WhapiWhatsApp', () => {
       { status: 200 },
     ));
     vi.stubGlobal('fetch', fetchMock);
-    const { sendWhapiConversationTextMessage } = await import('./WhapiWhatsApp');
+    const { sendWhapiConversationTextMessage } = whapiModule;
 
     const result = await sendWhapiConversationTextMessage({
       body: 'جاهز',
@@ -143,7 +149,7 @@ describe('WhapiWhatsApp', () => {
       isActive: true,
       organizationId: 'org_1',
     }]);
-    const { findWhapiStoreConnection } = await import('./WhapiWhatsApp');
+    const { findWhapiStoreConnection } = whapiModule;
 
     await expect(findWhapiStoreConnection({
       channelId: 'channel_1',
