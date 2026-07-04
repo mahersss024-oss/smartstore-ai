@@ -38,6 +38,7 @@ type WhapiConnectionConfig = {
   displayPhoneNumber?: null | string;
   managedChannelActivatedAt?: null | string;
   provider?: null | string;
+  webhookReady?: boolean | null;
   webhookSecret?: null | string;
 };
 
@@ -210,7 +211,9 @@ export const POST = async () => {
       };
 
       if (!nextManagedChannelActivatedAt) {
-        await activateChannelForQr(managedChannel.channelId);
+        if (!isUsingExistingChannel) {
+          await activateChannelForQr(managedChannel.channelId);
+        }
         nextManagedChannelActivatedAt = new Date().toISOString();
       }
 
@@ -223,7 +226,7 @@ export const POST = async () => {
       };
       let webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
-      let webhookReady = false;
+      let webhookReady = existingConfig.webhookReady === true && existingConfig.channelId === managedChannel.channelId;
 
       const configureWebhook = async () => {
         await configureWhapiChannelWebhook({
@@ -233,46 +236,51 @@ export const POST = async () => {
         webhookReady = true;
       };
 
-      try {
-        await configureWebhook();
-      } catch (error) {
-        const shouldReplaceMissingChannel = isUsingExistingChannel
-          && error instanceof WhapiConnectError
-          && error.status === 404
-          && !(await checkChannelExists(managedChannel.channelId));
+      const shouldConfigureWebhook = !webhookReady || !isUsingExistingChannel || hasReplacedManagedChannel;
 
-        if (shouldReplaceMissingChannel) {
-          logger.warn('Whapi saved channel missing; creating replacement channel', {
-            channelId: managedChannel.channelId,
-            detail: error.detail,
-            error: error.message,
-            organizationId: orgId,
-            status: error.status,
-          });
-          managedChannel = await createManagedChannel();
-          hasReplacedManagedChannel = true;
-          await activateChannelForQr(managedChannel.channelId);
-          nextManagedChannelActivatedAt = new Date().toISOString();
-          webhookUrl = buildWebhookUrl(managedChannel.channelId);
-          try {
-            await configureWebhook();
-          } catch (replacementError) {
+      if (shouldConfigureWebhook) {
+        try {
+          await configureWebhook();
+        } catch (error) {
+          const shouldReplaceMissingChannel = isUsingExistingChannel
+            && error instanceof WhapiConnectError
+            && error.status === 404
+            && !(await checkChannelExists(managedChannel.channelId));
+
+          if (shouldReplaceMissingChannel) {
+            logger.warn('Whapi saved channel missing; creating replacement channel', {
+              channelId: managedChannel.channelId,
+              detail: error.detail,
+              error: error.message,
+              organizationId: orgId,
+              status: error.status,
+            });
+            managedChannel = await createManagedChannel();
+            hasReplacedManagedChannel = true;
+            await activateChannelForQr(managedChannel.channelId);
+            nextManagedChannelActivatedAt = new Date().toISOString();
+            webhookReady = false;
+            webhookUrl = buildWebhookUrl(managedChannel.channelId);
+            try {
+              await configureWebhook();
+            } catch (replacementError) {
+              logger.warn('Whapi webhook configure deferred', {
+                channelId: managedChannel.channelId,
+                detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
+                error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+                organizationId: orgId,
+                status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+              });
+            }
+          } else {
             logger.warn('Whapi webhook configure deferred', {
               channelId: managedChannel.channelId,
-              detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
-              error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
+              detail: error instanceof WhapiConnectError ? error.detail : undefined,
+              error: error instanceof Error ? error.message : 'unknown_error',
               organizationId: orgId,
-              status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
+              status: error instanceof WhapiConnectError ? error.status : undefined,
             });
           }
-        } else {
-          logger.warn('Whapi webhook configure deferred', {
-            channelId: managedChannel.channelId,
-            detail: error instanceof WhapiConnectError ? error.detail : undefined,
-            error: error instanceof Error ? error.message : 'unknown_error',
-            organizationId: orgId,
-            status: error instanceof WhapiConnectError ? error.status : undefined,
-          });
         }
       }
 

@@ -326,6 +326,43 @@ describe('Whapi QR connect route', () => {
     });
   });
 
+  it('fetches QR for an existing ready Whapi channel without reactivating or reconfiguring it', async () => {
+    await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'ready_channel',
+          encryptedApiToken: 'encrypted_ready_token',
+          provider: 'whapi',
+          webhookReady: true,
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('ready_token');
+    mocks.getWhapiManagedChannel.mockResolvedValueOnce({
+      apiToken: 'fresh_ready_token',
+      channelId: 'ready_channel',
+    });
+    const { POST } = await import('./route');
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.activateWhapiManagedChannel).not.toHaveBeenCalled();
+    expect(mocks.configureWhapiChannelWebhook).not.toHaveBeenCalled();
+    expect(mocks.restartWhapiManagedChannel).not.toHaveBeenCalled();
+    expect(mocks.fetchWhapiQrCodeDataUrl).toHaveBeenCalledWith({
+      apiToken: 'fresh_ready_token',
+    });
+  });
+
   it('replaces a saved managed Whapi channel when it no longer exists upstream', async () => {
     const { insertChains } = await prepareDb({
       existingConnection: {
