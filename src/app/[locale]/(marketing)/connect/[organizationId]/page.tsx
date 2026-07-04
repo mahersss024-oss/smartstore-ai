@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { MessageCircle, MonitorSmartphone } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
@@ -7,12 +7,16 @@ import { Section } from '@/features/landing/Section';
 import { db } from '@/libs/DB';
 import { Link } from '@/libs/I18nNavigation';
 import { isStoreFeatureEnabled } from '@/libs/StoreServiceControls';
-import { storeSettingsTable } from '@/models/Schema';
+import {
+  channelConnectionsTable,
+  storeSettingsTable,
+} from '@/models/Schema';
 import {
   buildWhatsAppUrl,
   normalizeTrafficSource,
   normalizeWhatsAppTarget,
   resolveCustomerEntryRoute,
+  resolveWhatsAppTargetFromWhapiConnectionConfig,
 } from '@/utils/CustomerChannels';
 
 type StoreSettingsMetadata = {
@@ -44,8 +48,27 @@ export default async function CustomerConnectPage(props: {
     .from(storeSettingsTable)
     .where(eq(storeSettingsTable.organizationId, organizationId))
     .limit(1);
+  const [whatsappConnection] = await db
+    .select({
+      config: channelConnectionsTable.config,
+    })
+    .from(channelConnectionsTable)
+    .where(
+      and(
+        eq(channelConnectionsTable.organizationId, organizationId),
+        eq(channelConnectionsTable.channel, 'whatsapp'),
+        eq(channelConnectionsTable.isActive, true),
+        sql`${channelConnectionsTable.config}->>'provider' = 'whapi'`,
+      ),
+    )
+    .limit(1);
   const metadata = settings?.metadata as StoreSettingsMetadata | null;
-  const whatsappTarget = normalizeWhatsAppTarget(metadata?.contactChannels?.whatsapp);
+  const metadataWhatsAppTarget = normalizeWhatsAppTarget(metadata?.contactChannels?.whatsapp);
+  const whapiWhatsAppTarget = resolveWhatsAppTargetFromWhapiConnectionConfig(
+    whatsappConnection?.config,
+  );
+  const whatsappTarget = whapiWhatsAppTarget
+    ?? (whatsappConnection ? null : metadataWhatsAppTarget);
   const webOrdersEnabled = await isStoreFeatureEnabled(organizationId, 'webOrders');
   const entryRoute = resolveCustomerEntryRoute({
     defaultChannel: metadata?.customerEntry?.defaultChannel,

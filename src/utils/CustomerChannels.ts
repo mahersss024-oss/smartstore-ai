@@ -79,6 +79,24 @@ export const normalizeWhatsAppTarget = (value?: unknown) => {
   return `https://wa.me/${digits}`;
 };
 
+export const resolveWhatsAppTargetFromWhapiConnectionConfig = (
+  config: unknown,
+) => {
+  if (!config || typeof config !== 'object') {
+    return null;
+  }
+
+  const values = config as {
+    displayPhoneNumber?: unknown;
+    phoneNumber?: unknown;
+    whatsappTarget?: unknown;
+  };
+
+  return normalizeWhatsAppTarget(
+    values.whatsappTarget ?? values.displayPhoneNumber ?? values.phoneNumber,
+  );
+};
+
 export const getCustomerChannelDisplayValue = (value?: unknown) => {
   if (typeof value !== 'string') {
     return undefined;

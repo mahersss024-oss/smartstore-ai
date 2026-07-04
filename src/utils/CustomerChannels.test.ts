@@ -12,6 +12,7 @@ import {
   normalizeWhatsAppTarget,
   resolveCustomerEntryOperationalContext,
   resolveCustomerEntryRoute,
+  resolveWhatsAppTargetFromWhapiConnectionConfig,
 } from './CustomerChannels';
 
 describe('CustomerChannels', () => {
@@ -39,6 +40,23 @@ describe('CustomerChannels', () => {
   it('ignores legacy boolean strings from old settings', () => {
     expect(normalizeWhatsAppTarget('true')).toBeNull();
     expect(normalizeWhatsAppTarget(' false ')).toBeNull();
+  });
+
+  it('resolves WhatsApp targets from active Whapi connection config', () => {
+    expect(resolveWhatsAppTargetFromWhapiConnectionConfig({
+      displayPhoneNumber: '+966 54 976 4152',
+    })).toBe('https://wa.me/966549764152');
+    expect(resolveWhatsAppTargetFromWhapiConnectionConfig({
+      displayPhoneNumber: '+966 54 976 4152',
+      whatsappTarget: 'https://wa.me/14155552671',
+    })).toBe('https://wa.me/14155552671');
+    expect(resolveWhatsAppTargetFromWhapiConnectionConfig({
+      phoneNumber: '+1 (555) 664-3746',
+    })).toBe('https://wa.me/15556643746');
+    expect(resolveWhatsAppTargetFromWhapiConnectionConfig(null)).toBeNull();
+    expect(resolveWhatsAppTargetFromWhapiConnectionConfig({
+      displayPhoneNumber: 'true',
+    })).toBeNull();
   });
 
   it('formats customer channel display values without legacy boolean metadata', () => {
