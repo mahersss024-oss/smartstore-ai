@@ -210,6 +210,9 @@ describe('Whapi QR connect route', () => {
     expect(mocks.activateWhapiManagedChannel).toHaveBeenCalledWith({
       channelId: 'channel_123',
     });
+    expect(mocks.restartWhapiManagedChannel).toHaveBeenCalledWith({
+      channelId: 'channel_123',
+    });
     expect(mocks.configureWhapiChannelWebhook).toHaveBeenCalledWith({
       apiToken: 'channel_token',
       webhookUrl: expect.stringContaining('channelId=channel_123'),
@@ -694,6 +697,7 @@ describe('Whapi QR connect route', () => {
     expect(mocks.checkWhapiManagedChannelExists).toHaveBeenCalledWith({
       channelId: 'existing_channel',
     });
+    expect(mocks.restartWhapiManagedChannel).not.toHaveBeenCalled();
     expect(mocks.createWhapiManagedChannel).not.toHaveBeenCalled();
   });
 

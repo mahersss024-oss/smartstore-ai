@@ -380,7 +380,9 @@ export const POST = async () => {
       };
 
       await persistManagedChannel();
-      await restartChannelForQr(managedChannel.channelId);
+      if (!isUsingExistingChannel || hasReplacedManagedChannel) {
+        await restartChannelForQr(managedChannel.channelId);
+      }
 
       let qrDataUrl = '';
       let qrPending = false;
