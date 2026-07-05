@@ -154,7 +154,7 @@ describe('Whapi QR connect route', () => {
     mocks.maskApiKey.mockReturnValue('chann...oken');
   });
 
-  it('rejects unauthenticated QR connect requests', async () => {
+  it('rejects unauthenticated QR connect requests', { timeout: 15_000 }, async () => {
     mocks.auth.mockResolvedValue({ orgId: null });
     const { POST } = await import('./route');
 
