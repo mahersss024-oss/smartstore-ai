@@ -133,6 +133,7 @@ const createWhapiChannelRequest = async (params: {
     }),
     headers,
     method: 'PUT',
+    signal: AbortSignal.timeout(10_000),
   });
   const responseText = await response.text().catch(() => '');
 
@@ -160,6 +161,7 @@ const probeWhapiProjectRequest = async (
   const response = await fetch(url.toString(), {
     headers,
     method: 'GET',
+    signal: AbortSignal.timeout(10_000),
   });
   const responseText = await response.text().catch(() => '');
 
@@ -187,6 +189,7 @@ const probeWhapiProjectByIdRequest = async (
   const response = await fetch(url.toString(), {
     headers,
     method: 'GET',
+    signal: AbortSignal.timeout(10_000),
   });
   const responseText = await response.text().catch(() => '');
 
@@ -359,6 +362,7 @@ const callWhapiPartnerChannelAction = async (params: {
       'accept': 'application/json',
     },
     method: params.method,
+    signal: AbortSignal.timeout(10_000),
   });
   const responseText = await response.text().catch(() => '');
 
@@ -384,6 +388,7 @@ export const getWhapiManagedChannel = async (params: {
       accept: 'application/json',
     },
     method: 'GET',
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (response.ok) {
@@ -500,6 +505,7 @@ export const configureWhapiChannelWebhook = async (params: {
       'Content-Type': 'application/json',
     },
     method: 'PATCH',
+    signal: AbortSignal.timeout(10_000),
   });
   const responseText = await response.text().catch(() => '');
 
@@ -559,6 +565,7 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
       Authorization: `Bearer ${params.apiToken}`,
     },
     method: 'GET',
+    signal: AbortSignal.timeout(15_000),
   });
   const loginContentType = loginResponse.headers.get('content-type') ?? '';
   const loginBuffer = Buffer.from(await loginResponse.arrayBuffer());
@@ -586,6 +593,7 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
       Authorization: `Bearer ${params.apiToken}`,
     },
     method: 'GET',
+    signal: AbortSignal.timeout(15_000),
   });
   const imageContentType = imageResponse.headers.get('content-type') ?? '';
   const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());

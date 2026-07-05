@@ -146,6 +146,7 @@ export const sendWhapiText = async (params: {
       'Content-Type': 'application/json',
     },
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
   });
 
   const responseText = await response.text().catch(() => '');
