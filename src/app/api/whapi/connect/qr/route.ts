@@ -48,6 +48,11 @@ const isWhapiQrPendingError = (error: WhapiConnectError) => {
   return [404, 429, 502, 503, 504].includes(error.status ?? 0);
 };
 
+const isWhapiChannelNotFoundError = (error: WhapiConnectError) => {
+  return error.status === 404
+    && /channel\s+not\s+found|not\s+found/i.test(error.detail ?? error.message);
+};
+
 const getOrigin = async () => {
   if (Env.NEXT_PUBLIC_APP_URL) {
     return Env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
@@ -197,6 +202,18 @@ export const POST = async () => {
         }
       };
 
+      const shouldReplaceSavedChannel = async (error: WhapiConnectError) => {
+        if (!isUsingExistingChannel || !isWhapiChannelNotFoundError(error)) {
+          return false;
+        }
+
+        return !(await checkChannelExists(managedChannel.channelId));
+      };
+
+      const shouldReplaceSavedChannelFromQr = (error: WhapiConnectError) => {
+        return isUsingExistingChannel && isWhapiChannelNotFoundError(error);
+      };
+
       const restartChannelForQr = async (channelId: string) => {
         try {
           await restartWhapiManagedChannel({ channelId });
@@ -244,10 +261,8 @@ export const POST = async () => {
         try {
           await configureWebhook();
         } catch (error) {
-          const shouldReplaceMissingChannel = isUsingExistingChannel
-            && error instanceof WhapiConnectError
-            && error.status === 404
-            && !(await checkChannelExists(managedChannel.channelId));
+          const shouldReplaceMissingChannel = error instanceof WhapiConnectError
+            && await shouldReplaceSavedChannel(error);
 
           if (shouldReplaceMissingChannel) {
             logger.warn('Whapi saved channel missing; creating replacement channel', {
@@ -403,9 +418,7 @@ export const POST = async () => {
         });
       } catch (error) {
         if (error instanceof WhapiConnectError && isWhapiQrPendingError(error)) {
-          const shouldReplaceMissingChannel = isUsingExistingChannel
-            && error.status === 404
-            && !(await checkChannelExists(managedChannel.channelId));
+          const shouldReplaceMissingChannel = shouldReplaceSavedChannelFromQr(error);
 
           if (shouldReplaceMissingChannel) {
             logger.warn('Whapi saved channel missing during QR fetch; creating replacement channel', {
