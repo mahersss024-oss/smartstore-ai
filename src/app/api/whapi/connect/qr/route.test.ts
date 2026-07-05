@@ -103,12 +103,16 @@ const prepareDb = async (params: {
   settings?: null | Record<string, unknown>;
 }) => {
   const updateChain = createUpdateChain();
-  const insertChains = [createInsertChain(), createInsertChain()];
+  const insertChains = [
+    createInsertChain(),
+    createInsertChain(),
+    createInsertChain(),
+    createInsertChain(),
+  ];
+  let insertIndex = 0;
   const tx = {
     execute: vi.fn().mockResolvedValue(undefined),
-    insert: vi.fn()
-      .mockReturnValueOnce(insertChains[0])
-      .mockReturnValueOnce(insertChains[1]),
+    insert: vi.fn(() => insertChains[insertIndex++] ?? createInsertChain()),
     select: vi.fn()
       .mockReturnValueOnce(createSelectChain(params.settings ? [params.settings] : []))
       .mockReturnValueOnce(createSelectChain(params.existingConnection ? [params.existingConnection] : []))
@@ -852,6 +856,64 @@ describe('Whapi QR connect route', () => {
       status: 504,
     }));
     expect(mocks.warn).not.toHaveBeenCalledWith('Whapi QR connect failed', expect.anything());
+  });
+
+  it('persists a replacement channel before returning pending when activation times out', async () => {
+    const { insertChains } = await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'stale_channel',
+          encryptedApiToken: 'encrypted_stale_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookReady: true,
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('stale_token');
+    mocks.getWhapiManagedChannel.mockResolvedValueOnce({
+      apiToken: 'stale_token',
+      channelId: 'stale_channel',
+    });
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '/users/login:404:{"error":"Channel not found"} | /users/login/image:404:{"error":"Channel not found"}',
+      status: 404,
+    }));
+    mocks.activateWhapiManagedChannel.mockRejectedValueOnce(new Error('The operation was aborted due to timeout'));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      error: 'whapi_channel_initializing',
+      pending: true,
+    });
+    expect(insertChains[1]?.values).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'whatsapp',
+      config: expect.objectContaining({
+        channelId: 'channel_123',
+        managedChannelActivatedAt: null,
+        provider: 'whapi',
+        webhookReady: false,
+      }),
+      organizationId: 'org_1',
+    }));
+    expect(mocks.warn).toHaveBeenCalledWith('Whapi replacement channel preparation deferred', expect.objectContaining({
+      channelId: 'channel_123',
+      error: 'The operation was aborted due to timeout',
+      status: 504,
+    }));
   });
 
   it('returns a pending QR response when Whapi is still initializing the channel', async () => {

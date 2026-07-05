@@ -458,10 +458,13 @@ export const POST = async () => {
             try {
               managedChannel = await createManagedChannel();
               hasReplacedManagedChannel = true;
+              webhookReady = false;
+              nextManagedChannelActivatedAt = null;
+              webhookUrl = buildWebhookUrl(managedChannel.channelId);
+              await persistManagedChannel();
+
               const activationCompleted = await activateChannelForQr(managedChannel.channelId);
               nextManagedChannelActivatedAt = activationCompleted ? new Date().toISOString() : null;
-              webhookReady = false;
-              webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
               try {
                 await configureWebhook();
