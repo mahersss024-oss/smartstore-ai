@@ -301,6 +301,40 @@ describe('Whapi QR connect route', () => {
     });
   });
 
+  it('returns a subscription message reason when QR cannot be prepared after extension fails', async () => {
+    await prepareDb({
+      existingConnection: null,
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.activateWhapiManagedChannel.mockRejectedValueOnce(new WhapiConnectError('whapi_channel_extend_failed', {
+      detail: '{"error":{"code":402,"message":"days limit exceeded"}}',
+      status: 402,
+    }));
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '{"error":"Service Temporary Unavailable Error"}',
+      status: 503,
+    }));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload).toMatchObject({
+      channelId: 'channel_123',
+      error: 'whapi_channel_initializing',
+      pending: true,
+      pendingReason: 'subscription_expired',
+      warnings: expect.arrayContaining(['subscription_expired', 'temporary_unavailable']),
+    });
+  });
+
   it('reuses an existing managed Whapi channel without creating a replacement channel', async () => {
     await prepareDb({
       existingConnection: {

@@ -42,6 +42,14 @@ type WhapiConnectionConfig = {
   webhookSecret?: null | string;
 };
 
+type WhapiQrIssueReason
+  = | 'channel_preparing'
+    | 'qr_pending'
+    | 'restart_pending'
+    | 'subscription_expired'
+    | 'temporary_unavailable'
+    | 'webhook_pending';
+
 const generateWebhookSecret = () => randomBytes(24).toString('hex');
 
 const isWhapiQrPendingError = (error: WhapiConnectError) => {
@@ -77,6 +85,23 @@ const getWhapiErrorDetail = (error: unknown) => {
 
 const getWhapiErrorMessage = (error: unknown) => {
   return error instanceof Error ? error.message : 'unknown_error';
+};
+
+const getPrimaryWhapiQrIssueReason = (reasons: Set<WhapiQrIssueReason>) => {
+  const priority: WhapiQrIssueReason[] = [
+    'subscription_expired',
+    'channel_preparing',
+    'webhook_pending',
+    'restart_pending',
+    'temporary_unavailable',
+    'qr_pending',
+  ];
+
+  return priority.find(reason => reasons.has(reason)) ?? 'qr_pending';
+};
+
+const getWhapiQrIssueReasons = (reasons: Set<WhapiQrIssueReason>) => {
+  return Array.from(reasons);
 };
 
 const getOrigin = async () => {
@@ -192,6 +217,7 @@ export const POST = async () => {
         ? existingConfig.managedChannelActivatedAt
         : null;
 
+      const issueReasons = new Set<WhapiQrIssueReason>();
       let nextManagedChannelActivatedAt = managedChannelActivatedAt;
       const activateChannelForQr = async (channelId: string) => {
         try {
@@ -199,6 +225,7 @@ export const POST = async () => {
           return true;
         } catch (error) {
           if (error instanceof WhapiConnectError && error.message === 'whapi_channel_extend_failed') {
+            issueReasons.add(error.status === 402 ? 'subscription_expired' : 'channel_preparing');
             logger.warn('Whapi channel extension deferred', {
               channelId,
               detail: error.detail,
@@ -251,6 +278,7 @@ export const POST = async () => {
             organizationId: orgId,
             status: error instanceof WhapiConnectError ? error.status : undefined,
           });
+          issueReasons.add('restart_pending');
         }
       };
 
@@ -314,6 +342,7 @@ export const POST = async () => {
                 organizationId: orgId,
                 status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
               });
+              issueReasons.add('webhook_pending');
             }
           } else {
             logger.warn('Whapi webhook configure deferred', {
@@ -323,6 +352,7 @@ export const POST = async () => {
               organizationId: orgId,
               status: error instanceof WhapiConnectError ? error.status : undefined,
             });
+            issueReasons.add('webhook_pending');
           }
         }
       }
@@ -476,6 +506,7 @@ export const POST = async () => {
                   organizationId: orgId,
                   status: getWhapiDeferredStatus(replacementError),
                 });
+                issueReasons.add('webhook_pending');
               }
 
               await persistManagedChannel();
@@ -487,6 +518,7 @@ export const POST = async () => {
               } catch (replacementQrError) {
                 if (replacementQrError instanceof WhapiConnectError && isWhapiQrPendingError(replacementQrError)) {
                   qrPending = true;
+                  issueReasons.add(replacementQrError.status === 503 ? 'temporary_unavailable' : 'qr_pending');
                   logger.warn('Whapi replacement QR fetch deferred', {
                     channelId: managedChannel.channelId,
                     detail: replacementQrError.detail,
@@ -501,6 +533,7 @@ export const POST = async () => {
             } catch (replacementPreparationError) {
               if (isWhapiDeferredOperationError(replacementPreparationError)) {
                 qrPending = true;
+                issueReasons.add('channel_preparing');
                 logger.warn('Whapi replacement channel preparation deferred', {
                   channelId: managedChannel.channelId,
                   detail: getWhapiErrorDetail(replacementPreparationError),
@@ -514,6 +547,7 @@ export const POST = async () => {
             }
           } else {
             qrPending = true;
+            issueReasons.add(error.status === 503 ? 'temporary_unavailable' : 'qr_pending');
             logger.warn('Whapi QR fetch deferred', {
               channelId: managedChannel.channelId,
               detail: error.detail,
@@ -539,7 +573,9 @@ export const POST = async () => {
             channelId: managedChannel.channelId,
             error: 'whapi_channel_initializing',
             pending: true,
+            pendingReason: getPrimaryWhapiQrIssueReason(issueReasons),
             retryAfterSeconds: 90,
+            warnings: getWhapiQrIssueReasons(issueReasons),
             webhookReady,
             webhookUrl,
           },
@@ -550,6 +586,7 @@ export const POST = async () => {
       return NextResponse.json({
         channelId: managedChannel.channelId,
         qrDataUrl,
+        warnings: getWhapiQrIssueReasons(issueReasons),
         webhookReady,
         webhookUrl,
       });

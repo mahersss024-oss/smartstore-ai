@@ -755,6 +755,14 @@ export default async function SettingsPage(props: {
               title={t('whapi_qr_connect_title')}
               buttonLabel={t('whapi_qr_connect_button')}
               errorLabel={t('whapi_qr_connect_error')}
+              issueLabels={{
+                channel_preparing: t('whapi_qr_connect_channel_preparing'),
+                qr_pending: t('whapi_qr_connect_qr_pending'),
+                restart_pending: t('whapi_qr_connect_restart_pending'),
+                subscription_expired: t('whapi_qr_connect_subscription_expired'),
+                temporary_unavailable: t('whapi_qr_connect_temporary_unavailable'),
+                webhook_pending: t('whapi_qr_connect_webhook_pending'),
+              }}
               pendingLabel={t('whapi_qr_connect_pending')}
               refreshLabel={t('whapi_qr_connect_refresh')}
             />

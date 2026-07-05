@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page, userEvent } from 'vitest/browser';
 import { WhapiQrConnectButton } from './WhapiQrConnectButton';
@@ -27,6 +27,10 @@ const renderButton = async () => {
 };
 
 describe('WhapiQrConnectButton', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('rechecks the managed channel when the refresh-after-scan button is clicked', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValue(new Response(JSON.stringify({
@@ -59,5 +63,40 @@ describe('WhapiQrConnectButton', () => {
     });
 
     expect(mocks.refresh).toHaveBeenCalled();
+  });
+
+  it('shows a clear subscription message when Whapi needs more active days', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValue(new Response(JSON.stringify({
+        channelId: 'channel_123',
+        pending: true,
+        pendingReason: 'subscription_expired',
+        retryAfterSeconds: 5,
+      }), {
+        headers: {
+          'content-type': 'application/json',
+        },
+        status: 202,
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+    mocks.refresh.mockClear();
+
+    await render(
+      <WhapiQrConnectButton
+        title="Connect WhatsApp"
+        buttonLabel="Show QR"
+        errorLabel="Could not connect"
+        issueLabels={{
+          subscription_expired: 'WhatsApp connection needs more active days.',
+        }}
+        pendingLabel="Preparing"
+        refreshLabel="Refresh after scan"
+      />,
+    );
+
+    await userEvent.click(page.getByRole('button', { name: /Show QR/ }));
+
+    await expect.element(page.getByText(/WhatsApp connection needs more active days/)).toBeVisible();
   });
 });
