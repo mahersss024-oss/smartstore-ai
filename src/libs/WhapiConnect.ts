@@ -14,6 +14,7 @@ export class WhapiConnectError extends Error {
 }
 
 export type WhapiManagedChannel = {
+  activeUntil?: string;
   apiToken: string;
   channelId: string;
   displayPhoneNumber?: string;
@@ -52,6 +53,65 @@ const getNestedString = (record: null | Record<string, unknown>, keys: string[],
   return '';
 };
 
+const parseDateLikeValue = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const milliseconds = value > 10_000_000_000 ? value : value * 1000;
+    const date = new Date(milliseconds);
+
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+
+  if (typeof value !== 'string' || !value.trim()) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  const numeric = Number(trimmed);
+
+  if (Number.isFinite(numeric)) {
+    return parseDateLikeValue(numeric);
+  }
+
+  const date = new Date(trimmed);
+
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
+const getDateLikeString = (
+  record: null | Record<string, unknown>,
+  keys: string[],
+) => {
+  if (!record) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = parseDateLikeValue(record[key]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getNestedDateLikeString = (
+  record: null | Record<string, unknown>,
+  keys: string[],
+  nestedKeys: string[],
+) => {
+  for (const key of keys) {
+    const value = getDateLikeString(getRecord(record?.[key]), nestedKeys);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
 export const isWhapiManagedConnectConfigured = () => {
   return Boolean(Env.WHAPI_PARTNER_API_TOKEN && Env.WHAPI_PROJECT_ID);
 };
@@ -69,12 +129,36 @@ export const parseWhapiManagedChannel = (payload: unknown): WhapiManagedChannel 
   const displayPhoneNumber = getString(channel, ['phone', 'phoneNumber', 'displayPhoneNumber', 'number'])
     || getNestedString(root, ['channel', 'data', 'result'], ['phone', 'phoneNumber', 'displayPhoneNumber', 'number'])
     || undefined;
+  const activeUntil = getDateLikeString(channel, [
+    'activeTill',
+    'active_till',
+    'activeUntil',
+    'active_until',
+    'expiresAt',
+    'expires_at',
+    'paidUntil',
+    'paid_until',
+    'workPeriodUntil',
+    'work_period_until',
+  ]) ?? getNestedDateLikeString(root, ['channel', 'data', 'result'], [
+    'activeTill',
+    'active_till',
+    'activeUntil',
+    'active_until',
+    'expiresAt',
+    'expires_at',
+    'paidUntil',
+    'paid_until',
+    'workPeriodUntil',
+    'work_period_until',
+  ]);
 
   if (!channelId || !apiToken) {
     throw new WhapiConnectError('whapi_channel_response_missing_credentials');
   }
 
   return {
+    ...(activeUntil ? { activeUntil } : {}),
     apiToken,
     channelId,
     displayPhoneNumber,

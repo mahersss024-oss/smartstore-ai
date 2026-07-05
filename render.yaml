@@ -59,6 +59,10 @@ services:
         value: https://gate.whapi.cloud
       - key: WHAPI_MANAGED_CHANNEL_EXTEND_DAYS
         value: '5'
+      - key: WHAPI_CHANNEL_RENEW_LOOKAHEAD_HOURS
+        value: '24'
+      - key: WHAPI_CHANNEL_RENEW_COOLDOWN_HOURS
+        value: '20'
       - key: NEXT_PUBLIC_SENTRY_DSN
         sync: false
       - key: SENTRY_AUTH_TOKEN
@@ -75,7 +79,26 @@ services:
       # Payments: MOYASAR_SECRET_KEY
       # Logging:  BETTER_STACK_SOURCE_TOKEN, BETTER_STACK_INGESTING_HOST
 
-# Sweeper (only when AI_PROCESSING_MODE=outbox): schedule a 1-minute POST to
-#   https://smartstore-ai.com/api/maintenance/ai-inbound-jobs
-#   with header  Authorization: Bearer <MAINTENANCE_SECRET>
-# Cleanest via a QStash Schedule (already a dependency) or a Render Cron Job.
+  # Sweeper (only when AI_PROCESSING_MODE=outbox): schedule a 1-minute POST to
+  #   https://smartstore-ai.com/api/maintenance/ai-inbound-jobs
+  #   with header  Authorization: Bearer <MAINTENANCE_SECRET>
+  # Cleanest via a QStash Schedule (already a dependency) or a Render Cron Job.
+  #
+  # Whapi channel renewal: schedule an hourly POST to
+  #   https://smartstore-ai.com/api/maintenance/whapi-renewals
+  #   with header  Authorization: Bearer <MAINTENANCE_SECRET>
+  - type: cron
+    name: smartstore-ai-whapi-renewals
+    runtime: node
+    region: virginia
+    schedule: '0 * * * *'
+    branch: main
+    buildCommand: npm ci --omit=dev
+    startCommand: npm run maintenance:whapi-renewals
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://smartstore-ai.com
+      - key: MAINTENANCE_SECRET
+        sync: false

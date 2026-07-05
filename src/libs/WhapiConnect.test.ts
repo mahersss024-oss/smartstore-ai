@@ -49,6 +49,20 @@ describe('WhapiConnect', () => {
     });
   });
 
+  it('parses managed channel active-until timestamps when Whapi returns them', () => {
+    expect(parseWhapiManagedChannel({
+      channel: {
+        activeTill: 1782864000000,
+        id: 'channel_123',
+        token: 'token_123',
+      },
+    })).toMatchObject({
+      activeUntil: '2026-07-01T00:00:00.000Z',
+      apiToken: 'token_123',
+      channelId: 'channel_123',
+    });
+  });
+
   it('fails closed when the managed channel response omits credentials', () => {
     expect(() => parseWhapiManagedChannel({ channel: { id: 'channel_123' } }))
       .toThrow(WhapiConnectError);

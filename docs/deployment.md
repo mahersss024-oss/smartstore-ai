@@ -33,6 +33,8 @@ stay in Render and must not be committed.
 - `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
 - `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
 - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=5` (increase only when Whapi partner day balance is sufficient)
+- `WHAPI_CHANNEL_RENEW_LOOKAHEAD_HOURS=24`
+- `WHAPI_CHANNEL_RENEW_COOLDOWN_HOURS=20`
 - `MAINTENANCE_SECRET`
 
 Optional variables:
@@ -95,6 +97,20 @@ Authorization: Bearer <MAINTENANCE_SECRET or CRON_SECRET>
 ```
 
 Use Render Cron Jobs or QStash Schedules.
+
+## Whapi Renewal Sweeper
+
+Render Blueprint defines the hourly `smartstore-ai-whapi-renewals` Cron Job. If
+you configure it manually, schedule an hourly protected POST so active store
+channels are extended before expiry:
+
+```text
+POST https://smartstore-ai.com/api/maintenance/whapi-renewals
+Authorization: Bearer <MAINTENANCE_SECRET or CRON_SECRET>
+```
+
+The sweeper only renews existing Whapi channels for stores whose WhatsApp
+feature and subscription are active.
 
 ## Smoke Test After Deployment
 

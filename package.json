@@ -25,6 +25,7 @@
     "check:i18n": "i18n-check -l src/locales -s ar -u src -f next-intl",
     "check:env:production": "node scripts/validate-production-env.mjs",
     "check:runtime:production": "node scripts/check-production-runtime.mjs",
+    "maintenance:whapi-renewals": "node scripts/run-whapi-renewals.mjs",
     "smoke:production": "node scripts/smoke-test-production.mjs",
     "load:production:read-only": "node scripts/load-test-production.mjs",
     "verify:diff": "git diff --check",

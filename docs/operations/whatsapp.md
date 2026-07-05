@@ -15,6 +15,8 @@ Use this checklist for each merchant store before enabling WhatsApp traffic.
    - `WHAPI_PARTNER_API_BASE=https://manager.whapi.cloud`
    - `WHAPI_GATE_API_BASE=https://gate.whapi.cloud`
    - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS=5` (or any value that is covered by the available Whapi partner day balance)
+   - `WHAPI_CHANNEL_RENEW_LOOKAHEAD_HOURS=24`
+   - `WHAPI_CHANNEL_RENEW_COOLDOWN_HOURS=20`
 2. In the store dashboard, open Settings -> WhatsApp.
 3. Click **Show QR**.
 4. The platform creates or reuses the store's Whapi channel, switches it to live
@@ -47,6 +49,8 @@ Platform-level WhatsApp environment values:
 - `WHAPI_PARTNER_API_BASE`: defaults to `https://manager.whapi.cloud`.
 - `WHAPI_GATE_API_BASE`: defaults to `https://gate.whapi.cloud`.
 - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS`: defaults to `5`; raise it only when the Whapi partner balance can cover the requested days for each new channel.
+- `WHAPI_CHANNEL_RENEW_LOOKAHEAD_HOURS`: defaults to `24`; renew existing active store channels before expiry.
+- `WHAPI_CHANNEL_RENEW_COOLDOWN_HOURS`: defaults to `20`; prevents repeated renewal attempts for the same channel.
 
 Optional, for durable async AI worker mode:
 
@@ -57,6 +61,20 @@ Optional, for durable async AI worker mode:
 - `CRON_SECRET`
 
 Leave `AI_PROCESSING_MODE` unset (`sync`) until the worker is provisioned.
+
+## Automatic Channel Renewal
+
+Render Blueprint defines the hourly `smartstore-ai-whapi-renewals` Cron Job. If
+you configure it manually, schedule this protected endpoint hourly:
+
+```text
+POST https://smartstore-ai.com/api/maintenance/whapi-renewals
+Authorization: Bearer <MAINTENANCE_SECRET or CRON_SECRET>
+```
+
+It extends only existing Whapi channels whose store subscription and WhatsApp
+feature are active. If Whapi reports the channel is missing, the local connection
+is marked disconnected instead of creating a replacement channel.
 
 ## Database Requirements
 
