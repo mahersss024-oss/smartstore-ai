@@ -53,6 +53,32 @@ const isWhapiChannelNotFoundError = (error: WhapiConnectError) => {
     && /channel\s+not\s+found|not\s+found/i.test(error.detail ?? error.message);
 };
 
+const isWhapiTimeoutError = (error: unknown) => {
+  return error instanceof Error && /abort|timeout/i.test(error.message);
+};
+
+const getWhapiDeferredStatus = (error: unknown) => {
+  if (error instanceof WhapiConnectError) {
+    return error.status;
+  }
+
+  return isWhapiTimeoutError(error) ? 504 : undefined;
+};
+
+const isWhapiDeferredOperationError = (error: unknown) => {
+  const status = getWhapiDeferredStatus(error);
+
+  return isWhapiTimeoutError(error) || [408, 429, 502, 503, 504].includes(status ?? 0);
+};
+
+const getWhapiErrorDetail = (error: unknown) => {
+  return error instanceof WhapiConnectError ? error.detail : undefined;
+};
+
+const getWhapiErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : 'unknown_error';
+};
+
 const getOrigin = async () => {
   if (Env.NEXT_PUBLIC_APP_URL) {
     return Env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
@@ -428,43 +454,59 @@ export const POST = async () => {
               organizationId: orgId,
               status: error.status,
             });
-            managedChannel = await createManagedChannel();
-            hasReplacedManagedChannel = true;
-            const activationCompleted = await activateChannelForQr(managedChannel.channelId);
-            nextManagedChannelActivatedAt = activationCompleted ? new Date().toISOString() : null;
-            webhookReady = false;
-            webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
             try {
-              await configureWebhook();
-            } catch (replacementError) {
-              logger.warn('Whapi webhook configure deferred', {
-                channelId: managedChannel.channelId,
-                detail: replacementError instanceof WhapiConnectError ? replacementError.detail : undefined,
-                error: replacementError instanceof Error ? replacementError.message : 'unknown_error',
-                organizationId: orgId,
-                status: replacementError instanceof WhapiConnectError ? replacementError.status : undefined,
-              });
-            }
+              managedChannel = await createManagedChannel();
+              hasReplacedManagedChannel = true;
+              const activationCompleted = await activateChannelForQr(managedChannel.channelId);
+              nextManagedChannelActivatedAt = activationCompleted ? new Date().toISOString() : null;
+              webhookReady = false;
+              webhookUrl = buildWebhookUrl(managedChannel.channelId);
 
-            await persistManagedChannel();
-            await restartChannelForQr(managedChannel.channelId);
-            try {
-              qrDataUrl = await fetchWhapiQrCodeDataUrl({
-                apiToken: managedChannel.apiToken,
-              });
-            } catch (replacementQrError) {
-              if (replacementQrError instanceof WhapiConnectError && isWhapiQrPendingError(replacementQrError)) {
-                qrPending = true;
-                logger.warn('Whapi replacement QR fetch deferred', {
+              try {
+                await configureWebhook();
+              } catch (replacementError) {
+                logger.warn('Whapi webhook configure deferred', {
                   channelId: managedChannel.channelId,
-                  detail: replacementQrError.detail,
-                  error: replacementQrError.message,
+                  detail: getWhapiErrorDetail(replacementError),
+                  error: getWhapiErrorMessage(replacementError),
                   organizationId: orgId,
-                  status: replacementQrError.status,
+                  status: getWhapiDeferredStatus(replacementError),
+                });
+              }
+
+              await persistManagedChannel();
+              await restartChannelForQr(managedChannel.channelId);
+              try {
+                qrDataUrl = await fetchWhapiQrCodeDataUrl({
+                  apiToken: managedChannel.apiToken,
+                });
+              } catch (replacementQrError) {
+                if (replacementQrError instanceof WhapiConnectError && isWhapiQrPendingError(replacementQrError)) {
+                  qrPending = true;
+                  logger.warn('Whapi replacement QR fetch deferred', {
+                    channelId: managedChannel.channelId,
+                    detail: replacementQrError.detail,
+                    error: replacementQrError.message,
+                    organizationId: orgId,
+                    status: replacementQrError.status,
+                  });
+                } else {
+                  throw replacementQrError;
+                }
+              }
+            } catch (replacementPreparationError) {
+              if (isWhapiDeferredOperationError(replacementPreparationError)) {
+                qrPending = true;
+                logger.warn('Whapi replacement channel preparation deferred', {
+                  channelId: managedChannel.channelId,
+                  detail: getWhapiErrorDetail(replacementPreparationError),
+                  error: getWhapiErrorMessage(replacementPreparationError),
+                  organizationId: orgId,
+                  status: getWhapiDeferredStatus(replacementPreparationError),
                 });
               } else {
-                throw replacementQrError;
+                throw replacementPreparationError;
               }
             }
           } else {

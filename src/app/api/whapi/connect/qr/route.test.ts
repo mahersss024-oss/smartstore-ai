@@ -804,6 +804,56 @@ describe('Whapi QR connect route', () => {
     }));
   });
 
+  it('returns pending when replacing a missing saved Whapi channel times out', async () => {
+    await prepareDb({
+      existingConnection: {
+        config: {
+          channelId: 'stale_channel',
+          encryptedApiToken: 'encrypted_stale_token',
+          managedChannelActivatedAt: '2026-07-01T00:00:00.000Z',
+          provider: 'whapi',
+          webhookReady: true,
+          webhookSecret: 'saved_secret',
+        },
+      },
+      lockedSettings: {
+        metadata: {},
+      },
+      settings: {
+        metadata: {},
+        storeName: 'Golden Chicken',
+      },
+    });
+    mocks.decryptSecret.mockReturnValue('stale_token');
+    mocks.getWhapiManagedChannel.mockResolvedValueOnce({
+      apiToken: 'stale_token',
+      channelId: 'stale_channel',
+    });
+    mocks.fetchWhapiQrCodeDataUrl.mockRejectedValueOnce(new WhapiConnectError('whapi_qr_fetch_failed', {
+      detail: '/users/login:404:{"error":"Channel not found"} | /users/login/image:404:{"error":"Channel not found"}',
+      status: 404,
+    }));
+    mocks.createWhapiManagedChannel.mockRejectedValueOnce(new Error('The operation was aborted due to timeout'));
+    const { POST } = await import('./route');
+
+    const response = await POST();
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload).toMatchObject({
+      channelId: 'stale_channel',
+      error: 'whapi_channel_initializing',
+      pending: true,
+      retryAfterSeconds: 90,
+    });
+    expect(mocks.warn).toHaveBeenCalledWith('Whapi replacement channel preparation deferred', expect.objectContaining({
+      channelId: 'stale_channel',
+      error: 'The operation was aborted due to timeout',
+      status: 504,
+    }));
+    expect(mocks.warn).not.toHaveBeenCalledWith('Whapi QR connect failed', expect.anything());
+  });
+
   it('returns a pending QR response when Whapi is still initializing the channel', async () => {
     await prepareDb({
       existingConnection: null,
