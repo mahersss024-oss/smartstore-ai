@@ -565,7 +565,7 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
       Authorization: `Bearer ${params.apiToken}`,
     },
     method: 'GET',
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(40_000),
   });
   const loginContentType = loginResponse.headers.get('content-type') ?? '';
   const loginBuffer = Buffer.from(await loginResponse.arrayBuffer());
@@ -593,7 +593,7 @@ export const fetchWhapiQrCodeDataUrl = async (params: {
       Authorization: `Bearer ${params.apiToken}`,
     },
     method: 'GET',
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(40_000),
   });
   const imageContentType = imageResponse.headers.get('content-type') ?? '';
   const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
