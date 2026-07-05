@@ -33,6 +33,13 @@ import {
 import { buildWhatsAppChannelConfig } from '@/utils/CustomerChannels';
 import { getI18nPath } from '@/utils/Helpers';
 
+/** Safely extracts a string field from FormData — guards against File objects being coerced to '[object Object]'. */
+const getFormString = (formData: FormData, key: string, fallback = '') => {
+  const value = formData.get(key);
+
+  return typeof value === 'string' ? value.trim() : fallback;
+};
+
 type StoreSettingsMetadata = {
   brandTheme?: {
     accentColor?: string;
@@ -224,10 +231,10 @@ const resolveWhapiConnectionInput = (
   formData: FormData,
   existing: ExistingWhatsappConfig,
 ) => {
-  const submittedChannelId = String(formData.get('whapiChannelId') ?? '').trim();
-  const submittedApiToken = String(formData.get('whapiApiToken') ?? '').trim();
-  const submittedDisplayPhone = String(formData.get('whapiDisplayPhoneNumber') ?? '').trim();
-  const submittedWebhookSecret = String(formData.get('whapiWebhookSecret') ?? '').trim();
+  const submittedChannelId = getFormString(formData, 'whapiChannelId');
+  const submittedApiToken = getFormString(formData, 'whapiApiToken');
+  const submittedDisplayPhone = getFormString(formData, 'whapiDisplayPhoneNumber');
+  const submittedWebhookSecret = getFormString(formData, 'whapiWebhookSecret');
   const channelId = submittedChannelId || existing.channelId?.trim() || null;
   const isManagedChannel = Boolean(existing.managedByPlatform && channelId);
   const apiToken = submittedApiToken
@@ -407,18 +414,18 @@ const assertStoreNameIsUniqueEnough = async (
 
 export const saveStoreSettings = async (locale: string, formData: FormData) => {
   const organizationId = await getActiveOrganizationId();
-  const storeName = String(formData.get('storeName') ?? '').trim();
+  const storeName = getFormString(formData, 'storeName');
   const uploadedLogo = formData.get('logoFile');
-  const submittedLogoUrl = String(formData.get('logo') ?? '').trim();
+  const submittedLogoUrl = getFormString(formData, 'logo');
   const shouldRemoveLogo = formData.get('removeLogo') === 'on';
-  const storeDescription = String(formData.get('storeDescription') ?? '').trim();
-  const welcomeMessage = String(formData.get('welcomeMessage') ?? '').trim();
-  const submittedBusinessType = String(formData.get('businessType') ?? 'general_store').trim();
-  const submittedCurrency = String(formData.get('currency') ?? 'SAR').trim().toUpperCase();
-  const submittedTimezone = String(formData.get('timezone') ?? 'Asia/Riyadh').trim();
-  const primaryColor = String(formData.get('primaryColor') ?? '').trim();
-  const accentColor = String(formData.get('accentColor') ?? '').trim();
-  const backgroundColor = String(formData.get('backgroundColor') ?? '').trim();
+  const storeDescription = getFormString(formData, 'storeDescription');
+  const welcomeMessage = getFormString(formData, 'welcomeMessage');
+  const submittedBusinessType = getFormString(formData, 'businessType', 'general_store');
+  const submittedCurrency = getFormString(formData, 'currency', 'SAR').toUpperCase();
+  const submittedTimezone = getFormString(formData, 'timezone', 'Asia/Riyadh');
+  const primaryColor = getFormString(formData, 'primaryColor');
+  const accentColor = getFormString(formData, 'accentColor');
+  const backgroundColor = getFormString(formData, 'backgroundColor');
   const restoreDefaultTheme = formData.get('restoreDefaultTheme') === 'on';
   const currency = allowedCurrencies.has(submittedCurrency) ? submittedCurrency : 'SAR';
   const timezone = allowedTimezones.has(submittedTimezone) ? submittedTimezone : 'Asia/Riyadh';
@@ -426,37 +433,37 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
     ? submittedBusinessType
     : 'general_store';
   const submittedWhatsapp = formData.has('whatsapp')
-    ? String(formData.get('whatsapp') ?? '').trim()
+    ? getFormString(formData, 'whatsapp')
     : undefined;
-  const submittedWhatsappStatus = String(formData.get('whatsappConnectionStatus') ?? '').trim();
-  const submittedCustomerEntryMode = String(formData.get('customerEntryMode') ?? 'web_whatsapp').trim();
-  const submittedDefaultCustomerEntryChannel = String(formData.get('defaultCustomerEntryChannel') ?? 'web').trim();
+  const submittedWhatsappStatus = getFormString(formData, 'whatsappConnectionStatus');
+  const submittedCustomerEntryMode = getFormString(formData, 'customerEntryMode', 'web_whatsapp');
+  const submittedDefaultCustomerEntryChannel = getFormString(formData, 'defaultCustomerEntryChannel', 'web');
   const customerEntryMode = allowedCustomerEntryModes.has(submittedCustomerEntryMode)
     ? submittedCustomerEntryMode as CustomerEntryMode
     : 'web_whatsapp';
   const defaultCustomerEntryChannel = allowedDefaultCustomerEntryChannels.has(submittedDefaultCustomerEntryChannel)
     ? submittedDefaultCustomerEntryChannel as DefaultCustomerEntryChannel
     : 'web';
-  const email = String(formData.get('email') ?? '').trim();
-  const phone = String(formData.get('phone') ?? '').trim();
+  const email = getFormString(formData, 'email');
+  const phone = getFormString(formData, 'phone');
   const knowledgeBase = {
-    deliveryAreas: String(formData.get('knowledgeDeliveryAreas') ?? '').trim() || undefined,
-    faqs: String(formData.get('knowledgeFaqs') ?? '').trim() || undefined,
-    paymentInstructions: String(formData.get('knowledgePaymentInstructions') ?? '').trim() || undefined,
-    returnPolicy: String(formData.get('knowledgeReturnPolicy') ?? '').trim() || undefined,
-    serviceNotes: String(formData.get('knowledgeServiceNotes') ?? '').trim() || undefined,
-    warrantyPolicy: String(formData.get('knowledgeWarrantyPolicy') ?? '').trim() || undefined,
-    workingHoursNotes: String(formData.get('knowledgeWorkingHoursNotes') ?? '').trim() || undefined,
+    deliveryAreas: getFormString(formData, 'knowledgeDeliveryAreas') || undefined,
+    faqs: getFormString(formData, 'knowledgeFaqs') || undefined,
+    paymentInstructions: getFormString(formData, 'knowledgePaymentInstructions') || undefined,
+    returnPolicy: getFormString(formData, 'knowledgeReturnPolicy') || undefined,
+    serviceNotes: getFormString(formData, 'knowledgeServiceNotes') || undefined,
+    warrantyPolicy: getFormString(formData, 'knowledgeWarrantyPolicy') || undefined,
+    workingHoursNotes: getFormString(formData, 'knowledgeWorkingHoursNotes') || undefined,
   };
   const location = {
-    address: String(formData.get('locationAddress') ?? '').trim() || undefined,
-    branchName: String(formData.get('branchName') ?? '').trim() || undefined,
-    city: String(formData.get('locationCity') ?? '').trim() || undefined,
-    deliveryNotes: String(formData.get('deliveryNotes') ?? '').trim() || undefined,
-    district: String(formData.get('locationDistrict') ?? '').trim() || undefined,
-    mapsUrl: String(formData.get('mapsUrl') ?? '').trim() || undefined,
-    phone: String(formData.get('locationPhone') ?? '').trim() || undefined,
-    pickupInstructions: String(formData.get('pickupInstructions') ?? '').trim() || undefined,
+    address: getFormString(formData, 'locationAddress') || undefined,
+    branchName: getFormString(formData, 'branchName') || undefined,
+    city: getFormString(formData, 'locationCity') || undefined,
+    deliveryNotes: getFormString(formData, 'deliveryNotes') || undefined,
+    district: getFormString(formData, 'locationDistrict') || undefined,
+    mapsUrl: getFormString(formData, 'mapsUrl') || undefined,
+    phone: getFormString(formData, 'locationPhone') || undefined,
+    pickupInstructions: getFormString(formData, 'pickupInstructions') || undefined,
   };
   const mapsCoordinates = location.mapsUrl
     ? extractGoogleMapsCoordinates(location.mapsUrl)
@@ -587,7 +594,7 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       ...lockedMetadata,
       businessType,
       channelIntegrations: {
-        ...(lockedMetadata.channelIntegrations ?? {}),
+        ...lockedMetadata.channelIntegrations,
         whatsapp: {
           apiTokenPreview: whapi.apiTokenPreview,
           channelId: whapi.channelId,
@@ -605,13 +612,13 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
         },
       },
       contactChannels: {
-        ...(lockedMetadata.contactChannels ?? {}),
+        ...lockedMetadata.contactChannels,
         whatsapp: whapi.displayPhoneNumber || undefined,
         email: email || undefined,
         phone: phone || undefined,
       },
       customerEntry: {
-        ...(lockedMetadata.customerEntry ?? {}),
+        ...lockedMetadata.customerEntry,
         defaultChannel: defaultCustomerEntryChannel,
         mode: customerEntryMode,
       },
@@ -626,7 +633,7 @@ export const saveStoreSettings = async (locale: string, formData: FormData) => {
       delete metadata.brandTheme;
     } else {
       metadata.brandTheme = {
-        ...(lockedMetadata.brandTheme ?? {}),
+        ...lockedMetadata.brandTheme,
         accentColor: accentColor || undefined,
         backgroundColor: backgroundColor || undefined,
         primaryColor: primaryColor || undefined,
@@ -732,7 +739,7 @@ export const saveWhatsAppSettings = async (
   }
 
   const storeName = existingSettings?.storeName
-    || String(formData.get('storeName') ?? '').trim()
+    || getFormString(formData, 'storeName')
     || 'SmartStore';
   const whatsappChannel = buildWhatsAppChannelConfig({
     apiTokenPreview: whapi.apiTokenPreview,
@@ -760,7 +767,7 @@ export const saveWhatsAppSettings = async (
     const metadata: StoreSettingsMetadata = {
       ...lockedMetadata,
       channelIntegrations: {
-        ...(lockedMetadata.channelIntegrations ?? {}),
+        ...lockedMetadata.channelIntegrations,
         whatsapp: {
           apiTokenPreview: whapi.apiTokenPreview,
           channelId: whapi.channelId,
@@ -776,7 +783,7 @@ export const saveWhatsAppSettings = async (
         },
       },
       contactChannels: {
-        ...(lockedMetadata.contactChannels ?? {}),
+        ...lockedMetadata.contactChannels,
         whatsapp: whapi.displayPhoneNumber || undefined,
       },
     };
@@ -790,7 +797,7 @@ export const saveWhatsAppSettings = async (
       await tx.insert(storeSettingsTable).values({
         metadata,
         organizationId,
-        storeName: String(formData.get('storeName') ?? '').trim() || null,
+        storeName: getFormString(formData, 'storeName') || null,
       });
     }
 
@@ -878,7 +885,7 @@ export const disconnectWhatsApp = async (locale: string) => {
           metadata: {
             ...existingMetadata,
             channelIntegrations: {
-              ...(existingMetadata.channelIntegrations ?? {}),
+              ...existingMetadata.channelIntegrations,
               whatsapp: disconnectedMetadata,
             },
           },
