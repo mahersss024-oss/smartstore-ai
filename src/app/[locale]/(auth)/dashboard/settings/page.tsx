@@ -351,24 +351,7 @@ export default async function SettingsPage(props: {
   const buildAbsoluteLink = (path: string) => {
     return requestHost ? `${requestProtocol}://${requestHost}${path}` : path;
   };
-  const whapiWebhookPath = whapiChannelId && whapiWebhookSecret
-    ? `/api/whatsapp/webhook?provider=whapi&channelId=${encodeURIComponent(whapiChannelId)}&secret=${encodeURIComponent(whapiWebhookSecret)}`
-    : '/api/whatsapp/webhook?provider=whapi';
-  const whapiCredentialChecks = [
-    {
-      isReady: /^[\w.:-]{3,128}$/.test(whapiChannelId),
-      labelKey: 'whatsapp_check_whapi_channel_id',
-    },
-    {
-      isReady: Boolean(whapiChannelId),
-      labelKey: 'whatsapp_check_whapi_api_token',
-    },
-    {
-      isReady: Boolean(whapiWebhookSecret),
-      labelKey: 'whatsapp_check_whapi_webhook_secret',
-    },
-  ] as const;
-  const whatsappCredentialChecks = whapiCredentialChecks;
+
   const buildConnectLink = (source: string) => {
     return buildAbsoluteLink(`/${locale}/connect/${orgId}?source=${source}`);
   };
@@ -768,135 +751,13 @@ export default async function SettingsPage(props: {
               value={whatsappChannel.connectionStatus}
             />
 
-            <div className="
-              grid gap-4 rounded-xl border bg-white/70 p-4
-              md:grid-cols-2
-            "
-            >
-              <div className="md:col-span-2">
-                <WhapiQrConnectButton
-                  title={t('whapi_qr_connect_title')}
-                  buttonLabel={t('whapi_qr_connect_button')}
-                  errorLabel={t('whapi_qr_connect_error')}
-                  pendingLabel={t('whapi_qr_connect_pending')}
-                  refreshLabel={t('whapi_qr_connect_refresh')}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label
-                  htmlFor="whapiChannelId"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t('whapi_channel_id')}
-                </label>
-                <input
-                  id="whapiChannelId"
-                  name="whapiChannelId"
-                  autoComplete="off"
-                  defaultValue={whapiChannelId}
-                  placeholder="channel_xxxxxxxxx"
-                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label
-                  htmlFor="whapiApiToken"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t('whapi_api_token')}
-                </label>
-                <input
-                  id="whapiApiToken"
-                  name="whapiApiToken"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={whapiApiTokenPreview || '********************************'}
-                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label
-                  htmlFor="whapiDisplayPhoneNumber"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t('whapi_display_phone_number')}
-                </label>
-                <input
-                  id="whapiDisplayPhoneNumber"
-                  name="whapiDisplayPhoneNumber"
-                  autoComplete="off"
-                  defaultValue={whapiDisplayPhoneNumber}
-                  placeholder="+9665xxxxxxxx"
-                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label
-                  htmlFor="whapiWebhookSecret"
-                  className="text-sm font-medium text-foreground"
-                >
-                  {t('whapi_webhook_secret')}
-                </label>
-                <input
-                  id="whapiWebhookSecret"
-                  name="whapiWebhookSecret"
-                  autoComplete="off"
-                  defaultValue={whapiWebhookSecret}
-                  placeholder={t('whapi_webhook_secret_placeholder')}
-                  className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor="whapiWebhookUrl" className="text-sm font-medium">
-                {t('whapi_webhook_url')}
-              </label>
-              <input
-                id="whapiWebhookUrl"
-                readOnly
-                value={buildAbsoluteLink(whapiWebhookPath)}
-                className="dashboard-pill rounded-lg border px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid gap-4 border-t border-emerald-600/15 pt-4">
-              <div className="
-                grid gap-2 text-sm
-                md:grid-cols-2
-              "
-              >
-                {whatsappCredentialChecks.map(item => (
-                  <div
-                    key={item.labelKey}
-                    className="
-                      flex items-center justify-between gap-3 rounded-lg border
-                      bg-white px-3 py-2
-                    "
-                  >
-                    <span className="text-muted-foreground">
-                      {t(item.labelKey)}
-                    </span>
-                    <span
-                      className={`
-                        shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold
-                        ${
-                  item.isReady
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-amber-100 text-amber-700'
-                  }
-                      `}
-                    >
-                      {item.isReady ? t('whatsapp_ready') : t('whatsapp_missing')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <WhapiQrConnectButton
+              title={t('whapi_qr_connect_title')}
+              buttonLabel={t('whapi_qr_connect_button')}
+              errorLabel={t('whapi_qr_connect_error')}
+              pendingLabel={t('whapi_qr_connect_pending')}
+              refreshLabel={t('whapi_qr_connect_refresh')}
+            />
 
             {whatsappQrDataUri && (
               <div className="
