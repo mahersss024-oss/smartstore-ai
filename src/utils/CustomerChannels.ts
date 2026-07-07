@@ -20,7 +20,7 @@ export type WhatsAppConnectionStatus
   = | 'connected'
     | 'disconnected'
     | 'pending_setup';
-export type WhatsAppProvider = 'whapi';
+export type WhatsAppProvider = 'evolution' | 'whapi';
 
 const validEntryModes = new Set<CustomerEntryMode>([
   'web_only',
@@ -168,13 +168,14 @@ export const buildWhatsAppChannelConfig = (params: {
   const whatsappLink = whatsappTarget
     ? buildWhatsAppUrl(whatsappTarget, buildWhatsAppDirectMessage(params.storeName))
     : null;
+  const connectionMethod = provider === 'evolution' ? 'evolution_api' : 'whapi_cloud_api';
   const providerConfig = {
     apiTokenPreview: params.apiTokenPreview ?? null,
     channelId,
-    connectionMethod: 'whapi_cloud_api',
+    connectionMethod,
     displayPhoneNumber,
     encryptedApiToken: params.encryptedApiToken ?? null,
-    webhookProvider: 'whapi',
+    webhookProvider: provider,
     webhookSecret: params.webhookSecret ?? null,
   };
 

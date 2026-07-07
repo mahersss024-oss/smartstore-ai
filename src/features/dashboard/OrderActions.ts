@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { generateCustomerReplyForSystemEvent } from '@/features/ai/AIEmployeeAgent';
 import { OrderConcurrencyError } from '@/features/dashboard/OrderErrors';
 import { db } from '@/libs/DB';
+import { sendEvolutionConversationTextMessage } from '@/libs/EvolutionWhatsApp';
 import {
   getOrderConversationReference,
   writeOrderCustomerConversationMessage,
@@ -108,10 +109,14 @@ const sendWhatsAppOrderStatusNotification = async (params: {
   }
 
   const conversationReference = getOrderConversationReference(params.aiAnalysis);
+  const externalThreadId = conversationReference.externalThreadId;
+  const sender = externalThreadId?.startsWith('ewa:')
+    ? sendEvolutionConversationTextMessage
+    : sendWhapiConversationTextMessage;
 
-  await sendWhapiConversationTextMessage({
+  await sender({
     body: params.body,
-    externalThreadId: conversationReference.externalThreadId,
+    externalThreadId,
     organizationId: params.organizationId,
   });
 };

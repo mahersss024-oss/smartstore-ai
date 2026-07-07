@@ -295,13 +295,17 @@ export default async function SettingsPage(props: {
   const whapiWebhookSecret = whatsappConfig.webhookSecret
     ?? metadata?.channelIntegrations?.whatsapp?.webhookSecret
     ?? '';
+  const whatsappProvider = whatsappConfig.provider === 'evolution'
+    || metadata?.channelIntegrations?.whatsapp?.provider === 'evolution'
+    ? 'evolution'
+    : 'whapi';
   const whatsappChannel = buildWhatsAppChannelConfig({
     apiTokenPreview: whapiApiTokenPreview,
     channelId: whapiChannelId,
     displayPhoneNumber: whapiDisplayPhoneNumber,
     encryptedApiToken: null,
     hasApiToken: Boolean(whapiChannelId),
-    provider: 'whapi',
+    provider: whatsappProvider,
     status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
     storeName: currentSettings?.storeName ?? 'SmartStore',
     webhookSecret: whapiWebhookSecret,
@@ -754,6 +758,7 @@ export default async function SettingsPage(props: {
             <WhapiQrConnectButton
               title={t('whapi_qr_connect_title')}
               buttonLabel={t('whapi_qr_connect_button')}
+              endpoint="/api/evolution/connect/qr"
               errorLabel={t('whapi_qr_connect_error')}
               issueLabels={{
                 channel_preparing: t('whapi_qr_connect_channel_preparing'),

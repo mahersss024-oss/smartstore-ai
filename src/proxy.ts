@@ -27,7 +27,10 @@ export default async function proxy(
   request: NextRequest,
   event: NextFetchEvent,
 ) {
-  if (request.nextUrl.pathname === '/api/whapi/connect/qr') {
+  if (
+    request.nextUrl.pathname === '/api/whapi/connect/qr'
+    || request.nextUrl.pathname === '/api/evolution/connect/qr'
+  ) {
     return clerkMiddleware()(request, event);
   }
 

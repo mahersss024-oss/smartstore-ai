@@ -26,8 +26,16 @@ type StoreSettingsMetadata = {
 } & Record<string, unknown>;
 
 const shouldPreserveWhapiConnectionOnDisconnect = (config: ExistingWhatsappConfig) => {
-  return (config.provider === 'whapi' || config.mode === 'whapi')
-    && Boolean(config.channelId);
+  return (
+    ['evolution', 'whapi'].includes(config.provider ?? '')
+    || ['evolution', 'whapi'].includes(config.mode ?? '')
+  ) && Boolean(config.channelId);
+};
+
+const getWhatsAppProvider = (config: ExistingWhatsappConfig) => {
+  return config.provider === 'evolution' || config.mode === 'evolution'
+    ? 'evolution'
+    : 'whapi';
 };
 
 export const buildDisconnectedWhatsAppConnection = (config: ExistingWhatsappConfig) => {
@@ -53,7 +61,7 @@ export const buildDisconnectedWhatsAppMetadata = (config: ExistingWhatsappConfig
     displayPhoneNumber: config.displayPhoneNumber ?? null,
     encryptedApiToken: null,
     hasApiToken: Boolean(config.channelId),
-    provider: 'whapi',
+    provider: getWhatsAppProvider(config),
     status: 'disconnected',
     storeName: 'SmartStore',
     webhookSecret: config.webhookSecret ?? null,
@@ -66,9 +74,9 @@ export const buildDisconnectedWhatsAppMetadata = (config: ExistingWhatsappConfig
     displayPhoneNumber: config.displayPhoneNumber ?? null,
     managedByPlatform: config.managedByPlatform ?? undefined,
     managedChannelActivatedAt: config.managedChannelActivatedAt ?? null,
-    mode: 'whapi',
+    mode: getWhatsAppProvider(config),
     phoneNumber: config.displayPhoneNumber ?? null,
-    provider: 'whapi',
+    provider: getWhatsAppProvider(config),
     webhookReady: false,
     webhookSecret: config.webhookSecret ?? null,
     whatsappLink: channel.whatsappLink,

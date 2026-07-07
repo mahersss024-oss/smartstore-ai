@@ -39,6 +39,7 @@ const normalizeRetryDelaySeconds = (value?: number) => {
 export const WhapiQrConnectButton = (props: {
   buttonLabel: string;
   description?: string;
+  endpoint?: string;
   errorLabel: string;
   issueLabels?: Partial<Record<WhapiQrIssueReason, string>>;
   pendingLabel: string;
@@ -60,7 +61,7 @@ export const WhapiQrConnectButton = (props: {
     setNoticeMessage('');
 
     try {
-      const response = await fetch('/api/whapi/connect/qr', {
+      const response = await fetch(props.endpoint ?? '/api/whapi/connect/qr', {
         credentials: 'same-origin',
         method: 'POST',
       });
@@ -94,7 +95,7 @@ export const WhapiQrConnectButton = (props: {
     } finally {
       setIsLoading(false);
     }
-  }, [props.errorLabel, props.issueLabels, props.pendingLabel, router]);
+  }, [props.endpoint, props.errorLabel, props.issueLabels, props.pendingLabel, router]);
 
   useEffect(() => {
     if (!pendingMessage || retryDelaySeconds <= 0 || autoRetryCount >= MAX_AUTO_RETRIES) {

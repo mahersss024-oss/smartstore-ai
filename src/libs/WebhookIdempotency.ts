@@ -4,6 +4,8 @@ import { db } from './DB';
 
 export type WebhookEventProvider
   = | 'clerk'
+    | 'evolution'
+    | 'evolution_thread_lock'
     | 'stripe'
     | 'whapi'
     | 'whapi_thread_lock';

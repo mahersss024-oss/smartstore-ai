@@ -51,6 +51,9 @@ vi.mock('@/features/ai/AIEmployeeAgent', () => ({
 vi.mock('@/libs/WhapiWhatsApp', () => ({
   sendWhapiConversationTextMessage: vi.fn(),
 }));
+vi.mock('@/libs/EvolutionWhatsApp', () => ({
+  sendEvolutionConversationTextMessage: vi.fn(),
+}));
 vi.mock('@/libs/ProductAvailabilitySync', () => ({ syncProductAvailability: vi.fn() }));
 vi.mock('@/libs/ProductCatalogConflict', () => ({
   assertNoDuplicateProductName: vi.fn(),
