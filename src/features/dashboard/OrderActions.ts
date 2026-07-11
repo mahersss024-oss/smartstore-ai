@@ -52,6 +52,7 @@ type OrderAIAnalysisFacts = {
     deliveryPreference?: unknown;
     fulfillmentType?: unknown;
     paymentPreference?: unknown;
+    tableNumber?: unknown;
   };
   deliveryPreference?: unknown;
   fulfillment?: {
@@ -61,6 +62,7 @@ type OrderAIAnalysisFacts = {
   };
   fulfillmentType?: unknown;
   paymentPreference?: unknown;
+  tableNumber?: unknown;
 };
 
 const getOrderAIAnalysisFacts = (aiAnalysis: unknown): OrderAIAnalysisFacts => {
@@ -93,6 +95,10 @@ const getOrderSystemEventFacts = (aiAnalysis: unknown) => {
       facts.fulfillment?.paymentPreference
       ?? facts.customerDetails?.paymentPreference
       ?? facts.paymentPreference,
+    ),
+    tableNumber: getStringFact(
+      facts.customerDetails?.tableNumber
+      ?? facts.tableNumber,
     ),
   };
 };
@@ -591,6 +597,7 @@ export const completeOrderAndRequestReview = async (locale: string, orderId: num
     order: {
       customerAddress: order.customerAddress,
       customerPhone: order.customerPhone,
+      ...getOrderSystemEventFacts(order.aiAnalysis),
       id: order.id,
       items: order.items,
       paymentStatus: order.paymentStatus,

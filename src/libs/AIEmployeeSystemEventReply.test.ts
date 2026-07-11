@@ -180,6 +180,34 @@ describe('AIEmployeeSystemEventReply', () => {
     expect(reply).toContain('جاهز');
   });
 
+  it('does not describe dine-in table orders as branch pickup', async () => {
+    mockGeneratePlatformAIText
+      .mockResolvedValueOnce('\u0637\u0644\u0628\u0643 \u0631\u0642\u0645 191 \u062C\u0627\u0647\u0632 \u0644\u0644\u0627\u0633\u062A\u0644\u0627\u0645 \u0645\u0646 \u0627\u0644\u0641\u0631\u0639.')
+      .mockResolvedValueOnce(JSON.stringify({ reason: '', valid: true }))
+      .mockResolvedValueOnce(null);
+
+    const reply = await generateAIEmployeeSystemEventReply({
+      assistantDisplayName: 'Agent',
+      config,
+      eventType: 'order_ready_for_pickup',
+      locale: 'ar',
+      order: {
+        fulfillmentType: 'dine_in',
+        id: 191,
+        items: [],
+        status: 'ready_for_pickup',
+        tableNumber: '2',
+      },
+      storeName: 'Test Store',
+    });
+
+    expect(reply).toContain('191');
+    expect(reply).toContain('2');
+    expect(reply).toContain('\u0627\u0644\u0637\u0627\u0648\u0644\u0629');
+    expect(reply).not.toContain('\u0627\u0633\u062A\u0644\u0627\u0645');
+    expect(reply).not.toContain('\u0627\u0644\u0641\u0631\u0639');
+  });
+
   it('uses Arabic fallback for review_requested', async () => {
     mockGeneratePlatformAIText
       .mockResolvedValueOnce('Please review!')
