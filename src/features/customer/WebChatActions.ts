@@ -29,6 +29,7 @@ import {
   conversationsTable,
   customerReviewsTable,
   customersTable,
+  deliveryMethodsTable,
   orderEventsTable,
   ordersTable,
 } from '@/models/Schema';
@@ -88,6 +89,22 @@ const normalizePhoneDigits = (value?: null | string) => {
   return value?.replace(/\D/g, '') ?? '';
 };
 
+const isTableServiceEnabled = async (organizationId: string) => {
+  const [method] = await db
+    .select({ id: deliveryMethodsTable.id })
+    .from(deliveryMethodsTable)
+    .where(
+      and(
+        eq(deliveryMethodsTable.organizationId, organizationId),
+        eq(deliveryMethodsTable.type, 'dine_in'),
+        eq(deliveryMethodsTable.isActive, true),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(method);
+};
+
 const sendCustomerChatMessage = async (
   input: z.infer<typeof webChatMessageSchema>,
   options?: {
@@ -125,6 +142,13 @@ const sendCustomerChatMessage = async (
     await assertStoreFeatureEnabled(payload.organizationId, 'ai');
     if (payload.source === 'whatsapp') {
       await assertStoreFeatureEnabled(payload.organizationId, 'whatsapp');
+    }
+
+    if ((channel === 'web_chat_table' || payload.source === 'table') && !await isTableServiceEnabled(payload.organizationId)) {
+      return {
+        error: 'table_service_disabled',
+        ok: false as const,
+      };
     }
 
     const result = await handleCustomerMessageWithAIEmployee({

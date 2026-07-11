@@ -327,6 +327,7 @@ export default async function SettingsPage(props: {
   const getDeliveryMethod = (type: string) => {
     return deliveryMethods.find(method => method.type === type);
   };
+  const tableServiceEnabled = getDeliveryMethod('dine_in')?.isActive === true;
   const getDeliveryConfig = (type: string) => {
     return (getDeliveryMethod(type)?.config ?? {}) as DeliveryConfig;
   };
@@ -400,7 +401,7 @@ export default async function SettingsPage(props: {
       color: '#a16207',
       downloadName: 'table-qr.svg',
       labelKey: 'qr_table',
-      link: buildWebOrderLink('table'),
+      link: tableServiceEnabled ? buildWebOrderLink('table') : null,
     },
   ] as const;
   const qrCards = await Promise.all(qrEntries

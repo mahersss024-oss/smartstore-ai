@@ -105,6 +105,12 @@ vi.mock('@/models/Schema', () => ({
     organizationId: 'customerOrganizationId',
     sourceChannel: 'customerSourceChannel',
   },
+  deliveryMethodsTable: {
+    id: 'deliveryMethodId',
+    isActive: 'deliveryMethodIsActive',
+    organizationId: 'deliveryMethodOrganizationId',
+    type: 'deliveryMethodType',
+  },
   orderEventsTable: {},
   ordersTable: {
     customerPhone: 'orderCustomerPhone',
@@ -286,6 +292,44 @@ describe('WebChatActions', () => {
     expect(handleCustomerMessageWithAIEmployee).not.toHaveBeenCalled();
     expect(checkPublicMessageRateLimit).not.toHaveBeenCalled();
     expect(assertStoreFeatureEnabled).not.toHaveBeenCalled();
+  });
+
+  it('rejects table web chat messages when dine-in table service is disabled', async () => {
+    const { handleCustomerMessageWithAIEmployee } = await import('@/features/ai/AIEmployeeAgent');
+    const { checkPublicMessageRateLimit } = await import('@/libs/PublicEndpointRateLimit');
+    const { assertStoreFeatureEnabled } = await import('@/libs/StoreServiceControls');
+    vi.mocked(assertStoreFeatureEnabled).mockResolvedValue(undefined);
+    const { sendWebChatMessage } = await import('./WebChatActions');
+
+    const response = await sendWebChatMessage({
+      body: 'ابي مضغوط',
+      customer: {
+        externalId: 'customer_1',
+      },
+      externalThreadId: 'thread_1',
+      locale: 'ar',
+      organizationId: 'org_1',
+      semanticHints: {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+        tableNumber: '2',
+      },
+      source: 'web_chat_table',
+    });
+
+    expect(response).toEqual({
+      error: 'table_service_disabled',
+      ok: false,
+    });
+    expect(checkPublicMessageRateLimit).toHaveBeenCalled();
+    expect(assertStoreFeatureEnabled).toHaveBeenCalledWith('org_1', 'webOrders');
+    expect(assertStoreFeatureEnabled).toHaveBeenCalledWith('org_1', 'ai');
+    expect(handleCustomerMessageWithAIEmployee).not.toHaveBeenCalled();
+    expect(mockSelectWhereConditions.some(condition => conditionContains(
+      condition,
+      'deliveryMethodType',
+      'dine_in',
+    ))).toBe(true);
   });
 
   it('does not expose internal orchestration traces to the public chat response', async () => {

@@ -192,6 +192,8 @@ export default async function WebOrderPage(props: {
         .filter((choice): choice is FulfillmentChoice => Boolean(choice)),
     ),
   );
+  const isTableOrder = channelSource === 'table';
+  const tableServiceEnabled = configuredFulfillmentTypes.includes('dine_in');
   const availablePaymentKinds = paymentMethods.reduce<{
     delivery: PaymentChoiceKind[];
     pickup: PaymentChoiceKind[];
@@ -215,17 +217,19 @@ export default async function WebOrderPage(props: {
     },
     { delivery: [], pickup: [] },
   );
-  const availableFulfillmentTypes = configuredFulfillmentTypes.filter(
-    (choice) => {
-      if (choice === 'dine_in') {
-        return true;
-      }
+  const availableFulfillmentTypes = isTableOrder
+    ? tableServiceEnabled ? ['dine_in' as const] : []
+    : configuredFulfillmentTypes.filter(
+        (choice) => {
+          if (choice === 'dine_in') {
+            return true;
+          }
 
-      return choice === 'delivery'
-        ? availablePaymentKinds.delivery.length > 0
-        : availablePaymentKinds.pickup.length > 0;
-    },
-  );
+          return choice === 'delivery'
+            ? availablePaymentKinds.delivery.length > 0
+            : availablePaymentKinds.pickup.length > 0;
+        },
+      );
   const orderChatEnabled = chatEnabled && availableFulfillmentTypes.length > 0;
 
   return (
