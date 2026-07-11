@@ -64,6 +64,7 @@ export default antfu(
       'react-hooks/incompatible-library': 'off', // Disable warning for compilation skipped
       'react-hooks/exhaustive-deps': 'off', // Disable exhaustive-deps in useEffect
       'node/prefer-global/process': 'off', // Allow using `process.env`
+      'better-tailwindcss/enforce-canonical-classes': 'off', // Avoid synckit worker timeouts; keep non-ordering Tailwind checks enabled.
       'test/padding-around-all': 'error', // Add padding in test files
       'test/prefer-lowercase-title': 'off', // Allow using uppercase titles in test titles
       'jsdoc/require-jsdoc': 'off', // JSDoc comments are optional
