@@ -87,6 +87,7 @@ type WebOrderChatProps = {
   choicePickupLabel: string;
   inputLabel: string;
   inputPlaceholder: string;
+  initialTableNumber?: string;
   locationMessagePrefix: string;
   locationUnavailableText: string;
   locationLabel: string;
@@ -95,6 +96,8 @@ type WebOrderChatProps = {
   sendLabel: string;
   source: string;
   storeLogoUrl?: null | string;
+  tableNumberLabel: string;
+  tableNumberPlaceholder: string;
   storeName: string;
   timeZone?: string;
   welcomeMessage: string;
@@ -168,6 +171,7 @@ const renderMessageText = (text: string) => {
 
 export function WebOrderChat(props: WebOrderChatProps) {
   const sourceChannel = normalizeWebOrderSourceChannel(props.source);
+  const isTableOrder = sourceChannel === 'web_chat_table';
   const threadScope = `${props.organizationId}:${sourceChannel}`;
   const getThreadSnapshot = useCallback(
     () => getWebOrderThreadIdSnapshot(threadScope),
@@ -185,6 +189,9 @@ export function WebOrderChat(props: WebOrderChatProps) {
   );
   const threadId = storedThreadId;
   const [message, setMessage] = useState('');
+  const [tableNumber, setTableNumber] = useState(
+    () => props.initialTableNumber?.trim().slice(0, 50) ?? '',
+  );
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
   const [isSendingLocation, setIsSendingLocation] = useState(false);
   const welcomeMessage = useMemo<ChatMessage>(() => ({
@@ -224,8 +231,10 @@ export function WebOrderChat(props: WebOrderChatProps) {
   const mustChooseFromOptions = webOrderChatRequiresChoiceResponse(latestAssistantMessage);
   const latestMessageId = latestAssistantMessage?.id;
   const latestVisibleSystemActions = latestAssistantMessage?.visibleSystemActions ?? [];
-  const canUseGlobalLocationButton = !mustChooseFromOptions
-    || latestVisibleSystemActions.includes('location_share');
+  const canUseGlobalLocationButton = !isTableOrder && (
+    !mustChooseFromOptions
+    || latestVisibleSystemActions.includes('location_share')
+  );
 
   const scrollToLatestMessage = (behavior: ScrollBehavior = 'smooth') => {
     if (!shouldAutoScrollRef.current) {
@@ -389,6 +398,15 @@ export function WebOrderChat(props: WebOrderChatProps) {
 
     pendingSubmissionRef.current = true;
     const clientSubmissionId = createWebOrderChatId();
+    const tableOrderSemanticHints = isTableOrder
+      ? {
+          deliveryPreference: 'pickup' as const,
+          fulfillmentType: 'dine_in' as const,
+          ...(tableNumber.trim()
+            ? { tableNumber: tableNumber.trim().slice(0, 50) }
+            : {}),
+        }
+      : {};
     setMessage('');
     shouldAutoScrollRef.current = true;
     if (!options?.suppressCustomerEcho) {
@@ -412,7 +430,10 @@ export function WebOrderChat(props: WebOrderChatProps) {
           externalThreadId: threadId,
           locale: props.locale,
           organizationId: props.organizationId,
-          semanticHints,
+          semanticHints: {
+            ...semanticHints,
+            ...tableOrderSemanticHints,
+          },
           source: sourceChannel,
           suppressCustomerEcho: options?.suppressCustomerEcho,
         });
@@ -807,6 +828,29 @@ export function WebOrderChat(props: WebOrderChatProps) {
           )}
         </div>
       </div>
+
+      {isTableOrder && (
+        <div className="border-b border-primary/10 px-4 py-3">
+          <label
+            htmlFor="web-chat-table-number"
+            className="mb-1 block text-xs font-semibold text-slate-700"
+          >
+            {props.tableNumberLabel}
+          </label>
+          <input
+            id="web-chat-table-number"
+            value={tableNumber}
+            maxLength={50}
+            onChange={event => setTableNumber(event.target.value.slice(0, 50))}
+            placeholder={props.tableNumberPlaceholder}
+            className="
+              h-10 w-full rounded-lg border border-primary/15 bg-background/90
+              px-3 text-sm transition outline-none
+              focus:border-primary
+            "
+          />
+        </div>
+      )}
 
       <div
         ref={messagesContainerRef}
@@ -1476,21 +1520,24 @@ export function WebOrderChat(props: WebOrderChatProps) {
           {props.inputLabel}
         </label>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={sendCurrentLocation}
-            disabled={!threadId || isPending || isSendingLocation || !canUseGlobalLocationButton}
-            aria-label={props.locationLabel}
-            title={props.locationLabel}
-            className="
-              flex size-11 shrink-0 items-center justify-center rounded-lg
-              border border-primary/15 bg-background/90 text-primary transition
-              hover:border-primary/40 hover:bg-accent/70 hover:text-primary
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-          >
-            <MapPin className="size-4" />
-          </button>
+          {!isTableOrder && (
+            <button
+              type="button"
+              onClick={sendCurrentLocation}
+              disabled={!threadId || isPending || isSendingLocation || !canUseGlobalLocationButton}
+              aria-label={props.locationLabel}
+              title={props.locationLabel}
+              className="
+                flex size-11 shrink-0 items-center justify-center rounded-lg
+                border border-primary/15 bg-background/90 text-primary
+                transition
+                hover:border-primary/40 hover:bg-accent/70 hover:text-primary
+                disabled:cursor-not-allowed disabled:opacity-50
+              "
+            >
+              <MapPin className="size-4" />
+            </button>
+          )}
           <textarea
             ref={inputRef}
             id="web-chat-message"

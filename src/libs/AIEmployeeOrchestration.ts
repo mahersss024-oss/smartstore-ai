@@ -11,7 +11,10 @@ import type {
   ConversationOrderItem,
   ConversationSuggestedProduct,
 } from './ConversationEngine';
-import { isSharedLocationAddress } from './AIEmployeeCheckout';
+import {
+  isSharedLocationAddress,
+  normalizeAIEmployeeFulfillmentType,
+} from './AIEmployeeCheckout';
 import {
   classifyRequestedCustomerNeed,
   evaluateAIOrchestrationQuality,
@@ -53,6 +56,7 @@ export type AIEmployeeSemanticUnderstanding = {
   requestedQuantity?: number;
   removeCartItemProductId?: number;
   supportEscalationConfirmed?: boolean;
+  tableNumber?: string;
 };
 
 export type AIEmployeeCancelledCartSnapshot = {
@@ -628,6 +632,11 @@ export const validateAIEmployeeRequestedCustomerNeed = (params: {
   requestedNeed?: AIOrchestrationCustomerNeed;
 }) => {
   const requestedNeed = params.requestedNeed;
+  const fulfillmentType = normalizeAIEmployeeFulfillmentType(
+    params.customerDetails?.fulfillmentType,
+    params.customerDetails?.deliveryPreference,
+  );
+  const isDineIn = fulfillmentType === 'dine_in';
 
   if (!requestedNeed) {
     return null;
@@ -640,7 +649,7 @@ export const validateAIEmployeeRequestedCustomerNeed = (params: {
   }
 
   if (requestedNeed === 'customer_phone') {
-    return params.customerDetails?.phone ? null : requestedNeed;
+    return isDineIn || params.customerDetails?.phone ? null : requestedNeed;
   }
 
   if (requestedNeed === 'fulfillment_method') {
@@ -658,7 +667,8 @@ export const validateAIEmployeeRequestedCustomerNeed = (params: {
   }
 
   if (requestedNeed === 'payment_method') {
-    return params.cart?.items.length
+    return !isDineIn
+      && params.cart?.items.length
       && Boolean(params.customerDetails?.deliveryPreference)
       && !params.customerDetails?.paymentPreference
       ? requestedNeed
@@ -793,6 +803,7 @@ export const sanitizeAIEmployeeSystemSemanticHints = (params: {
     supportEscalationConfirmed: hints.dialogueState === 'complaint' && referencedOrderIdIsKnown
       ? hints.supportEscalationConfirmed
       : undefined,
+    tableNumber: hints.tableNumber?.trim().slice(0, 50) || undefined,
   } satisfies AIEmployeeSemanticHints;
 
   const systemEventType = hints.systemEvent?.type;

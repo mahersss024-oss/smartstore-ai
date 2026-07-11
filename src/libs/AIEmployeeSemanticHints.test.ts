@@ -15,6 +15,7 @@ describe('AIEmployeeSemanticHints', () => {
       restoreCancelledCart: true,
       selectedProductId: 123,
       startNewOrder: true,
+      tableNumber: 'A12',
       systemEvent: {
         source: 'web_order_ui',
         type: 'new_order_started',
@@ -31,6 +32,7 @@ describe('AIEmployeeSemanticHints', () => {
       restoreCancelledCart: true,
       selectedProductId: 123,
       startNewOrder: true,
+      tableNumber: 'A12',
       systemEvent: {
         source: 'web_order_ui',
         type: 'new_order_started',

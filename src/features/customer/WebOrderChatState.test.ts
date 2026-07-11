@@ -6,6 +6,7 @@ import {
   getLatestWebOrderAssistantMessage,
   mergeWebOrderChatMessages,
   normalizeRemoteWebOrderMessage,
+  normalizeWebOrderCustomerDetails,
   normalizeWebOrderVisibleSystemActions,
   webOrderChatRequiresChoiceResponse,
 } from './WebOrderChatState';
@@ -17,6 +18,18 @@ describe('WebOrderChatState', () => {
       'unknown_action',
       'payment_choices',
     ])).toEqual(['cart_controls', 'payment_choices']);
+  });
+
+  it('normalizes optional table numbers in customer details', () => {
+    expect(normalizeWebOrderCustomerDetails({
+      deliveryPreference: 'pickup',
+      fulfillmentType: 'dine_in',
+      tableNumber: ' A12 ',
+    })).toMatchObject({
+      deliveryPreference: 'pickup',
+      fulfillmentType: 'dine_in',
+      tableNumber: 'A12',
+    });
   });
 
   it('hides internal customer system actions from the chat transcript', () => {

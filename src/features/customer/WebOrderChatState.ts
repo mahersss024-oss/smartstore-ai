@@ -19,6 +19,7 @@ export type ChatCustomerDetails = {
   deliveryPreference?: 'delivery' | 'pickup';
   fulfillmentType?: 'delivery' | 'dine_in' | 'pickup';
   paymentPreference?: 'card_on_delivery' | 'card_on_pickup' | 'cash_on_delivery' | 'cash_on_pickup';
+  tableNumber?: string;
 };
 
 export type ChatCancelledCartSnapshot = {
@@ -205,6 +206,9 @@ export const normalizeWebOrderCustomerDetails = (
       || candidate.paymentPreference === 'cash_on_delivery'
       || candidate.paymentPreference === 'cash_on_pickup'
       ? candidate.paymentPreference
+      : undefined,
+    tableNumber: typeof candidate.tableNumber === 'string'
+      ? candidate.tableNumber.trim().slice(0, 50) || undefined
       : undefined,
   };
 };

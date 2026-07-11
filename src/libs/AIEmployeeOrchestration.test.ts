@@ -662,6 +662,26 @@ describe('AIEmployeeOrchestration', () => {
     })).toBe('payment_method');
     expect(validateAIEmployeeRequestedCustomerNeed({
       cart,
+      customerDetails: {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+      },
+      decision,
+      pendingOrderModificationNeedsConfirmation: false,
+      requestedNeed: 'customer_phone',
+    })).toBeNull();
+    expect(validateAIEmployeeRequestedCustomerNeed({
+      cart,
+      customerDetails: {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+      },
+      decision,
+      pendingOrderModificationNeedsConfirmation: false,
+      requestedNeed: 'payment_method',
+    })).toBeNull();
+    expect(validateAIEmployeeRequestedCustomerNeed({
+      cart,
       customerDetails: {},
       decision,
       pendingOrderModificationNeedsConfirmation: true,

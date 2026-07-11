@@ -96,11 +96,14 @@ const getSupportedDeliveryPreferences = (
 
 export default async function WebOrderPage(props: {
   params: Promise<{ locale: string; organizationId: string }>;
-  searchParams: Promise<{ sent?: string; source?: string }>;
+  searchParams: Promise<{ sent?: string; source?: string; table?: string }>;
 }) {
   const { locale, organizationId } = await props.params;
-  const { sent, source } = await props.searchParams;
+  const { sent, source, table } = await props.searchParams;
   const channelSource = normalizeCustomerChannelSource(source, 'website');
+  const tableNumber = channelSource === 'table' && typeof table === 'string'
+    ? table.trim().slice(0, 50)
+    : undefined;
   setRequestLocale(locale);
 
   const t = await getTranslations({
@@ -214,6 +217,10 @@ export default async function WebOrderPage(props: {
   );
   const availableFulfillmentTypes = configuredFulfillmentTypes.filter(
     (choice) => {
+      if (choice === 'dine_in') {
+        return true;
+      }
+
       return choice === 'delivery'
         ? availablePaymentKinds.delivery.length > 0
         : availablePaymentKinds.pickup.length > 0;
@@ -291,6 +298,7 @@ export default async function WebOrderPage(props: {
             choiceOtherLabel={t('chat_choice_other')}
             choicePickupLabel={t('chat_choice_pickup')}
             disabledText={t('chat_error')}
+            initialTableNumber={tableNumber}
             inputLabel={t('chat_input_label')}
             inputPlaceholder={t('chat_placeholder')}
             locationMessagePrefix={t('chat_location_message_prefix')}
@@ -301,6 +309,8 @@ export default async function WebOrderPage(props: {
             sendLabel={t('chat_send')}
             source={channelSource}
             storeLogoUrl={settings?.logo?.trim() || null}
+            tableNumberLabel={t('chat_table_number_label')}
+            tableNumberPlaceholder={t('chat_table_number_placeholder')}
             storeName={storeName}
             timeZone={timeZone}
             welcomeMessage={

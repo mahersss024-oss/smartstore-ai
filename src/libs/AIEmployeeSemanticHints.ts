@@ -33,6 +33,7 @@ export const aiEmployeeSemanticHintsSchema = z.object({
   selectedProductId: z.number().int().positive().optional(),
   startNewOrder: z.boolean().optional(),
   supportEscalationConfirmed: z.boolean().optional(),
+  tableNumber: z.string().min(1).max(50).optional(),
   systemEvent: z.object({
     source: z.literal('web_order_ui'),
     type: z.enum([

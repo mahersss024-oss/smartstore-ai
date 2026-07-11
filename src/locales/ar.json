@@ -902,6 +902,8 @@
     "chat_choice_dine_in": "أكل محلي",
     "chat_choice_other": "غير ذلك",
     "chat_choice_pickup": "استلام من الفرع",
+    "chat_table_number_label": "رقم الطاولة أو الجلسة",
+    "chat_table_number_placeholder": "اختياري",
     "chat_location": "إرسال الموقع",
     "chat_location_message_prefix": "موقعي الحالي:",
     "chat_location_unavailable": "تعذر الوصول للموقع. فعّل إذن الموقع من المتصفح ثم حاول مشاركة الموقع مرة أخرى.",

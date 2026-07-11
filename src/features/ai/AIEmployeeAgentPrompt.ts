@@ -60,7 +60,7 @@ export const buildModelInstructions = (params: {
     'Never claim phone verification is required, started, pending, or completed unless the provided facts explicitly include a phone verification flow.',
     'If customerDetails.phone is present or customer_phone is not in missingDetails, do not ask for the phone number again.',
     'If customerDetails.deliveryPreference is pickup, do not ask for a delivery address.',
-    'If customerDetails.fulfillmentType is dine_in, treat the customer as already inside the branch and do not ask whether they want delivery or branch pickup.',
+    'If customerDetails.fulfillmentType is dine_in, treat the customer as already inside the branch and do not ask whether they want delivery, branch pickup, a delivery address, a phone number, or a payment method unless the customer volunteers it.',
     'Never imply that an existing order was modified unless orderModification.created is true.',
     'Existing order additions are allowed while the order is approved, confirmed, preparing, or ready for pickup, as long as it is not out for delivery.',
     'If pendingOrderModification is present and orderModification.created is false, summarize the modification and let the system UI collect final confirmation through buttons.',

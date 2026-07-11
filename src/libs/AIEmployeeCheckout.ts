@@ -21,6 +21,7 @@ export type AIEmployeeCustomerDetails = {
   fulfillmentType?: 'delivery' | 'dine_in' | 'pickup';
   name?: string;
   paymentPreference?: 'card_on_delivery' | 'card_on_pickup' | 'cash_on_delivery' | 'cash_on_pickup';
+  tableNumber?: string;
   phone?: string;
 };
 
@@ -30,6 +31,7 @@ type CheckoutSemanticUnderstanding = {
   deliveryPreference?: 'delivery' | 'pickup';
   fulfillmentType?: 'delivery' | 'dine_in' | 'pickup';
   paymentPreference?: 'card_on_delivery' | 'card_on_pickup' | 'cash_on_delivery' | 'cash_on_pickup';
+  tableNumber?: string;
 };
 
 type CustomerIdentity = {
@@ -462,6 +464,8 @@ export const extractAIEmployeeCustomerDetails = (
       || semanticUnderstanding?.customerName
       || previousDetails?.name,
     paymentPreference,
+    tableNumber: semanticUnderstanding?.tableNumber?.trim().slice(0, 50)
+      || previousDetails?.tableNumber,
     phone: customer.phone?.trim()
       || extractPhoneNumber(message)
       || previousDetails?.phone,
@@ -491,27 +495,33 @@ export const getMissingAIEmployeeOrderDetails = (params: {
   customerDetails?: AIEmployeeCustomerDetails;
 }) => {
   const missingDetails: AIOrchestrationCustomerNeed[] = [];
+  const fulfillmentType = normalizeAIEmployeeFulfillmentType(
+    params.customerDetails?.fulfillmentType,
+    params.customerDetails?.deliveryPreference,
+  );
+  const isDineIn = fulfillmentType === 'dine_in';
 
   if (!params.cart || params.cart.items.length === 0) {
     missingDetails.push('requested_product');
   }
 
-  if (!params.customerDetails?.phone) {
+  if (!isDineIn && !params.customerDetails?.phone) {
     missingDetails.push('customer_phone');
   }
 
-  if (!params.customerDetails?.deliveryPreference) {
+  if (!isDineIn && !params.customerDetails?.deliveryPreference) {
     missingDetails.push('fulfillment_method');
   }
 
   if (
-    params.customerDetails?.deliveryPreference === 'delivery'
+    !isDineIn
+    && params.customerDetails?.deliveryPreference === 'delivery'
     && !params.customerDetails.address
   ) {
     missingDetails.push('delivery_address');
   }
 
-  if (!params.customerDetails?.paymentPreference) {
+  if (!isDineIn && !params.customerDetails?.paymentPreference) {
     missingDetails.push('payment_method');
   }
 

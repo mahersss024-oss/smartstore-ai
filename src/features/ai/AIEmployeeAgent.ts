@@ -538,6 +538,8 @@ export const handleCustomerMessageWithAIEmployee = async (input: IncomingCustome
       removeCartItemProductId: semanticHints?.removeCartItemProductId,
       supportEscalationConfirmed: semanticHints?.supportEscalationConfirmed
         ?? rawSemanticUnderstanding.supportEscalationConfirmed,
+      tableNumber: semanticHints?.tableNumber
+        ?? rawSemanticUnderstanding.tableNumber,
     },
     storeContext,
     {

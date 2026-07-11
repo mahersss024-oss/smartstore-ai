@@ -229,11 +229,13 @@ describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements pe
       cart: { items: [{ name: 'Kabsa', productId: 1, quantity: 1, unitPrice: 28 }] },
       customerDetails: {
         deliveryPreference: 'pickup',
-        phone: '0501234567',
+        fulfillmentType: 'dine_in',
       },
     });
 
     expect(missing).not.toContain('delivery_address');
+    expect(missing).not.toContain('customer_phone');
+    expect(missing).not.toContain('payment_method');
   });
 
   it('WhatsApp customer with pickup does NOT require delivery_address â€” same as web', async () => {

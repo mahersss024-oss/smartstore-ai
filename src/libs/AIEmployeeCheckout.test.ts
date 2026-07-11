@@ -93,6 +93,24 @@ describe('AIEmployeeCheckout', () => {
     })).toEqual(['delivery_address', 'payment_method']);
   });
 
+  it('does not require phone, address, fulfillment, or payment for dine-in table orders', () => {
+    expect(getMissingAIEmployeeOrderDetails({
+      cart: {
+        items: [{
+          name: 'Product',
+          productId: 1,
+          quantity: 1,
+          unitPrice: 10,
+        }],
+      },
+      customerDetails: {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+        tableNumber: 'A12',
+      },
+    })).toEqual([]);
+  });
+
   it('derives customer-facing service choices from active store methods', () => {
     expect(getAvailableAIEmployeeServiceChoices({
       deliveryMethods: [
@@ -284,6 +302,26 @@ describe('AIEmployeeCheckout', () => {
     }, ' https://www.google.com/maps?q=24.713552,46.675296 ')).toBe(
       'https://www.google.com/maps?q=24.713552,46.675296',
     );
+  });
+
+  it('preserves optional table numbers from semantic hints', () => {
+    const details = extractAIEmployeeCustomerDetails(
+      undefined,
+      'inside branch',
+      {},
+      undefined,
+      {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+        tableNumber: 'جلسة 4',
+      },
+    );
+
+    expect(details).toMatchObject({
+      deliveryPreference: 'pickup',
+      fulfillmentType: 'dine_in',
+      tableNumber: 'جلسة 4',
+    });
   });
 
   it('accepts a newly shared map URL as the delivery address', () => {
