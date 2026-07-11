@@ -311,6 +311,7 @@ export default async function WebOrderPage(props: {
             storeLogoUrl={settings?.logo?.trim() || null}
             tableNumberLabel={t('chat_table_number_label')}
             tableNumberPlaceholder={t('chat_table_number_placeholder')}
+            tableNumberRequiredLabel={t('chat_table_number_required')}
             storeName={storeName}
             timeZone={timeZone}
             welcomeMessage={

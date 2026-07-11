@@ -99,6 +99,15 @@ const sendCustomerChatMessage = async (
     const payload = webChatMessageSchema.parse(input);
     const requestHeaders = await headers();
     const channel = payload.source === 'web' ? 'web_chat' : payload.source;
+    const tableNumber = payload.semanticHints?.tableNumber?.trim();
+
+    if ((channel === 'web_chat_table' || payload.source === 'table') && !tableNumber) {
+      return {
+        error: 'table_number_required',
+        ok: false as const,
+      };
+    }
+
     const ipAddress = options?.trustedWebhookIngress
       ? null
       : requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim()

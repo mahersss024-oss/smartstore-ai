@@ -98,6 +98,7 @@ type WebOrderChatProps = {
   storeLogoUrl?: null | string;
   tableNumberLabel: string;
   tableNumberPlaceholder: string;
+  tableNumberRequiredLabel: string;
   storeName: string;
   timeZone?: string;
   welcomeMessage: string;
@@ -192,6 +193,7 @@ export function WebOrderChat(props: WebOrderChatProps) {
   const [tableNumber, setTableNumber] = useState(
     () => props.initialTableNumber?.trim().slice(0, 50) ?? '',
   );
+  const [showTableNumberError, setShowTableNumberError] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
   const [isSendingLocation, setIsSendingLocation] = useState(false);
   const welcomeMessage = useMemo<ChatMessage>(() => ({
@@ -235,6 +237,8 @@ export function WebOrderChat(props: WebOrderChatProps) {
     !mustChooseFromOptions
     || latestVisibleSystemActions.includes('location_share')
   );
+  const normalizedTableNumber = tableNumber.trim().slice(0, 50);
+  const tableNumberMissing = isTableOrder && normalizedTableNumber.length === 0;
 
   const scrollToLatestMessage = (behavior: ScrollBehavior = 'smooth') => {
     if (!shouldAutoScrollRef.current) {
@@ -392,6 +396,11 @@ export function WebOrderChat(props: WebOrderChatProps) {
     }
 
     const body = (messageBody ?? message).trim();
+    if (tableNumberMissing) {
+      setShowTableNumberError(true);
+      return;
+    }
+
     if (!body || !threadId || isPending || pendingSubmissionRef.current) {
       return;
     }
@@ -402,9 +411,7 @@ export function WebOrderChat(props: WebOrderChatProps) {
       ? {
           deliveryPreference: 'pickup' as const,
           fulfillmentType: 'dine_in' as const,
-          ...(tableNumber.trim()
-            ? { tableNumber: tableNumber.trim().slice(0, 50) }
-            : {}),
+          tableNumber: normalizedTableNumber,
         }
       : {};
     setMessage('');
@@ -841,7 +848,17 @@ export function WebOrderChat(props: WebOrderChatProps) {
             id="web-chat-table-number"
             value={tableNumber}
             maxLength={50}
-            onChange={event => setTableNumber(event.target.value.slice(0, 50))}
+            aria-invalid={showTableNumberError && tableNumberMissing}
+            aria-describedby={showTableNumberError && tableNumberMissing
+              ? 'web-chat-table-number-error'
+              : undefined}
+            onChange={(event) => {
+              const nextValue = event.target.value.slice(0, 50);
+              setTableNumber(nextValue);
+              if (nextValue.trim()) {
+                setShowTableNumberError(false);
+              }
+            }}
             placeholder={props.tableNumberPlaceholder}
             className="
               h-10 w-full rounded-lg border border-primary/15 bg-background/90
@@ -849,6 +866,14 @@ export function WebOrderChat(props: WebOrderChatProps) {
               focus:border-primary
             "
           />
+          {showTableNumberError && tableNumberMissing && (
+            <p
+              id="web-chat-table-number-error"
+              className="mt-1 text-xs font-semibold text-red-600"
+            >
+              {props.tableNumberRequiredLabel}
+            </p>
+          )}
         </div>
       )}
 

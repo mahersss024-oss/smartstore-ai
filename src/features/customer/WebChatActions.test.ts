@@ -258,6 +258,36 @@ describe('WebChatActions', () => {
     );
   });
 
+  it('rejects table web chat messages before AI processing when table number is missing', async () => {
+    const { handleCustomerMessageWithAIEmployee } = await import('@/features/ai/AIEmployeeAgent');
+    const { checkPublicMessageRateLimit } = await import('@/libs/PublicEndpointRateLimit');
+    const { assertStoreFeatureEnabled } = await import('@/libs/StoreServiceControls');
+    const { sendWebChatMessage } = await import('./WebChatActions');
+
+    const response = await sendWebChatMessage({
+      body: 'ابي مضغوط',
+      customer: {
+        externalId: 'customer_1',
+      },
+      externalThreadId: 'thread_1',
+      locale: 'ar',
+      organizationId: 'org_1',
+      semanticHints: {
+        deliveryPreference: 'pickup',
+        fulfillmentType: 'dine_in',
+      },
+      source: 'web_chat_table',
+    });
+
+    expect(response).toEqual({
+      error: 'table_number_required',
+      ok: false,
+    });
+    expect(handleCustomerMessageWithAIEmployee).not.toHaveBeenCalled();
+    expect(checkPublicMessageRateLimit).not.toHaveBeenCalled();
+    expect(assertStoreFeatureEnabled).not.toHaveBeenCalled();
+  });
+
   it('does not expose internal orchestration traces to the public chat response', async () => {
     const { handleCustomerMessageWithAIEmployee } = await import('@/features/ai/AIEmployeeAgent');
     vi.mocked(handleCustomerMessageWithAIEmployee).mockResolvedValue({
