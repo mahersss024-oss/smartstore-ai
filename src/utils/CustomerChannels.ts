@@ -333,11 +333,20 @@ export const getCustomerEntryChannels = (params: {
 export const resolveCustomerEntryRoute = (params: {
   defaultChannel?: unknown;
   mode?: unknown;
+  selectorPreferred?: boolean;
   webOrdersEnabled?: boolean;
   whatsappTarget?: null | string;
 }) => {
   const channels = getCustomerEntryChannels(params);
   const defaultChannel = normalizeDefaultCustomerEntryChannel(params.defaultChannel);
+
+  if (params.selectorPreferred && channels.length > 0) {
+    return {
+      channels,
+      directChannel: null,
+      selectorRequired: true,
+    };
+  }
 
   if (channels.length !== 1) {
     return {

@@ -226,4 +226,17 @@ describe('CustomerChannels', () => {
       selectorRequired: false,
     });
   });
+
+  it('can keep the smart link selector visible even when only web is currently available', () => {
+    expect(resolveCustomerEntryRoute({
+      mode: 'web_whatsapp',
+      selectorPreferred: true,
+      webOrdersEnabled: true,
+      whatsappTarget: null,
+    })).toMatchObject({
+      channels: ['web'],
+      directChannel: null,
+      selectorRequired: true,
+    });
+  });
 });

@@ -13,6 +13,7 @@ import {
 } from '@/models/Schema';
 import {
   buildWhatsAppUrl,
+  normalizeCustomerEntryMode,
   normalizeTrafficSource,
   normalizeWhatsAppTarget,
   resolveCustomerEntryRoute,
@@ -73,6 +74,8 @@ export default async function CustomerConnectPage(props: {
   const entryRoute = resolveCustomerEntryRoute({
     defaultChannel: metadata?.customerEntry?.defaultChannel,
     mode: metadata?.customerEntry?.mode,
+    selectorPreferred: trafficSource === 'smart_link'
+      && normalizeCustomerEntryMode(metadata?.customerEntry?.mode) === 'web_whatsapp',
     webOrdersEnabled,
     whatsappTarget,
   });
