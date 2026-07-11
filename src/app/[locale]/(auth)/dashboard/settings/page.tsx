@@ -744,7 +744,7 @@ export default async function SettingsPage(props: {
                       disabled:cursor-wait disabled:opacity-65
                     "
                   >
-                    فصل الربط
+                    {t('disconnect_whatsapp')}
                   </PendingSubmitButton>
                 )}
               </div>

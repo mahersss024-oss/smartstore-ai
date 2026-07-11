@@ -5,18 +5,17 @@
  * protection from the guard pipeline, identical AI constraints, identical order
  * lifecycle rules, and identical service choices from the same store context.
  *
- * "ط¨ظ†ظپط³ ط§ظ„ظ‚ط¯ط±ط§طھ" â€” the system must distinguish channels (different defaults)
- * while giving every channel customer the same depth of protection and the same
- * set of capabilities.
+ * Channel defaults may differ, but every customer entry point must keep the
+ * same depth of protection and the same capability boundaries.
  *
  * Channel-specific differences that ARE intentional (and therefore excluded here):
- *  - Table channel auto-sets dine_in â†’ delivery address is NOT required.
- *  - WhatsApp feedback capture fires only for whatsapp channel.
- *  - Both are proven in ChannelIsolationMatrix.test.ts.
+ * - Table channel auto-sets dine_in; delivery address is NOT required.
+ * - WhatsApp feedback capture fires only for whatsapp channel.
+ * - Both are proven in ChannelIsolationMatrix.test.ts.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Pure functions â€” imported statically to avoid per-test dynamic-import overhead
+// Pure functions imported statically to avoid per-test dynamic-import overhead
 import {
   constrainAIEmployeeSemanticUnderstandingToStoreMethods,
   getAvailableAIEmployeeServiceChoices,
@@ -28,7 +27,7 @@ import {
 } from './AIEmployeeOrderLifecycle';
 import { canTransitionOrderStatus, ORDER_STATUS } from './OrderWorkflow';
 
-// â”€â”€â”€ Mocks needed only for the guard pipeline tier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Mocks needed only for the guard pipeline tier
 
 const mockGeneratePlatformAIText = vi.fn();
 
@@ -46,7 +45,7 @@ vi.mock('./PlatformAIProviderConfig', () => ({
   })),
 }));
 
-// â”€â”€â”€ Shared catalog / store context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Shared catalog / store context
 
 const catalogProducts = [
   { availability: 'available' as const, category: 'Meals', id: 1, name: 'Kabsa Chicken', price: '28.00' },
@@ -95,13 +94,13 @@ const baseGuardParams = {
   visibleSystemActions: [],
 };
 
-// â”€â”€â”€ Tier A: Guard pipeline parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier A: Guard pipeline parity
 //
 // The guard pipeline does NOT accept a channel parameter.
 // Price, action, and semantic checks are always applied regardless of the
-// channel the customer is on â€” making all three channels equally protected.
+// channel the customer is on making all three channels equally protected.
 
-describe('Tier A â€” Guard pipeline: equal protection for all channels', () => {
+describe('Tier A Guard pipeline: equal protection for all channels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: AI semantic reviewer returns a valid safe vote
@@ -111,10 +110,10 @@ describe('Tier A â€” Guard pipeline: equal protection for all channels', ()
   it('price violation is blocked regardless of channel (guard has no channel param)', async () => {
     const { guardModelReplyAgainstFalseActions } = await import('./AIEmployeeReplyGuardPipeline');
 
-    // Same guard call â€” no channel input â€” proves protection is channel-agnostic
+    // Same guard call no channel input proves protection is channel-agnostic
     const result = await guardModelReplyAgainstFalseActions({
       ...baseGuardParams,
-      reply: 'Kabsa Chicken 99.00 SAR â€” special price just for you!',
+      reply: 'Kabsa Chicken 99.00 SAR special price just for you!',
     });
 
     expect(result.guarded).toBe(true);
@@ -174,7 +173,7 @@ describe('Tier A â€” Guard pipeline: equal protection for all channels', ()
     expect(semantic?.result).toBe('unavailable');
   });
 
-  it('deterministic blocks remain active even when AI provider is down â€” equally for all channels', async () => {
+  it('deterministic blocks remain active even when AI provider is down equally for all channels', async () => {
     const { guardModelReplyAgainstFalseActions } = await import('./AIEmployeeReplyGuardPipeline');
     mockGeneratePlatformAIText.mockRejectedValue(new Error('Provider unreachable'));
 
@@ -188,15 +187,15 @@ describe('Tier A â€” Guard pipeline: equal protection for all channels', ()
   });
 });
 
-// â”€â”€â”€ Tier B: getMissingAIEmployeeOrderDetails parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier B: getMissingAIEmployeeOrderDetails parity
 //
-// Required fields depend on deliveryPreference and fulfillmentType â€” NOT on channel.
-// - web customer with delivery  ==  WhatsApp customer with delivery
-// - web customer with pickup    ==  WhatsApp customer with pickup
-// - table channel auto-sets dine_in â†’ delivery address is correctly NOT required
-//   (this is intentional isolation, not a capability gap)
+// Required fields depend on deliveryPreference and fulfillmentType NOT on channel.
+// - web customer with delivery == WhatsApp customer with delivery
+// - web customer with pickup == WhatsApp customer with pickup
+// - table channel auto-sets dine_in; delivery address is correctly NOT required
+// (this is intentional isolation, not a capability gap)
 
-describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements per fulfillment type', () => {
+describe('Tier B getMissingAIEmployeeOrderDetails: same requirements per fulfillment type', () => {
   it('web customer with delivery requires delivery_address', async () => {
     const missing = getMissingAIEmployeeOrderDetails({
       cart: { items: [{ name: 'Kabsa', productId: 1, quantity: 1, unitPrice: 28 }] },
@@ -210,8 +209,8 @@ describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements pe
     expect(missing).toContain('payment_method');
   });
 
-  it('WhatsApp customer with delivery requires delivery_address â€” same as web', async () => {
-    // WhatsApp customer â€” same fields required as web customer with delivery
+  it('WhatsApp customer with delivery requires delivery_address same as web', async () => {
+    // WhatsApp customer same fields required as web customer with delivery
     const missing = getMissingAIEmployeeOrderDetails({
       cart: { items: [{ name: 'Kabsa', productId: 1, quantity: 1, unitPrice: 28 }] },
       customerDetails: {
@@ -238,7 +237,7 @@ describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements pe
     expect(missing).not.toContain('payment_method');
   });
 
-  it('WhatsApp customer with pickup does NOT require delivery_address â€” same as web', async () => {
+  it('WhatsApp customer with pickup does NOT require delivery_address same as web', async () => {
     const missing = getMissingAIEmployeeOrderDetails({
       cart: { items: [{ name: 'Kabsa', productId: 1, quantity: 1, unitPrice: 28 }] },
       customerDetails: {
@@ -250,7 +249,7 @@ describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements pe
     expect(missing).not.toContain('delivery_address');
   });
 
-  it('table customer with dine_in (channel auto-set) does NOT require delivery_address â€” correct isolation', async () => {
+  it('table customer with dine_in (channel auto-set) does NOT require delivery_address correct isolation', async () => {
     // Table channel auto-sets deliveryPreference:'pickup', fulfillmentType:'dine_in'
     const missing = getMissingAIEmployeeOrderDetails({
       cart: { items: [{ name: 'Kabsa', productId: 1, quantity: 1, unitPrice: 28 }] },
@@ -301,13 +300,13 @@ describe('Tier B â€” getMissingAIEmployeeOrderDetails: same requirements pe
   });
 });
 
-// â”€â”€â”€ Tier C: getAvailableAIEmployeeServiceChoices parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier C: getAvailableAIEmployeeServiceChoices parity
 //
-// Service choices are derived from store delivery/payment settings â€” not channel.
+// Service choices are derived from store delivery/payment settings not channel.
 // A table customer and a web customer see the same available options for the
 // same store, so neither channel has a hidden capability advantage.
 
-describe('Tier C â€” getAvailableAIEmployeeServiceChoices: derived from store, not channel', () => {
+describe('Tier C getAvailableAIEmployeeServiceChoices: derived from store, not channel', () => {
   it('both delivery and pickup visible on all channels when store supports both', async () => {
     const choices = getAvailableAIEmployeeServiceChoices(storeContextBoth);
 
@@ -315,7 +314,7 @@ describe('Tier C â€” getAvailableAIEmployeeServiceChoices: derived from sto
     expect(choices.availableFulfillmentTypes).toContain('pickup');
   });
 
-  it('only pickup visible when store supports only pickup â€” same for web/table/WhatsApp', async () => {
+  it('only pickup visible when store supports only pickup same for web/table/WhatsApp', async () => {
     const choices = getAvailableAIEmployeeServiceChoices(storeContextPickupOnly);
 
     expect(choices.availableFulfillmentTypes).not.toContain('delivery');
@@ -342,13 +341,13 @@ describe('Tier C â€” getAvailableAIEmployeeServiceChoices: derived from sto
   });
 });
 
-// â”€â”€â”€ Tier D: constrainAI parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier D: constrainAI parity
 //
-// AI semantic understanding is constrained by store methods â€” not by channel.
+// AI semantic understanding is constrained by store methods not by channel.
 // If a store only supports pickup, the AI cannot offer delivery to ANY channel.
 
-describe('Tier D â€” constrainAI: store-driven constraints apply equally to all channels', () => {
-  it('delivery preference is stripped when store only supports pickup â€” same for all channels', async () => {
+describe('Tier D constrainAI: store-driven constraints apply equally to all channels', () => {
+  it('delivery preference is stripped when store only supports pickup same for all channels', async () => {
     const aiInput = {
       deliveryPreference: 'delivery' as const,
       fulfillmentType: undefined,
@@ -365,7 +364,7 @@ describe('Tier D â€” constrainAI: store-driven constraints apply equally to
     expect(waResult.deliveryPreference).toBeUndefined();
   });
 
-  it('delivery preference is kept when store supports delivery â€” same for all channels', async () => {
+  it('delivery preference is kept when store supports delivery same for all channels', async () => {
     const aiInput = {
       deliveryPreference: 'delivery' as const,
       fulfillmentType: undefined,
@@ -397,18 +396,18 @@ describe('Tier D â€” constrainAI: store-driven constraints apply equally to
   });
 });
 
-// â”€â”€â”€ Tier E: Order lifecycle parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier E: Order lifecycle parity
 //
-// Modifiability rules apply by ORDER STATUS â€” not by customer channel.
+// Modifiability rules apply by ORDER STATUS not by customer channel.
 // A web customer and a WhatsApp customer with an order in the same status
 // get the exact same modification permissions.
 
-describe('Tier E â€” Order lifecycle: modifiability rules are channel-agnostic', () => {
+describe('Tier E Order lifecycle: modifiability rules are channel-agnostic', () => {
   it('canAIEmployeeModifyOrderBeforeStoreApproval: same result for all channels given same status', async () => {
-    // Pre-approval status â†’ modification allowed on ALL channels
+    // Pre-approval status modification allowed on ALL channels
     expect(canAIEmployeeModifyOrderBeforeStoreApproval(ORDER_STATUS.PENDING_STORE_REVIEW)).toBe(true);
 
-    // Post-approval status â†’ modification blocked on ALL channels
+    // Post-approval status modification blocked on ALL channels
     expect(canAIEmployeeModifyOrderBeforeStoreApproval(ORDER_STATUS.APPROVED_BY_STORE)).toBe(false);
     expect(canAIEmployeeModifyOrderBeforeStoreApproval(ORDER_STATUS.CONFIRMED)).toBe(false);
     expect(canAIEmployeeModifyOrderBeforeStoreApproval(ORDER_STATUS.PREPARING)).toBe(false);
@@ -426,9 +425,9 @@ describe('Tier E â€” Order lifecycle: modifiability rules are channel-agnos
 
       // web context
       expect(canAIEmployeeAddItemsToExistingOrder(order)).toBe(false);
-      // table context â€” same result
+      // table context same result
       expect(canAIEmployeeAddItemsToExistingOrder(order)).toBe(false);
-      // WhatsApp context â€” same result
+      // WhatsApp context same result
       expect(canAIEmployeeAddItemsToExistingOrder(order)).toBe(false);
     }
   });
@@ -447,20 +446,20 @@ describe('Tier E â€” Order lifecycle: modifiability rules are channel-agnos
   });
 });
 
-// â”€â”€â”€ Tier F: State machine parity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tier F: State machine parity
 //
 // Order state transitions are a function of (fromStatus, toStatus) only.
 // The customer channel never influences which status transitions are valid.
 
-describe('Tier F â€” State machine: transitions identical regardless of customer channel', () => {
-  it('PENDING_STORE_REVIEW â†’ APPROVED_BY_STORE is valid on all channels', async () => {
+describe('Tier F State machine: transitions identical regardless of customer channel', () => {
+  it('PENDING_STORE_REVIEW APPROVED_BY_STORE is valid on all channels', async () => {
     const result = canTransitionOrderStatus(ORDER_STATUS.PENDING_STORE_REVIEW, ORDER_STATUS.APPROVED_BY_STORE);
 
-    // Channel plays no role â€” result is determined purely by status pair
+    // Channel plays no role result is determined purely by status pair
     expect(result).toBe(true);
   });
 
-  it('COMPLETED â†’ any status is blocked on all channels', async () => {
+  it('COMPLETED any status is blocked on all channels', async () => {
     const allStatuses = Object.values(ORDER_STATUS);
 
     for (const status of allStatuses) {
@@ -468,7 +467,7 @@ describe('Tier F â€” State machine: transitions identical regardless of cus
     }
   });
 
-  it('CANCELLED â†’ any status is blocked on all channels', async () => {
+  it('CANCELLED any status is blocked on all channels', async () => {
     const allStatuses = Object.values(ORDER_STATUS);
 
     for (const status of allStatuses) {
@@ -476,9 +475,9 @@ describe('Tier F â€” State machine: transitions identical regardless of cus
     }
   });
 
-  it('AI creates orders at PENDING_STORE_REVIEW â€” not DRAFT â€” regardless of channel', async () => {
+  it('AI creates orders at PENDING_STORE_REVIEW not DRAFT regardless of channel', async () => {
     // This invariant is enforced in createAIEmployeeDraftOrder (inserts at PENDING_STORE_REVIEW).
-    // Verified here at the status-value level â€” any channel calling the AI create function
+    // Verified here at the status-value level any channel calling the AI create function
     // produces an order with this status, never DRAFT.
     expect(ORDER_STATUS.PENDING_STORE_REVIEW).toBe('pending_store_review');
     expect(ORDER_STATUS.DRAFT).not.toBe(ORDER_STATUS.PENDING_STORE_REVIEW);

@@ -13,8 +13,6 @@ env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5433/postgres
   DEMO_MODE: 'true'
   MAINTENANCE_SECRET: ci_maintenance_secret_32_chars_minimum
-  META_APP_SECRET: ci_meta_app_secret_32_chars_minimum
-  META_WEBHOOK_VERIFY_TOKEN: ci_meta_webhook_verify_token_32_chars_minimum
   NEXT_PUBLIC_APP_URL: http://localhost:3008
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ci_clerk_publishable_key
   NEXT_PUBLIC_SENTRY_DISABLED: 'true'
