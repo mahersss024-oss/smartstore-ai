@@ -904,7 +904,7 @@
     "chat_choice_pickup": "Retrait en magasin",
     "chat_location": "Envoyer la position",
     "chat_location_message_prefix": "Ma position actuelle :",
-    "chat_location_unavailable": "Impossible d'acceder a votre position. Vous pouvez saisir l'adresse ici.",
+    "chat_location_unavailable": "Impossible d'acceder a votre position. Autorisez l'acces a la position dans le navigateur, puis reessayez.",
     "chat_error": "Desole, nous ne pouvons pas continuer la conversation pour le moment. Aucune commande n a ete confirmee avec ce message. Reessayez dans un instant.",
     "disabled_title": "Les commandes sont indisponibles",
     "disabled_description": "Cette boutique a temporairement suspendu la prise de commandes. Veuillez reessayer plus tard ou contacter la boutique directement.",

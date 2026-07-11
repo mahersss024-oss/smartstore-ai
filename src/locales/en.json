@@ -904,7 +904,7 @@
     "chat_choice_pickup": "Pickup from branch",
     "chat_location": "Send location",
     "chat_location_message_prefix": "My current location:",
-    "chat_location_unavailable": "We could not access your location. You can type the address here.",
+    "chat_location_unavailable": "We could not access your location. Allow location access in the browser, then try sharing your location again.",
     "chat_error": "Sorry, we could not continue the conversation temporarily. No order was confirmed from this message. Please try again shortly.",
     "disabled_title": "Orders are currently unavailable",
     "disabled_description": "This store has temporarily paused order intake. Please try again later or contact the store directly.",

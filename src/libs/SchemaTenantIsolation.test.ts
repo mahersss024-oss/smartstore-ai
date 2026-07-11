@@ -179,6 +179,9 @@ vi.mock('@/libs/PlatformAIProviderConfig', () => ({
 vi.mock('@/libs/WhapiWhatsApp', () => ({
   sendWhapiConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
 }));
+vi.mock('@/libs/EvolutionWhatsApp', () => ({
+  sendEvolutionConversationTextMessage: vi.fn(async () => ({ status: 'sent' })),
+}));
 
 vi.mock('@/libs/ProductImageStorage', () => ({
   isStoredImageDataUrl: vi.fn(() => false),

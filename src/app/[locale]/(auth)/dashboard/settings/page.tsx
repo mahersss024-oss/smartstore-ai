@@ -295,13 +295,17 @@ export default async function SettingsPage(props: {
   const whapiWebhookSecret = whatsappConfig.webhookSecret
     ?? metadata?.channelIntegrations?.whatsapp?.webhookSecret
     ?? '';
+  const whatsappProvider = whatsappConfig.provider === 'evolution'
+    || metadata?.channelIntegrations?.whatsapp?.provider === 'evolution'
+    ? 'evolution'
+    : 'whapi';
   const whatsappChannel = buildWhatsAppChannelConfig({
     apiTokenPreview: whapiApiTokenPreview,
     channelId: whapiChannelId,
     displayPhoneNumber: whapiDisplayPhoneNumber,
     encryptedApiToken: null,
     hasApiToken: Boolean(whapiChannelId),
-    provider: 'whapi',
+    provider: whatsappProvider,
     status: whatsappConfig.connectionStatus ?? metadata?.channelIntegrations?.whatsapp?.connectionStatus,
     storeName: currentSettings?.storeName ?? 'SmartStore',
     webhookSecret: whapiWebhookSecret,

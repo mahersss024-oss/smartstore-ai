@@ -266,6 +266,59 @@ describe('AIEmployeeOrchestration', () => {
     }));
   });
 
+  it('accepts shared location hints only while delivery location is expected', () => {
+    const mapUrl = 'https://www.google.com/maps?q=24.713552,46.675296';
+
+    expect(sanitizeAIEmployeeSystemSemanticHints({
+      hints: {
+        customerAddress: mapUrl,
+        systemEvent: {
+          source: 'web_order_ui',
+          type: 'location_shared',
+        },
+      },
+      previousMetadata: {
+        aiOrchestration: {
+          systemDecision: {
+            visibleSystemActions: ['cart_controls', 'location_share'],
+          },
+        },
+        currentCart: cart,
+        customerDetails: {
+          deliveryPreference: 'delivery',
+          phone: '0500000000',
+        },
+        missingDetails: ['delivery_address'],
+      },
+    })).toEqual(expect.objectContaining({
+      customerAddress: mapUrl,
+      systemEvent: expect.objectContaining({
+        type: 'location_shared',
+      }),
+    }));
+
+    expect(sanitizeAIEmployeeSystemSemanticHints({
+      hints: {
+        customerAddress: 'Riyadh King Fahd Road',
+        systemEvent: {
+          source: 'web_order_ui',
+          type: 'location_shared',
+        },
+      },
+      previousMetadata: {
+        currentCart: cart,
+        customerDetails: {
+          deliveryPreference: 'delivery',
+          phone: '0500000000',
+        },
+        missingDetails: ['delivery_address'],
+      },
+    })).toEqual(expect.objectContaining({
+      customerAddress: undefined,
+      systemEvent: undefined,
+    }));
+  });
+
   it('validates the next need against current system facts', () => {
     expect(validateAIEmployeeRequestedCustomerNeed({
       cart,

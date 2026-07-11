@@ -30,14 +30,14 @@ export const buildAIEmployeeStateFallbackReply = (params: {
 
   if (params.visibleSystemActions.includes('location_share')) {
     if (isArabic) {
-      return 'تم اختيار التوصيل. أرسل موقعك الحالي أو اكتب عنوان التوصيل لنكمل الطلب.';
+      return 'تم اختيار التوصيل. شارك موقعك الحالي لنكمل الطلب.';
     }
 
     if (isFrench) {
-      return 'La livraison est selectionnee. Envoyez votre position ou ecrivez l adresse de livraison pour continuer.';
+      return 'La livraison est selectionnee. Partagez votre position actuelle pour continuer.';
     }
 
-    return 'Delivery is selected. Send your current location or type the delivery address to continue.';
+    return 'Delivery is selected. Share your current location to continue.';
   }
 
   if (params.visibleSystemActions.includes('payment_choices')) {

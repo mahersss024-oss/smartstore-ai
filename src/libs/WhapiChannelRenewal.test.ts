@@ -98,9 +98,44 @@ describe('WhapiChannelRenewal', () => {
     expect(deps.extendChannel).not.toHaveBeenCalled();
   });
 
-  it('marks a missing Whapi channel disconnected without creating a replacement', async () => {
+  it('keeps a transiently missing Whapi channel active and records the miss', async () => {
     const deps = buildDeps({
       getChannel: vi.fn(async () => null),
+    });
+
+    await expect(renewWhapiManagedChannels({ now }, deps))
+      .resolves
+      .toMatchObject({
+        missing: 1,
+      });
+
+    expect(deps.extendChannel).not.toHaveBeenCalled();
+    expect(deps.saveConnectionConfig).toHaveBeenCalledWith(expect.objectContaining({
+      id: 7,
+      config: expect.objectContaining({
+        whapiAutoRenew: expect.objectContaining({ consecutiveMissing: 1 }),
+      }),
+    }));
+    // Not deactivated on a single miss.
+    expect(deps.saveConnectionConfig).not.toHaveBeenCalledWith(expect.objectContaining({
+      isActive: false,
+    }));
+  });
+
+  it('deactivates a Whapi channel once it is missing on the threshold consecutive pass', async () => {
+    const deps = buildDeps({
+      getChannel: vi.fn(async () => null),
+      loadCandidates: vi.fn(async () => [{
+        config: {
+          channelId: 'CATWMN-B42ST',
+          provider: 'whapi',
+          whapiAutoRenew: {
+            consecutiveMissing: 2,
+          },
+        },
+        id: 7,
+        organizationId: 'org_1',
+      }]),
     });
 
     await expect(renewWhapiManagedChannels({ now }, deps))
@@ -114,6 +149,9 @@ describe('WhapiChannelRenewal', () => {
       connectionStatus: 'disconnected',
       id: 7,
       isActive: false,
+      config: expect.objectContaining({
+        whapiAutoRenew: expect.objectContaining({ consecutiveMissing: 3 }),
+      }),
     }));
   });
 });

@@ -190,4 +190,15 @@ describe('WhatsAppConversationAdapter', () => {
       visibleSystemActions: ['payment_choices'],
     })).toContain('كاش | بطاقة');
   });
+
+  it('asks WhatsApp delivery customers to share location instead of typing an address', () => {
+    const result = buildWhatsAppOutboundBody({
+      replyToCustomer: 'تم اختيار التوصيل.',
+      visibleSystemActions: ['location_share'],
+    });
+
+    expect(result).toContain('شارك موقعك الحالي');
+    expect(result).not.toContain('عنوان التوصيل');
+    expect(result).not.toContain('اكتب');
+  });
 });

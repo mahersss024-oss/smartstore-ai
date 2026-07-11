@@ -1,9 +1,9 @@
 # WhatsApp Operations
 
-SmartStore AI uses **Whapi.cloud** as the only active WhatsApp provider.
+SmartStore AI supports **Whapi.cloud** and **Evolution API** as WhatsApp providers.
 
 The conversation engine, guardrails, catalog, pricing, cart, and order workflows
-remain provider-independent. Only the WhatsApp transport layer is Whapi.
+remain provider-independent. Only the WhatsApp transport layer changes by provider.
 
 ## Activation Checklist
 
@@ -51,6 +51,13 @@ Platform-level WhatsApp environment values:
 - `WHAPI_MANAGED_CHANNEL_EXTEND_DAYS`: defaults to `5`; raise it only when the Whapi partner balance can cover the requested days for each new channel.
 - `WHAPI_CHANNEL_RENEW_LOOKAHEAD_HOURS`: defaults to `24`; renew existing active store channels before expiry.
 - `WHAPI_CHANNEL_RENEW_COOLDOWN_HOURS`: defaults to `20`; prevents repeated renewal attempts for the same channel.
+
+Optional Evolution API provider values:
+
+- `EVOLUTION_API_BASE_URL`: base URL for the deployed Evolution API service.
+- `EVOLUTION_API_KEY`: global Evolution API key used by the platform server.
+- `EVOLUTION_CONNECT_INTEGRATION`: defaults to `WHATSAPP-BAILEYS`.
+- `EVOLUTION_INSTANCE_PREFIX`: defaults to `smartstore`; used for per-store instance names.
 
 Optional, for durable async AI worker mode:
 

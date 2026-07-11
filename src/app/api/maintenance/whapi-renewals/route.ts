@@ -51,5 +51,3 @@ export const POST = async (request: Request) => {
     ...result,
   });
 };
-
-export const GET = POST;

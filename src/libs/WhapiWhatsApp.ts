@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { channelConnectionsTable } from '@/models/Schema';
 import { db } from './DB';
 import { Env } from './Env';
+import { secureTokenEquals } from './SecureTokens';
 import { getWhapiManagedChannel } from './WhapiConnect';
 
 const WHATSAPP_CHANNEL = 'whatsapp';
@@ -339,7 +340,7 @@ export const findWhapiStoreConnection = async (params: {
       && config.provider === 'whapi'
       && typeof config.channelId === 'string'
       && configuredSecret
-      && configuredSecret === params.webhookSecret?.trim()
+      && secureTokenEquals(configuredSecret, params.webhookSecret?.trim())
       && row.connectionStatus === 'connected'
       && row.isActive
     ) {

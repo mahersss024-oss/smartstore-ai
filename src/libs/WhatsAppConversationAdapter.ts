@@ -498,7 +498,7 @@ export const buildWhatsAppOutboundBody = (result: WhatsAppAIResult) => {
   }
 
   if (actions.includes('location_share')) {
-    sections.push('أرسل عنوان التوصيل أو شارك موقعك في رسالة واتساب.');
+    sections.push('شارك موقعك الحالي من واتساب لإكمال التوصيل.');
   }
 
   if (actions.includes('final_confirmation')) {

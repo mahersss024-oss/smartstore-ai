@@ -72,6 +72,22 @@ const mergeAddressParts = (
   return `${previous}, ${next}`.slice(0, 500);
 };
 
+export const isSharedLocationAddress = (value?: string) => {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (
+    /^https?:\/\/(?:www\.)?(?:google\.[^/\s]+\/maps|maps\.app\.goo\.gl|maps\.google\.[^/\s]+|goo\.gl\/maps)/i.test(normalized)
+  ) {
+    return true;
+  }
+
+  return /(?:^|\s)(?:geo:)?-?\d{1,2}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}(?:\s|$)/.test(normalized);
+};
+
 export const getAllowedAIEmployeeDeliveryPreferences = (
   storeContext?: StoreAIContext,
 ) => {
@@ -418,14 +434,22 @@ export const extractAIEmployeeCustomerDetails = (
     semanticUnderstanding?.fulfillmentType,
     deliveryPreference,
   ) ?? previousDetails?.fulfillmentType;
-  const extractedAddress = semanticUnderstanding?.customerAddress;
+  const extractedAddress = isSharedLocationAddress(semanticUnderstanding?.customerAddress)
+    ? semanticUnderstanding?.customerAddress
+    : undefined;
+  const sharedLocationAddress = isSharedLocationAddress(customerAddress)
+    ? customerAddress?.trim()
+    : undefined;
+  const previousSharedLocationAddress = isSharedLocationAddress(previousDetails?.address)
+    ? previousDetails?.address
+    : undefined;
   const shouldKeepDeliveryAddress = deliveryPreference === 'delivery'
     || fulfillmentType === 'delivery';
 
   return {
     address: shouldKeepDeliveryAddress
       ? mergeAddressParts(
-          previousDetails?.address ?? customerAddress?.trim(),
+          previousSharedLocationAddress ?? sharedLocationAddress,
           extractedAddress,
         )
       : undefined,
@@ -458,7 +482,7 @@ export const getAIEmployeeDeliveryCustomerAddress = (
   }
 
   return customerDetails?.address?.trim()
-    || fallbackAddress?.trim()
+    || (isSharedLocationAddress(fallbackAddress) ? fallbackAddress?.trim() : undefined)
     || undefined;
 };
 

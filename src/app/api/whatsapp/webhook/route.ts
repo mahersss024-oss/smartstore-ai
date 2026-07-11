@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server';
+import { processEvolutionInboundMessage } from '@/libs/EvolutionInboundProcessor';
+import {
+  findEvolutionStoreConnection,
+  parseEvolutionWebhookPayload,
+} from '@/libs/EvolutionWhatsApp';
 import { logger } from '@/libs/Logger';
 import { readRequestTextWithLimit, RequestBodyTooLargeError } from '@/libs/RequestBody';
 import { runWebhookEventOnce } from '@/libs/WebhookIdempotency';
@@ -17,7 +22,7 @@ export const maxDuration = 60;
 const MAX_BODY_BYTES = 64 * 1024;
 const RETRY_AFTER_SECONDS = 2;
 
-export const GET = () => NextResponse.json({ ok: true, provider: 'whapi' });
+export const GET = () => NextResponse.json({ ok: true, providers: ['whapi', 'evolution'] });
 
 const handleWebhookRetryError = (params: {
   providerLabel: string;
@@ -103,6 +108,63 @@ const processWhapiWebhook = async (request: Request, rawBody: string) => {
   }
 };
 
+const processEvolutionWebhook = async (request: Request, rawBody: string) => {
+  const url = new URL(request.url);
+  const fallbackInstanceName = url.searchParams.get('instanceName');
+  const webhookSecret = request.headers.get('x-evolution-secret')
+    ?? url.searchParams.get('secret');
+
+  let payload: unknown;
+
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  const message = parseEvolutionWebhookPayload(payload, fallbackInstanceName);
+
+  if (!message) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  const connection = await findEvolutionStoreConnection({
+    instanceName: message.instanceName,
+    webhookSecret,
+  });
+
+  if (!connection) {
+    logger.warn('Evolution message skipped: no store connection matched', {
+      instanceName: message.instanceName,
+    });
+
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  logger.info('Evolution WhatsApp webhook received', {
+    instanceName: message.instanceName,
+    messageId: message.messageId,
+  });
+
+  try {
+    const result = await runWebhookEventOnce({
+      eventId: message.messageId,
+      eventType: 'evolution.whatsapp.message',
+      handler: async () => processEvolutionInboundMessage({ connection, message }),
+      metadata: { from: message.from, instanceName: message.instanceName },
+      provider: 'evolution',
+    });
+
+    if (result.status === 'in_progress') {
+      throw new MessageRetryError('webhook_event_in_progress');
+    }
+
+    return NextResponse.json({ ok: true, duplicate: result.duplicate, status: result.status });
+  } catch (error) {
+    return handleWebhookRetryError({ error, providerLabel: 'Evolution' });
+  }
+};
+
 export const POST = async (request: Request) => {
   let rawBody = '';
 
@@ -114,6 +176,12 @@ export const POST = async (request: Request) => {
     }
 
     throw error;
+  }
+
+  const provider = new URL(request.url).searchParams.get('provider');
+
+  if (provider === 'evolution') {
+    return processEvolutionWebhook(request, rawBody);
   }
 
   return processWhapiWebhook(request, rawBody);

@@ -4,6 +4,7 @@ const mockAuth = vi.fn();
 const mockRevalidatePath = vi.fn();
 const mockGenerateCustomerReplyForSystemEvent = vi.fn();
 const mockAssertCanTransitionOrderStatus = vi.fn();
+const mockSendEvolutionConversationTextMessage = vi.fn();
 const mockSendWhatsAppConversationTextMessage = vi.fn();
 const mockDbSelectLimit = vi.fn();
 const mockDbSelectWhere = vi.fn(() => ({ limit: mockDbSelectLimit }));
@@ -97,6 +98,10 @@ vi.mock('@/libs/OrderWorkflow', () => ({
 
 vi.mock('@/libs/WhapiWhatsApp', () => ({
   sendWhapiConversationTextMessage: mockSendWhatsAppConversationTextMessage,
+}));
+
+vi.mock('@/libs/EvolutionWhatsApp', () => ({
+  sendEvolutionConversationTextMessage: mockSendEvolutionConversationTextMessage,
 }));
 
 vi.mock('@/models/Schema', () => ({

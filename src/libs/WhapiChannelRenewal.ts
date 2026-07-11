@@ -5,7 +5,6 @@ import { isStoreFeatureEnabled } from '@/libs/StoreServiceControls';
 import {
   extendWhapiManagedChannel,
   getWhapiManagedChannel,
-  WhapiConnectError,
 } from '@/libs/WhapiConnect';
 import { channelConnectionsTable } from '@/models/Schema';
 
@@ -19,6 +18,7 @@ type WhapiConnectionConfig = {
   webhookReady?: boolean | null;
   whapiAutoRenew?: {
     activeUntilAt?: null | string;
+    consecutiveMissing?: null | number;
     lastCheckedAt?: null | string;
     lastError?: null | string;
     lastErrorAt?: null | string;
@@ -67,6 +67,11 @@ const emptyResult = (): WhapiChannelRenewalResult => ({
 
 const msPerHour = 60 * 60 * 1000;
 const msPerDay = 24 * msPerHour;
+
+// A single upstream 404 can be transient (Whapi maintenance / brief blip). Only
+// deactivate a paying store's channel after it has been reported missing on this
+// many consecutive renewal passes, so a temporary 404 does not silently drop it.
+const CONSECUTIVE_MISSING_DEACTIVATE_THRESHOLD = 3;
 
 const parseTimestamp = (value: null | string | undefined) => {
   if (!value) {
@@ -136,6 +141,7 @@ const buildSuccessfulRenewalConfig = (params: {
     whapiAutoRenew: {
       ...(params.config.whapiAutoRenew ?? {}),
       activeUntilAt: estimatedActiveUntil,
+      consecutiveMissing: null,
       lastCheckedAt: params.now.toISOString(),
       lastError: null,
       lastErrorAt: null,
@@ -153,7 +159,23 @@ const buildCheckedConfig = (params: {
   whapiAutoRenew: {
     ...(params.config.whapiAutoRenew ?? {}),
     activeUntilAt: params.activeUntil ?? params.config.whapiAutoRenew?.activeUntilAt ?? null,
+    consecutiveMissing: null,
     lastCheckedAt: params.now.toISOString(),
+  },
+});
+
+const buildMissingConfig = (params: {
+  config: WhapiConnectionConfig;
+  consecutiveMissing: number;
+  now: Date;
+}) => ({
+  ...params.config,
+  whapiAutoRenew: {
+    ...(params.config.whapiAutoRenew ?? {}),
+    consecutiveMissing: params.consecutiveMissing,
+    lastCheckedAt: params.now.toISOString(),
+    lastError: 'whapi_channel_missing',
+    lastErrorAt: params.now.toISOString(),
   },
 });
 
@@ -249,15 +271,17 @@ export const renewWhapiManagedChannels = async (
 
       if (!remoteChannel) {
         result.missing += 1;
+        const consecutiveMissing = (config.whapiAutoRenew?.consecutiveMissing ?? 0) + 1;
+        const shouldDeactivate = consecutiveMissing >= CONSECUTIVE_MISSING_DEACTIVATE_THRESHOLD;
+
         await deps.saveConnectionConfig({
-          config: buildFailedConfig({
-            config,
-            error: new WhapiConnectError('whapi_channel_missing', { status: 404 }),
-            now,
-          }),
-          connectionStatus: 'disconnected',
+          config: buildMissingConfig({ config, consecutiveMissing, now }),
+          // Keep the store active until the channel has been missing on several
+          // consecutive passes; a transient upstream 404 must not drop it.
+          ...(shouldDeactivate
+            ? { connectionStatus: 'disconnected', isActive: false }
+            : {}),
           id: candidate.id,
-          isActive: false,
         });
         continue;
       }
