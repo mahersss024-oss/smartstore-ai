@@ -758,7 +758,6 @@ export default async function SettingsPage(props: {
             <WhapiQrConnectButton
               title={t('whapi_qr_connect_title')}
               buttonLabel={t('whapi_qr_connect_button')}
-              endpoint="/api/evolution/connect/qr"
               errorLabel={t('whapi_qr_connect_error')}
               issueLabels={{
                 channel_preparing: t('whapi_qr_connect_channel_preparing'),

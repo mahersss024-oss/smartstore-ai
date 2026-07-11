@@ -19,11 +19,12 @@ describe('AIEmployeeCheckout', () => {
   });
 
   it('keeps delivery addresses only for delivery orders', () => {
+    const mapUrl = 'https://www.google.com/maps?q=24.713552,46.675296';
     const delivery = extractAIEmployeeCustomerDetails(
       undefined,
       'contact@example.com 0500000000',
       { name: 'Customer' },
-      'Map location',
+      mapUrl,
       { deliveryPreference: 'delivery' },
     );
     const pickup = extractAIEmployeeCustomerDetails(
@@ -35,7 +36,7 @@ describe('AIEmployeeCheckout', () => {
     );
 
     expect(delivery).toMatchObject({
-      address: 'Map location',
+      address: mapUrl,
       deliveryPreference: 'delivery',
       email: 'contact@example.com',
       name: 'Customer',
@@ -250,10 +251,10 @@ describe('AIEmployeeCheckout', () => {
     });
   });
 
-  it('merges delivery address updates and preserves prior identity fallbacks', () => {
+  it('uses shared location only for delivery addresses and preserves identity fallbacks', () => {
     const details = extractAIEmployeeCustomerDetails(
       {
-        address: 'Tabuk',
+        address: 'https://www.google.com/maps?q=28.356449,36.535398',
         email: 'old@example.com',
         name: 'Old name',
         phone: '0500000000',
@@ -269,17 +270,35 @@ describe('AIEmployeeCheckout', () => {
     );
 
     expect(details).toMatchObject({
-      address: 'Tabuk, Al Nahdah',
+      address: 'https://www.google.com/maps?q=28.356449,36.535398',
       email: 'old@example.com',
       name: 'New name',
       phone: '0500000000',
     });
-    expect(getAIEmployeeDeliveryCustomerAddress(details, 'Fallback')).toBe(
-      'Tabuk, Al Nahdah',
-    );
+    expect(getAIEmployeeDeliveryCustomerAddress(details, 'Fallback')).toBe(details.address);
     expect(getAIEmployeeDeliveryCustomerAddress({
       deliveryPreference: 'delivery',
-    }, ' Fallback ')).toBe('Fallback');
+    }, ' Fallback ')).toBeUndefined();
+    expect(getAIEmployeeDeliveryCustomerAddress({
+      deliveryPreference: 'delivery',
+    }, ' https://www.google.com/maps?q=24.713552,46.675296 ')).toBe(
+      'https://www.google.com/maps?q=24.713552,46.675296',
+    );
+  });
+
+  it('accepts a newly shared map URL as the delivery address', () => {
+    const mapUrl = 'https://www.google.com/maps?q=24.713552,46.675296';
+    const details = extractAIEmployeeCustomerDetails(
+      undefined,
+      'موقعي الحالي',
+      {},
+      mapUrl,
+      {
+        deliveryPreference: 'delivery',
+      },
+    );
+
+    expect(details.address).toBe(mapUrl);
   });
 
   it('reports every missing checkout requirement for an empty order', () => {

@@ -229,6 +229,7 @@ export const webOrderChatRequiresChoiceResponse = (message?: ChatMessage) => {
   const gatedActions: AIOrchestrationVisibleSystemAction[] = [
     'final_confirmation',
     'fulfillment_choices',
+    'location_share',
     'payment_choices',
     'product_choices',
     'restore_cancelled_cart',

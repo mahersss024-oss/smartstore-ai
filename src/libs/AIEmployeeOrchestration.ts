@@ -11,6 +11,7 @@ import type {
   ConversationOrderItem,
   ConversationSuggestedProduct,
 } from './ConversationEngine';
+import { isSharedLocationAddress } from './AIEmployeeCheckout';
 import {
   classifyRequestedCustomerNeed,
   evaluateAIOrchestrationQuality,
@@ -708,6 +709,14 @@ export const sanitizeAIEmployeeSystemSemanticHints = (params: {
       && Boolean(previousCustomerDetails?.deliveryPreference)
       && !previousCustomerDetails?.paymentPreference
     );
+  const canAcceptLocation = lastAskedFor === 'delivery_address'
+    || previousMissingDetails.includes('delivery_address')
+    || previousVisibleSystemActions.includes('location_share')
+    || (
+      hasActiveCollectingCart
+      && previousCustomerDetails?.deliveryPreference === 'delivery'
+      && !previousCustomerDetails.address
+    );
   const canAcceptConfirmation = hasActiveCollectingCart && (
     lastAskedFor === 'order_confirmation'
     || previousVisibleSystemActions.includes('final_confirmation')
@@ -742,7 +751,9 @@ export const sanitizeAIEmployeeSystemSemanticHints = (params: {
     customerCancelledOrder: canAcceptConfirmation
       ? hints.customerCancelledOrder
       : undefined,
-    customerAddress: hints.customerAddress,
+    customerAddress: canAcceptLocation && isSharedLocationAddress(hints.customerAddress)
+      ? hints.customerAddress
+      : undefined,
     customerConfirmedOrder: canAcceptConfirmation
       ? hints.customerConfirmedOrder
       : undefined,

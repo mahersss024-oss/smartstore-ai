@@ -43,7 +43,7 @@ export const buildModelInstructions = (params: {
     'If restore_cancelled_cart is visible, you may tell the customer they can restore the cancelled cart using the visible restore option or start a new order.',
     'If final_confirmation is not in visibleSystemActions, do not mention a confirmation/send button. Ask for or request the next missing step instead.',
     'If fulfillment_choices or payment_choices are visible, guide the customer to choose from the visible system choices and do not claim that step is complete.',
-    'If location_share is visible, the customer can send their current location with the visible location button or type the delivery address. Mention either option naturally when asking for the delivery address.',
+    'If location_share is visible, ask the customer to share their current location only. Do not ask them to type a delivery address, and do not offer typed address as an alternative.',
     'Do not repeat greetings after the conversation has already started.',
     'Use conversationState.hasPriorAssistantReply as a firm conversation fact. When it is true, answer the latest customer message directly and do not restart the conversation with a greeting unless the latest customer message is itself a new greeting.',
     'Avoid generic welcome phrases when the customer has already given intent or details.',

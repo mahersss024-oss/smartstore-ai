@@ -47,6 +47,22 @@ describe('WebOrderChatState', () => {
     })).toBe(false);
   });
 
+  it('requires the location share action instead of free-text delivery addresses', () => {
+    expect(webOrderChatRequiresChoiceResponse({
+      id: 'location-step',
+      sender: 'ai',
+      text: '',
+      visibleSystemActions: ['location_share'],
+    })).toBe(true);
+    expect(webOrderChatRequiresChoiceResponse({
+      freeTextAllowed: true,
+      id: 'location-step-unlocked',
+      sender: 'ai',
+      text: '',
+      visibleSystemActions: ['location_share'],
+    })).toBe(false);
+  });
+
   it('reconciles one optimistic message without hiding a repeated remote message', () => {
     const messages = mergeWebOrderChatMessages(
       [{
