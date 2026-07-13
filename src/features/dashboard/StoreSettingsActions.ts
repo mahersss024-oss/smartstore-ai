@@ -773,6 +773,8 @@ export const saveWhatsAppSettings = async (
           channelId: whapi.channelId,
           connectionStatus: whatsappChannel.connectionStatus,
           displayPhoneNumber: whapi.displayPhoneNumber,
+          managedByPlatform: whapi.managedByPlatform ?? undefined,
+          managedChannelActivatedAt: whapi.managedChannelActivatedAt,
           mode: whatsappChannel.mode,
           phoneNumber: whapi.displayPhoneNumber,
           provider: 'whapi',
@@ -806,7 +808,11 @@ export const saveWhatsAppSettings = async (
       .values({
         aiMode: 'assist',
         channel: 'whatsapp',
-        config: whatsappChannel.config,
+        config: {
+          ...whatsappChannel.config,
+          managedByPlatform: whapi.managedByPlatform ?? undefined,
+          managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+        },
         connectionStatus: whatsappChannel.connectionStatus,
         displayName: 'WhatsApp',
         isActive: whatsappChannel.isActive,
@@ -815,7 +821,11 @@ export const saveWhatsAppSettings = async (
       .onConflictDoUpdate({
         set: {
           aiMode: 'assist',
-          config: whatsappChannel.config,
+          config: {
+            ...whatsappChannel.config,
+            managedByPlatform: whapi.managedByPlatform ?? undefined,
+            managedChannelActivatedAt: whapi.managedChannelActivatedAt ?? undefined,
+          },
           connectionStatus: whatsappChannel.connectionStatus,
           displayName: 'WhatsApp',
           isActive: whatsappChannel.isActive,

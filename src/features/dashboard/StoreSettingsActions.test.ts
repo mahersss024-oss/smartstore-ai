@@ -7,6 +7,7 @@ const {
   mockDbInsertValues,
   mockDbSelect,
   mockDbUpdate,
+  mockDbUpdateSet,
   mockDecryptSecret,
   mockEncryptSecret,
   mockRedirect,
@@ -49,6 +50,7 @@ const {
     mockDbInsertValues: insertValues,
     mockDbSelect: vi.fn(() => ({ from: selectFrom })),
     mockDbUpdate: vi.fn(() => ({ set: updateSet })),
+    mockDbUpdateSet: updateSet,
     mockDecryptSecret: vi.fn(() => 'b'.repeat(32)),
     mockEncryptSecret: vi.fn((value: string) => `encrypted:${value}`),
     mockRedirect: vi.fn((path: string) => {
@@ -229,6 +231,47 @@ describe('saveWhatsAppSettings', () => {
         hasApiToken: true,
       }),
     );
+  });
+
+  it('preserves platform-managed Whapi channel metadata when saving WhatsApp settings', async () => {
+    selectRows.push(
+      [{ id: 1, metadata: {}, storeName: 'Store One' }],
+      [{
+        config: {
+          apiTokenPreview: 'whp...bbbb',
+          channelId: validChannelId,
+          displayPhoneNumber: '+14155552671',
+          managedByPlatform: true,
+          managedChannelActivatedAt: '2026-07-01T15:00:00.000Z',
+          provider: 'whapi',
+          webhookSecret: validWebhookSecret,
+        },
+      }],
+    );
+    const formData = new FormData();
+    formData.set('whapiChannelId', validChannelId);
+    formData.set('whapiDisplayPhoneNumber', '+14155552671');
+    formData.set('whapiWebhookSecret', validWebhookSecret);
+
+    const result = await saveWhatsApp(formData);
+
+    expect(result.status).toBe('success');
+    expect(mockDbInsertValues).toHaveBeenCalledWith(expect.objectContaining({
+      config: expect.objectContaining({
+        managedByPlatform: true,
+        managedChannelActivatedAt: '2026-07-01T15:00:00.000Z',
+      }),
+    }));
+    expect(mockDbUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        channelIntegrations: expect.objectContaining({
+          whatsapp: expect.objectContaining({
+            managedByPlatform: true,
+            managedChannelActivatedAt: '2026-07-01T15:00:00.000Z',
+          }),
+        }),
+      }),
+    }));
   });
 
   it('does not write an invalid Whapi configuration', async () => {
