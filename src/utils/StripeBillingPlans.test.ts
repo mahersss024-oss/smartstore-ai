@@ -32,15 +32,19 @@ describe('StripeBillingPlans', () => {
   it('maps configured plan and add-on price ids', async () => {
     const {
       getStripeAddOnKeyByPriceId,
+      getStripeAddOnPriceId,
       getStripePlanByPriceId,
+      getStripePlanPriceId,
       STRIPE_ADD_ON_PRICE,
     } = await import('./StripeBillingPlans');
 
     expect(getStripePlanByPriceId('price_starter')).toBe('starter');
+    expect(getStripePlanPriceId('growth')).toBe('price_growth');
     expect(getStripePlanByPriceId('missing')).toBeUndefined();
     expect(getStripeAddOnKeyByPriceId('price_team')).toBe(
       STRIPE_ADD_ON_PRICE.EXTRA_TEAM_MEMBER,
     );
+    expect(getStripeAddOnPriceId(STRIPE_ADD_ON_PRICE.EXTRA_AI_ORDERS)).toBe('price_ai');
     expect(getStripeAddOnKeyByPriceId()).toBeUndefined();
   });
 });

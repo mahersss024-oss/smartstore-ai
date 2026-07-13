@@ -66,3 +66,11 @@ export const getStripePlanByPriceId = (priceId?: string | null) => {
     .find(([, configuredPriceId]) => configuredPriceId && configuredPriceId === priceId)
     ?.[0];
 };
+
+export const getStripeAddOnPriceId = (addOnKey: StripeAddOnKey) => {
+  return STRIPE_ADD_ON_PRICE_IDS[addOnKey];
+};
+
+export const getStripePlanPriceId = (planName: string) => {
+  return STRIPE_PLAN_PRICE_IDS[normalizeBillingPlanKey(planName)];
+};

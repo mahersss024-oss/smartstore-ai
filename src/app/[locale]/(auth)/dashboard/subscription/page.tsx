@@ -14,6 +14,7 @@ import { AddOnCheckoutButton } from '@/features/billing/AddOnCheckoutButton';
 import { PlanCheckoutButton } from '@/features/billing/PlanCheckoutButton';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { db } from '@/libs/DB';
+import { Env } from '@/libs/Env';
 import { Link } from '@/libs/I18nNavigation';
 import { hasConfiguredValue } from '@/libs/StoreReadiness';
 import { getSubscriptionEntitlements } from '@/libs/SubscriptionEntitlements';
@@ -72,6 +73,7 @@ export default async function SubscriptionPage(props: {
   const isPaidSubscriptionActive = Boolean(entitlements?.isPaidSubscriptionActive);
   const contactChannels = metadata?.contactChannels ?? {};
   const activeAddOns = isPaidSubscriptionActive ? (metadata?.subscription?.addOns ?? {}) : {};
+  const checkoutEnabled = Env.ENABLE_STRIPE_SELF_CHECKOUT;
   const enabledWhatsapp = hasConfiguredValue(contactChannels.whatsapp);
   const usage = entitlements?.usage ?? {
     aiOrders: 0,
@@ -463,7 +465,8 @@ export default async function SubscriptionPage(props: {
                   <span className="text-sm font-bold">{addOn.value}</span>
                   <AddOnCheckoutButton
                     addOnKey={addOn.addOnKey}
-                    disabled
+                    checkoutEnabled={checkoutEnabled}
+                    disabled={!checkoutEnabled}
                     label={t('request_add_on')}
                   />
                 </div>
@@ -515,9 +518,11 @@ export default async function SubscriptionPage(props: {
               <div className="mt-5">
                 <PlanCheckoutButton
                   active={plan.name === currentPlan.name && isPaidSubscriptionActive}
+                  checkoutEnabled={checkoutEnabled}
                   label={plan.name === currentPlan.name && isPaidSubscriptionActive
                     ? t('current_package_button')
                     : t('subscribe_package_button')}
+                  planName={plan.name}
                 />
               </div>
             </div>
