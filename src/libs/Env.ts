@@ -75,6 +75,7 @@ export const Env = createEnv({
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url().optional(),
+    NEXT_PUBLIC_BILLING_WHATSAPP_NUMBER: z.string().default('966535641315'),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_LOGGING_LEVEL: z.enum(['error', 'info', 'debug', 'warning', 'trace', 'fatal']).default('info'),
   },
@@ -126,6 +127,7 @@ export const Env = createEnv({
     WHAPI_PARTNER_API_TOKEN: process.env.WHAPI_PARTNER_API_TOKEN,
     WHAPI_PROJECT_ID: process.env.WHAPI_PROJECT_ID,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_BILLING_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_BILLING_WHATSAPP_NUMBER,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_LOGGING_LEVEL: process.env.NEXT_PUBLIC_LOGGING_LEVEL,

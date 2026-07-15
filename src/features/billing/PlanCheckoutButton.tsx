@@ -1,9 +1,12 @@
 'use client';
 
+import { MessageCircle } from 'lucide-react';
 import { useTransition } from 'react';
 
 type PlanCheckoutButtonProps = {
   active?: boolean;
+  billingWhatsappMessage?: string;
+  billingWhatsappNumber?: string;
   checkoutEnabled?: boolean;
   disabled?: boolean;
   label: string;
@@ -12,10 +15,14 @@ type PlanCheckoutButtonProps = {
 
 export const PlanCheckoutButton = (props: PlanCheckoutButtonProps) => {
   const [isPending, startTransition] = useTransition();
-  const isDisabled = props.active || props.disabled || !props.checkoutEnabled || isPending;
+  const billingWhatsappUrl = props.billingWhatsappNumber && props.billingWhatsappMessage
+    ? `https://wa.me/${props.billingWhatsappNumber}?text=${encodeURIComponent(props.billingWhatsappMessage)}`
+    : null;
+  const isDisabled = props.active || props.disabled || isPending;
+  const isCheckoutDisabled = isDisabled || (!billingWhatsappUrl && !props.checkoutEnabled);
 
   const startCheckout = () => {
-    if (!props.planName || isDisabled) {
+    if (!props.planName || isCheckoutDisabled) {
       return;
     }
 
@@ -38,10 +45,29 @@ export const PlanCheckoutButton = (props: PlanCheckoutButtonProps) => {
     });
   };
 
+  if (billingWhatsappUrl && !isDisabled) {
+    return (
+      <a
+        href={billingWhatsappUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="
+          inline-flex w-full items-center justify-center gap-2 rounded-lg
+          bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground
+          transition-opacity
+          hover:opacity-90
+        "
+      >
+        <MessageCircle className="size-4" />
+        {props.label}
+      </a>
+    );
+  }
+
   return (
     <button
       type="button"
-      disabled={isDisabled}
+      disabled={isCheckoutDisabled}
       onClick={startCheckout}
       className="
         inline-flex w-full items-center justify-center rounded-lg bg-primary

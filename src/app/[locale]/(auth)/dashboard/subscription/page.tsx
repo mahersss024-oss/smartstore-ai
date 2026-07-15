@@ -61,7 +61,10 @@ export default async function SubscriptionPage(props: {
 
   const [storeSettings] = orgId
     ? await db
-        .select({ metadata: storeSettingsTable.metadata })
+        .select({
+          metadata: storeSettingsTable.metadata,
+          storeName: storeSettingsTable.storeName,
+        })
         .from(storeSettingsTable)
         .where(eq(storeSettingsTable.organizationId, orgId))
         .limit(1)
@@ -71,6 +74,7 @@ export default async function SubscriptionPage(props: {
   const metadata = storeSettings?.metadata as StoreSettingsMetadata | null;
   const currentPlan = entitlements?.plan ?? AllPlans[0]!;
   const isPaidSubscriptionActive = Boolean(entitlements?.isPaidSubscriptionActive);
+  const billingWhatsappNumber = Env.NEXT_PUBLIC_BILLING_WHATSAPP_NUMBER;
   const contactChannels = metadata?.contactChannels ?? {};
   const activeAddOns = isPaidSubscriptionActive ? (metadata?.subscription?.addOns ?? {}) : {};
   const checkoutEnabled = Env.ENABLE_STRIPE_SELF_CHECKOUT;
@@ -182,6 +186,14 @@ export default async function SubscriptionPage(props: {
       value: t('extra_members_value'),
     },
   ];
+  const storeSupportName = storeSettings?.storeName?.trim() || 'Store';
+  const storeSupportId = orgId ?? 'unknown';
+  const buildBillingWhatsappMessage = (requestName: string) => [
+    `مرحبا، أريد طلب ${requestName}.`,
+    '',
+    `اسم المتجر: ${storeSupportName}`,
+    `رمز المتجر للدعم: ${storeSupportId}`,
+  ].join('\n');
 
   return (
     <>
@@ -465,8 +477,9 @@ export default async function SubscriptionPage(props: {
                   <span className="text-sm font-bold">{addOn.value}</span>
                   <AddOnCheckoutButton
                     addOnKey={addOn.addOnKey}
+                    billingWhatsappMessage={buildBillingWhatsappMessage(`إضافة ${addOn.title}`)}
+                    billingWhatsappNumber={billingWhatsappNumber}
                     checkoutEnabled={checkoutEnabled}
-                    disabled={!checkoutEnabled}
                     label={t('request_add_on')}
                   />
                 </div>
@@ -518,6 +531,8 @@ export default async function SubscriptionPage(props: {
               <div className="mt-5">
                 <PlanCheckoutButton
                   active={plan.name === currentPlan.name && isPaidSubscriptionActive}
+                  billingWhatsappMessage={buildBillingWhatsappMessage(`الاشتراك في باقة ${tPlans(`${plan.name}_plan_name`)}`)}
+                  billingWhatsappNumber={billingWhatsappNumber}
                   checkoutEnabled={checkoutEnabled}
                   label={plan.name === currentPlan.name && isPaidSubscriptionActive
                     ? t('current_package_button')
